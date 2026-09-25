@@ -82,6 +82,7 @@ pub(crate) fn record_task_mutation_in_tx(
     Ok(revision)
 }
 
+#[cfg(test)]
 pub(crate) fn final_coordinator_revision_for_turn(
     session_id: &str,
     turn_intent_id: &str,
@@ -101,42 +102,128 @@ pub(crate) fn final_coordinator_revision_for_turn(
     .map_err(|error| error.to_string())
 }
 
+/// Called under the sessions writer before terminal side effects. Late
+/// callbacks may settle only their still-running intent in its original Team
+/// generation; terminal replays and superseded generations are no-ops.
+pub(crate) fn terminal_turn_is_current(
+    conn: &Connection,
+    session_id: &str,
+    turn_intent_id: &str,
+) -> Result<bool, String> {
+    terminal_turn_matches_status(conn, session_id, turn_intent_id, None)
+}
+
+fn terminal_turn_matches_status(
+    conn: &Connection,
+    session_id: &str,
+    turn_intent_id: &str,
+    settled_as: Option<crate::lifecycle::TurnTerminalStatus>,
+) -> Result<bool, String> {
+    let context = crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+        conn,
+        session_id,
+        turn_intent_id,
+    )?;
+    conn.query_row(
+        "SELECT EXISTS(
+            SELECT 1 FROM session_turn_intents intent
+            JOIN agent_org_runtime_runs run ON run.id=?3
+            WHERE intent.session_id=?1 AND intent.turn_intent_id=?2
+              AND (intent.status='running' OR intent.status=?5)
+              AND (?4 IS NULL OR run.activation_generation=?4)
+        )",
+        params![
+            session_id,
+            turn_intent_id,
+            context.org_run_id,
+            context.activation_generation,
+            settled_as.map(|status| status.as_str()),
+        ],
+        |row| row.get(0),
+    )
+    .map_err(|error| error.to_string())
+}
+
 /// Terminalize the generic Turn and its Agent Org lease atomically. If this
 /// was a Coordinator graph-writer Turn, materialize its single coalesced
 /// completion recheck only after the terminal state is durable.
 pub(crate) fn finalize_turn(
     session_id: &str,
     turn_intent_id: &str,
-    success: bool,
+    status: crate::lifecycle::TurnTerminalStatus,
     reason_code: &str,
 ) -> Result<Vec<String>, String> {
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         let tx = database::db::begin_immediate(&conn).map_err(|error| error.to_string())?;
-        let status = if success {
-            crate::foundation::session_bridge::TurnIntentBridgeStatus::Completed
-        } else {
-            crate::foundation::session_bridge::TurnIntentBridgeStatus::Failed
-        };
-        crate::foundation::session_bridge::update_turn_intent_status_with_connection(
-            &tx,
-            session_id,
-            turn_intent_id,
-            status,
-        )?;
-        release_turn_lease_in_tx(&tx, session_id, turn_intent_id, "released", reason_code)?;
         let receipt_ids =
-            materialize_coordinator_recheck_in_tx(&tx, session_id, turn_intent_id, success)?;
+            finalize_turn_in_tx(&tx, session_id, turn_intent_id, status, reason_code)?;
         tx.commit().map_err(|error| error.to_string())?;
         Ok(receipt_ids)
     })
+}
+
+pub(crate) fn finalize_turn_in_tx(
+    conn: &Connection,
+    session_id: &str,
+    turn_intent_id: &str,
+    status: crate::lifecycle::TurnTerminalStatus,
+    reason_code: &str,
+) -> Result<Vec<String>, String> {
+    // Recovery can encounter a Failed intent whose lease still needs release.
+    // Confirming the same status is idempotent; changing a terminal is forbidden.
+    if !terminal_turn_matches_status(conn, session_id, turn_intent_id, Some(status))? {
+        return Ok(Vec::new());
+    }
+    crate::foundation::session_bridge::update_turn_intent_status_with_connection(
+        conn,
+        session_id,
+        turn_intent_id,
+        status.intent_status(),
+    )?;
+    release_turn_lease_in_tx(conn, session_id, turn_intent_id, "released", reason_code)?;
+    crate::coordination::agent_org_final_summary::settle_terminal_turn_in_tx(
+        conn,
+        session_id,
+        turn_intent_id,
+        status,
+    )?;
+    let context = crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+        conn,
+        session_id,
+        turn_intent_id,
+    )?;
+    if status == crate::lifecycle::TurnTerminalStatus::Completed
+        && context.source_kind.is_coordinator_root()
+    {
+        if let Some(revision) = context.coordinator_work_revision {
+            crate::coordination::agent_org_runs::mark_coordinator_observed_revision_with_conn(
+                conn,
+                &context.org_run_id,
+                revision,
+            )?;
+        }
+    }
+    if crate::coordination::agent_org_run_completion::recheck_pending_in_tx(
+        conn,
+        &context.org_run_id,
+    )? {
+        conn.execute(
+            "UPDATE agent_org_coordinator_completion_rechecks SET status='resolved',updated_at=?3
+            WHERE source_session_id=?1 AND source_turn_intent_id=?2 AND status='pending'",
+            params![session_id, turn_intent_id, chrono::Utc::now().to_rfc3339()],
+        )
+        .map_err(|e| e.to_string())?;
+        return Ok(Vec::new());
+    }
+    materialize_coordinator_recheck_in_tx(conn, session_id, turn_intent_id, status)
 }
 
 pub(super) fn materialize_coordinator_recheck_in_tx(
     conn: &Connection,
     session_id: &str,
     turn_intent_id: &str,
-    source_succeeded: bool,
+    terminal_status: crate::lifecycle::TurnTerminalStatus,
 ) -> Result<Vec<String>, String> {
     let pending: Option<(String, i64, i64)> = conn
         .query_row(
@@ -166,11 +253,7 @@ pub(super) fn materialize_coordinator_recheck_in_tx(
             |row| row.get(0),
         )
         .map_err(|error| error.to_string())?;
-    let outcome = if source_succeeded {
-        "completed"
-    } else {
-        "failed"
-    };
+    let outcome = terminal_status.as_str();
     let message = crate::coordination::agent_inbox::AgentMessage::Plain {
         summary: "Recheck Team completion".to_string(),
         text: format!(

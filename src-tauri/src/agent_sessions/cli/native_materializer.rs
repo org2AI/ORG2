@@ -13,7 +13,7 @@ use std::sync::Arc;
 use agent_core::session::persistence::{
     MaterializedHistoryContent, MaterializedHistoryRole, MaterializedHistorySeed,
 };
-use agent_core::session::{ScheduledKind, ScheduledMessage};
+use agent_core::session::{ExecutionCompletion, ScheduledKind, ScheduledMessage};
 use agent_core::state::AgentAppState;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::Utc;
@@ -214,7 +214,7 @@ where
                     // Maintenance failures travel through the command reply;
                     // returning Ok prevents the scheduler from manufacturing
                     // a user-visible Agent error for a non-turn operation.
-                    Ok(String::new())
+                    Ok(ExecutionCompletion::Finished)
                 })
             }),
         })
@@ -4714,7 +4714,7 @@ mod tests {
                     Box::pin(async move {
                         let _ = first_started_tx.send(());
                         release_first_task.notified().await;
-                        Ok(String::new())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })

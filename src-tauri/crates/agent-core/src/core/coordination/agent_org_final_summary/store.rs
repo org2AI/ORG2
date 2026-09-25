@@ -299,6 +299,9 @@ pub(crate) fn mark_persisted_for_turn(
     if event_id.trim().is_empty() {
         return Err("final_summary_event_id_invalid".to_string());
     }
+    if stable_event_id_for_turn(session_id, turn_intent_id)?.as_deref() != Some(event_id) {
+        return Ok(false);
+    }
     update_turn_status(
         session_id,
         turn_intent_id,
@@ -320,18 +323,70 @@ pub(crate) fn mark_failed_for_turn(
     }
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
-        let now = chrono::Utc::now().to_rfc3339();
-        let changed = conn
-            .execute(
-                "UPDATE agent_org_runtime_final_summary_receipts
-                 SET status='failed',typed_error=?3,terminal_at=?4,updated_at=?4
-                 WHERE coordinator_session_id=?1 AND turn_intent_id=?2
-                   AND status IN ('running','persisting')",
-                params![session_id, turn_intent_id, typed_error, &now],
-            )
-            .map_err(|error| error.to_string())?;
-        Ok(changed == 1)
+        let tx = database::db::begin_immediate(&conn).map_err(|error| error.to_string())?;
+        let changed = settle_attempt_in_tx(&tx, session_id, turn_intent_id, typed_error)?;
+        tx.commit().map_err(|error| error.to_string())?;
+        Ok(changed)
     })
+}
+
+/// The exact Turn transaction closes every active report attempt, including
+/// cancellation returned as Ok and panic paths that never reached the handler.
+pub(crate) fn settle_terminal_turn_in_tx(
+    conn: &Connection,
+    session_id: &str,
+    turn_intent_id: &str,
+    status: crate::lifecycle::TurnTerminalStatus,
+) -> Result<bool, String> {
+    use crate::lifecycle::TurnTerminalStatus;
+    let error = match status {
+        TurnTerminalStatus::Completed => "event_store_missing",
+        TurnTerminalStatus::Cancelled => "stopped",
+        TurnTerminalStatus::Failed => "provider_error",
+    };
+    settle_attempt_in_tx(conn, session_id, turn_intent_id, error)
+}
+
+fn settle_attempt_in_tx(
+    conn: &Connection,
+    session_id: &str,
+    turn_intent_id: &str,
+    typed_error: &str,
+) -> Result<bool, String> {
+    let receipt: Option<String> = conn.query_row(
+        "SELECT receipt_id FROM agent_org_runtime_final_summary_receipts
+         WHERE coordinator_session_id=?1 AND turn_intent_id=?2 AND status IN ('running','persisting')",
+        params![session_id, turn_intent_id], |row| row.get(0))
+        .optional().map_err(|error| error.to_string())?;
+    let Some(receipt) = receipt else {
+        return Ok(false);
+    };
+    let event_id = stable_event_id(&receipt);
+    // EventStore commit is irreversible report evidence. A later Stop or
+    // interrupted receipt update must recover it instead of allowing a retry.
+    let persisted: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM events WHERE id=?1 AND session_id=?2)",
+            params![event_id, session_id],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let changed = conn
+        .execute(
+            "UPDATE agent_org_runtime_final_summary_receipts
+         SET status=?2,event_id=?3,typed_error=?4,terminal_at=?5,updated_at=?5
+         WHERE receipt_id=?1 AND status IN ('running','persisting')",
+            params![
+                receipt,
+                if persisted { "persisted" } else { "failed" },
+                persisted.then_some(event_id),
+                (!persisted).then_some(typed_error),
+                now
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    Ok(changed == 1)
 }
 
 fn update_turn_status(

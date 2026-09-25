@@ -84,7 +84,7 @@ impl MemberIdleHook for InboxStoreMemberIdleHook {
         &self,
         org_run_id: &str,
         coordinator_agent_id: &str,
-        member_id: &str,
+        member_turn: crate::session::turn::member_idle::MemberIdleSource<'_>,
         _member_agent_id: &str,
         member_name: &str,
         reason: MemberIdleReason,
@@ -93,6 +93,7 @@ impl MemberIdleHook for InboxStoreMemberIdleHook {
         failure_reason: Option<String>,
         unfinished_task_ids: Vec<String>,
     ) {
+        let member_id = member_turn.member_id;
         let message = AgentMessage::MemberIdle {
             member_id: member_id.to_string(),
             member_name: member_name.to_string(),
@@ -122,7 +123,10 @@ impl MemberIdleHook for InboxStoreMemberIdleHook {
             message,
         };
         let persisted = run_agent_org_blocking_section(|| {
-            let inserted = AgentInboxStore::insert_member_idle_if_run_running(params)?;
+            let inserted = AgentInboxStore::insert_member_idle_if_run_running(
+                params,
+                member_turn.turn_intent_id,
+            )?;
             let member_has_unread = inserted
                 .as_ref()
                 .is_some_and(|_| has_unread_member_inbox(org_run_id, member_id));

@@ -544,6 +544,11 @@ impl AgentInboxStore {
             ));
         }
         match params.resolution_kind {
+            AgentInboxDeliveryResolutionKind::SystemReconciled => {
+                return Err(constraint(
+                    "system reconciliation requires completion evidence".to_string(),
+                ));
+            }
             AgentInboxDeliveryResolutionKind::Cancelled => {
                 if params.replacement_inbox_id.is_some() || params.replacement_task_id.is_some() {
                     return Err(constraint(

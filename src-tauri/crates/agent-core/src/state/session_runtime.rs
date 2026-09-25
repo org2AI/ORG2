@@ -820,6 +820,32 @@ impl AgentSession {
             .send_modify(|revision| *revision = revision.wrapping_add(1));
     }
 
+    /// A delayed executor must not clear a replacement Turn's active slot.
+    pub(crate) async fn end_turn_if_current(
+        &self,
+        turn_id: &str,
+        identity: Option<&RuntimeTurnIdentity>,
+        state: DialogTurnState,
+        stats: TurnStats,
+    ) -> bool {
+        let mut guard = self.active_turn.lock().await;
+        let Some(turn) = guard.as_mut().filter(|turn| turn.turn_id == turn_id) else {
+            return false;
+        };
+        if let Some(expected) = identity {
+            if self.runtime_turn_identity().await.as_ref() != Some(expected) {
+                return false;
+            }
+        }
+        turn.finalize(state, stats);
+        *guard = None;
+        *self.active_turn_identity.write() = None;
+        *self.active_turn_generation.write() = None;
+        self.turn_end_revision
+            .send_modify(|revision| *revision = revision.wrapping_add(1));
+        true
+    }
+
     /// Wait for one exact persisted Turn identity to leave the active slot.
     /// The watch revision closes the completion-before-subscribe race without
     /// a recurring timer or retained waiter after the deadline.
@@ -1169,3 +1195,6 @@ mod runtime_lease_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod terminal_tests;

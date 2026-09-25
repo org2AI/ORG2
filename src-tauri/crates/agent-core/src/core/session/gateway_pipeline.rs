@@ -151,8 +151,12 @@ pub async fn process_gateway_message(
         turn_intent_id: uuid::Uuid::new_v4().to_string(),
     };
 
-    let result =
-        crate::session::process_message(Arc::clone(&session), input, app_handle.clone()).await;
+    let (result, terminal_turn) = crate::session::turn::entry::process_message_with_terminal(
+        Arc::clone(&session),
+        input,
+        app_handle.clone(),
+    )
+    .await;
 
     // Compact-fork redirect.
     if let Ok(ref pr) = result {
@@ -205,21 +209,19 @@ pub async fn process_gateway_message(
     }
 
     // ── Post-processing (shared lifecycle) ──
-    let terminal_turn = result
-        .as_ref()
-        .ok()
-        .map(|r| crate::lifecycle::TerminalTurnSignal {
-            turn_id: r.turn_id.clone(),
-            turn_intent_id: None,
-            status: crate::lifecycle::TurnTerminalStatus::Completed,
-            completed_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-        });
     let response = result
         .as_ref()
         .map(|r| r.content.clone())
         .map_err(|e| e.clone());
-    crate::lifecycle::finalize_session(&session_key, &response, None, None, true, terminal_turn)
-        .await;
+    crate::lifecycle::finalize_session(
+        &session_key,
+        &response,
+        None,
+        None,
+        true,
+        Some(terminal_turn),
+    )
+    .await;
 
     match result {
         Ok(processing_result) => {

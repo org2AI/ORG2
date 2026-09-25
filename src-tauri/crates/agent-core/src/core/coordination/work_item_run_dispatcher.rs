@@ -561,8 +561,10 @@ async fn dispatch_session_turn(
         None,
         None,
         crate::foundation::session_bridge::TurnIntentBridgeSource::Queue,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
     .map(|_| ())
 }
 

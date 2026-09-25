@@ -26,6 +26,7 @@ pub use materialization::{
     AgentOrgMaterializationIntent, AgentOrgMaterializationStatus, CreateAgentOrgInitialInput,
     CreateAgentOrgMaterializationIntent,
 };
+pub(crate) use progress::mark_coordinator_observed_revision_with_conn;
 pub use progress::AgentOrgRunProgress;
 pub(crate) use progress::{bump_work_revision_in_tx, current_work_revision_in_tx};
 pub(crate) use quiescence::guaranteed_current_turn_effects_with_connection;

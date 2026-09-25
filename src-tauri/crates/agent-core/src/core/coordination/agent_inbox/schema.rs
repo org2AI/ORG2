@@ -32,14 +32,14 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
             inbox_id INTEGER PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             resolution_kind TEXT NOT NULL
-                CHECK(resolution_kind IN ('cancelled', 'superseded')),
+                CHECK(resolution_kind IN ('cancelled', 'superseded', 'system_reconciled')),
             resolved_by_member_id TEXT NOT NULL,
             reason TEXT NOT NULL,
             replacement_inbox_id INTEGER,
             replacement_task_id TEXT,
             created_at TEXT NOT NULL,
             CHECK(
-                (resolution_kind='cancelled'
+                (resolution_kind IN ('cancelled','system_reconciled')
                     AND replacement_inbox_id IS NULL
                     AND replacement_task_id IS NULL)
                 OR
@@ -161,6 +161,7 @@ fn create_agent_inbox_table(conn: &Connection) -> SqliteResult<()> {
             causation_inbox_id INTEGER,
             display_text TEXT,
             client_message_id TEXT
+            ,source_turn_intent_id TEXT
         );",
     )
 }

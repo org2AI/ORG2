@@ -179,11 +179,11 @@ impl AgentOrgRunStore {
         Ok(plan)
     }
 
-    /// Promote the canonical Root Coordinator's current Idle Turn only when
-    /// that same transaction is about to commit new formal Task graph work.
+    /// Open a new formal generation from Idle, or after publication when
+    /// accepted new user requests are the only reason the run is still Running.
     /// The caller owns the transaction, so any later Task/history/outbox or
     /// receipt failure rolls this generation change back as well.
-    pub(crate) fn activate_idle_for_task_graph_in_tx(
+    pub(crate) fn activate_for_task_graph_in_tx(
         conn: &Connection,
         run_id: &str,
         session_id: &str,
@@ -204,7 +204,6 @@ impl AgentOrgRunStore {
         let status = AgentOrgRunStatus::parse(&status_raw)
             .ok_or_else(|| format!("unknown Agent Org run status: {status_raw}"))?;
         match status {
-            AgentOrgRunStatus::Running => return Ok(false),
             AgentOrgRunStatus::Paused => {
                 return Err(format!(
                     "team_paused_resume_required: Agent Org run {run_id} must be resumed before creating formal work"
@@ -221,7 +220,26 @@ impl AgentOrgRunStore {
                     status.as_str(),
                 ));
             }
-            AgentOrgRunStatus::Idle => {}
+            AgentOrgRunStatus::Idle | AgentOrgRunStatus::Running => {}
+        }
+
+        let user_turns = super::next_work::accepted_user_turns(
+            conn,
+            run_id,
+            session_id,
+            turn_intent_id,
+            generation,
+        )?;
+        if status == AgentOrgRunStatus::Running
+            && !super::next_work::publication_allows_new_work(
+                conn,
+                run_id,
+                session_id,
+                generation,
+                &user_turns,
+            )?
+        {
+            return Ok(false);
         }
 
         let context =
@@ -280,8 +298,8 @@ impl AgentOrgRunStore {
                 "UPDATE agent_org_runtime_runs
                  SET status='running',activation_generation=?2,updated_at=?3,
                      idled_at=NULL,last_activity_outcome=NULL
-                 WHERE id=?1 AND status='idle' AND activation_generation=?4",
-                params![run_id, next_generation, &now, generation],
+                 WHERE id=?1 AND status=?5 AND activation_generation=?4",
+                params![run_id, next_generation, &now, generation, status.as_str()],
             )
             .map_err(|error| error.to_string())?;
         if changed != 1 {
@@ -290,25 +308,28 @@ impl AgentOrgRunStore {
             ));
         }
         if is_coordinator {
-            let marked = conn
-                .execute(
-                    "UPDATE agent_org_runtime_turn_contexts
+            let turns = if user_turns.is_empty() {
+                vec![turn_intent_id.to_string()]
+            } else {
+                user_turns
+            };
+            for turn in turns {
+                let marked = conn
+                    .execute(
+                        "UPDATE agent_org_runtime_turn_contexts
                      SET activation_generation=?4
                      WHERE session_id=?1 AND turn_intent_id=?2 AND org_run_id=?3
                        AND participant_id='coordinator' AND turn_kind='coordinator'
                        AND source_kind IN ('root_turn','group_root')
                        AND activation_generation=?5",
-                    params![
-                        session_id,
-                        turn_intent_id,
-                        run_id,
-                        next_generation,
-                        generation
-                    ],
-                )
-                .map_err(|error| error.to_string())?;
-            if marked != 1 {
-                return Err("task_graph_writer_idle_activation_turn_marker_conflict".to_string());
+                        params![session_id, turn, run_id, next_generation, generation],
+                    )
+                    .map_err(|error| error.to_string())?;
+                if marked != 1 {
+                    return Err(
+                        "task_graph_writer_idle_activation_turn_marker_conflict".to_string()
+                    );
+                }
             }
         }
         Ok(true)

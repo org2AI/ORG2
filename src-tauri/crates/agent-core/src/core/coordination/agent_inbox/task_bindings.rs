@@ -233,6 +233,12 @@ pub(crate) fn oldest_unread_task_message_binding_with_connection(
            AND inbox.payload_kind='plain'
            AND inbox.read_at IS NULL
            AND NOT EXISTS (
+               SELECT 1 FROM agent_org_task_execution_leases lease
+               JOIN session_turn_intents intent USING(session_id,turn_intent_id)
+               WHERE lease.continuation_receipt_id='inbox:' || inbox.id
+                 AND intent.status NOT IN ('queued','running','optimistic')
+           )
+           AND NOT EXISTS (
                SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
                WHERE resolution.inbox_id=inbox.id
            )

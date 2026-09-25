@@ -111,11 +111,41 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
           while (!cancelled && cursor < items.length) {
             const index = cursor++;
             const item = items[index];
+            let loadedDetail: Record<string, unknown> | undefined;
+            const showDetail = (detail: Record<string, unknown>) => {
+              if (cancelled) return;
+              loadedDetail = detail;
+              const head = detail.head as { ref?: unknown } | undefined;
+              items[index] = {
+                ...items[index],
+                title:
+                  typeof detail.title === "string"
+                    ? detail.title
+                    : items[index].title,
+                state:
+                  detail.merged === true || Boolean(detail.merged_at)
+                    ? "merged"
+                    : typeof detail.state === "string"
+                      ? detail.state
+                      : "unknown",
+                draft: detail.draft === true,
+                headBranch: typeof head?.ref === "string" ? head.ref : "",
+                ciStatus: detail.state === "open" ? "checking" : null,
+                error: false,
+              };
+              setState({
+                sessionId,
+                items: [...items],
+                loading: true,
+                error: false,
+              });
+            };
             try {
               const result = await loadPullRequestHeadChecks(
                 item.repoFullName,
                 item.number,
                 {
+                  onDetail: showDetail,
                   maxAgeMs: retry.has(item.url)
                     ? 0
                     : PULL_REQUEST_HEAD_CHECKS_REUSE_MS,
@@ -123,7 +153,9 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
               ).catch(async (error: unknown) => {
                 if (cancelled) throw error;
                 return {
-                  detail: await getPRLocal(item.repoFullName, item.number),
+                  detail:
+                    loadedDetail ??
+                    (await getPRLocal(item.repoFullName, item.number)),
                   checks: null,
                 };
               });
@@ -161,7 +193,7 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
               };
             } catch {
               if (cancelled) return;
-              items[index] = { ...item, error: true };
+              items[index] = { ...items[index], error: true };
             }
             setState({
               sessionId,

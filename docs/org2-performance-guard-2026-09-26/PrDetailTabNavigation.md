@@ -16,3 +16,9 @@ Performance verdict: blocked for real native visible/hidden idle and repeated-op
 ## Pane ownership correction
 
 The rail dispatches to EditorTabService plus revealMyStation, not the chat-panel tab opener. This keeps the selected conversation mounted beside the existing workstation PR renderer. No new background resources or caches. Six focused tests pass; the real store test verifies opening two PRs and refocusing one without changing the chat tabs object or selected conversation. Previously opened chat-pane PR tabs are not destructively migrated.
+
+## First-load PR title
+
+The attachment reader previously held PR metadata until the subsequent head-checks request settled. The shared loader now offers an optional metadata callback backed by its existing in-flight request. Original callers, late joiners and cache hits receive metadata before checks finish, without another GitHub request or new cache/timer. The rail rejects callbacks from hidden/unmounted/replaced effects, paints title/lifecycle immediately, and preserves metadata if checks fail. Shared request promise identity and existing final-result publication remain unchanged.
+
+Tests cover cold load with blocked checks, late joins, cache hits, callback exceptions, metadata rejection, checks failure retaining title, and late previous-session metadata. Native GUI timing remains manually verifiable; no measured performance improvement is claimed.

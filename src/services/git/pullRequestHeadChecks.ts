@@ -51,6 +51,8 @@ export interface LoadPullRequestHeadChecksOptions {
   bypassInFlight?: boolean;
   /** Identifies the reader in the event its answer is published with. */
   source?: unknown;
+  /** Receive metadata as soon as it arrives, without waiting for CI checks. */
+  onDetail?: (detail: Record<string, unknown>) => void;
 }
 
 /** `order` ranks answers by when they were asked for, not when they landed. */
@@ -89,7 +91,11 @@ const epochs = new BoundedMap<string, number>({
 });
 const inFlight = new Map<
   string,
-  { epoch: number; request: Promise<PullRequestHeadChecks> }
+  {
+    epoch: number;
+    request: Promise<PullRequestHeadChecks>;
+    detail: Promise<Record<string, unknown>>;
+  }
 >();
 
 function keyOf(repoFullName: string, prNumber: number): string {
@@ -105,12 +111,22 @@ function readHeadSha(detail: Record<string, unknown>): string | null {
 
 async function fetchHeadChecks(
   repoFullName: string,
-  prNumber: number
+  detailRequest: Promise<Record<string, unknown>>
 ): Promise<PullRequestHeadChecks> {
-  const detail = await getPRLocal(repoFullName, prNumber);
+  const detail = await detailRequest;
   const headSha = readHeadSha(detail);
   const checks = headSha ? await getChecksLocal(repoFullName, headSha) : null;
   return { detail, headSha, checks, fetchedAt: Date.now() };
+}
+
+function deliverDetail(
+  detail: Promise<Record<string, unknown>>,
+  onDetail: LoadPullRequestHeadChecksOptions["onDetail"]
+): void {
+  if (!onDetail) return;
+  // Each consumer observes the same metadata promise, including late joiners.
+  // A callback failure must not reject the shared request or leak a rejection.
+  void detail.then(onDetail).catch(() => undefined);
 }
 
 export function loadPullRequestHeadChecks(
@@ -120,6 +136,7 @@ export function loadPullRequestHeadChecks(
     maxAgeMs = 0,
     bypassInFlight = false,
     source,
+    onDetail,
   }: LoadPullRequestHeadChecksOptions = {}
 ): Promise<PullRequestHeadChecks> {
   const key = keyOf(repoFullName, prNumber);
@@ -128,17 +145,21 @@ export function loadPullRequestHeadChecks(
   if (maxAgeMs > 0) {
     const cached = recent.get(key);
     if (cached && Date.now() - cached.fetchedAt <= maxAgeMs) {
+      deliverDetail(Promise.resolve(cached.detail), onDetail);
       return Promise.resolve(cached);
     }
   }
 
   const pending = inFlight.get(key);
   if (pending && pending.epoch === epoch && !bypassInFlight) {
+    deliverDetail(pending.detail, onDetail);
     return pending.request;
   }
 
   const order = (nextOrder += 1);
-  const request = fetchHeadChecks(repoFullName, prNumber)
+  const detail = getPRLocal(repoFullName, prNumber);
+  deliverDetail(detail, onDetail);
+  const request = fetchHeadChecks(repoFullName, detail)
     .then((result) => {
       // Invalidated while on the wire: hand the answer to whoever asked, but
       // never let anyone else take it for current. Likewise a slow request
@@ -153,7 +174,7 @@ export function loadPullRequestHeadChecks(
     .finally(() => {
       if (inFlight.get(key)?.request === request) inFlight.delete(key);
     });
-  inFlight.set(key, { epoch, request });
+  inFlight.set(key, { epoch, request, detail });
   return request;
 }
 

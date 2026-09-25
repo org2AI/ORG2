@@ -116,6 +116,41 @@ describe("explicit conversation pull request attachments", () => {
     expect(loadPullRequestHeadChecks).toHaveBeenCalledTimes(2);
     expect(container.textContent).toBe("PR 2152,PR 2153");
   });
+  it("shows the title on first load before checks finish without opening the PR", async () => {
+    const pending = deferred<PullRequestHeadChecks>();
+    vi.mocked(loadPullRequestHeadChecks).mockImplementation(
+      (_repo, number, options) => {
+        options?.onDetail?.(metadata(number).detail);
+        return pending.promise;
+      }
+    );
+    await render();
+    expect(container.textContent).toBe("PR 2152");
+    expect(latest.items[0].state).toBe("open");
+    expect(latest.items[0].ciStatus).toBe("checking");
+    expect(latest.loading).toBe(true);
+    await act(async () => pending.reject(new Error("checks offline")));
+    expect(container.textContent).toBe("PR 2152");
+    expect(latest.items[0].error).toBe(true);
+    expect(getPRLocal).not.toHaveBeenCalled();
+  });
+  it("ignores late partial metadata after the conversation changes", async () => {
+    let deliver: ((detail: Record<string, unknown>) => void) | undefined;
+    const pending = deferred<PullRequestHeadChecks>();
+    vi.mocked(loadPullRequestHeadChecks).mockImplementationOnce(
+      (_repo, _number, options) => {
+        deliver = options?.onDetail;
+        return pending.promise;
+      }
+    );
+    await render("old");
+    vi.mocked(readSessionPullRequests).mockResolvedValue([url(2153)]);
+    await render("new");
+    await act(async () => deliver?.(metadata(2152).detail));
+    expect(container.textContent).toBe("PR 2153");
+    await act(async () => pending.resolve(metadata(2152)));
+    expect(container.textContent).toBe("PR 2153");
+  });
   it("defers hidden reads and revalidates once visible", async () => {
     visibility = "hidden";
     await render();
@@ -188,7 +223,7 @@ describe("explicit conversation pull request attachments", () => {
     expect(loadPullRequestHeadChecks).toHaveBeenLastCalledWith(
       "org2ai/org2",
       2152,
-      { maxAgeMs: 0 }
+      expect.objectContaining({ maxAgeMs: 0, onDetail: expect.any(Function) })
     );
     expect(latest.items[0]).toMatchObject({ title: "PR 2152", error: false });
   });

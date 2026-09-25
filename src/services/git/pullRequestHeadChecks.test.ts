@@ -223,3 +223,71 @@ describe("changes to the pull request", () => {
     expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("early pull request metadata", () => {
+  it("delivers the title before slow checks and to a late joining reader", async () => {
+    const gate = deferred<GitHubChecksSummary>();
+    const detail = { title: "Visible immediately", head: { sha: "head" } };
+    apiMocks.getPRLocal.mockResolvedValue(detail);
+    apiMocks.getChecksLocal.mockReturnValue(gate.promise);
+    const firstDetail = vi.fn();
+    const first = loadPullRequestHeadChecks(REPO, PR, {
+      onDetail: firstDetail,
+    });
+    await Promise.resolve();
+    expect(firstDetail).toHaveBeenCalledWith(detail);
+    const lateDetail = vi.fn();
+    const joined = loadPullRequestHeadChecks(REPO, PR, {
+      onDetail: lateDetail,
+    });
+    expect(joined).toBe(first);
+    await Promise.resolve();
+    expect(lateDetail).toHaveBeenCalledWith(detail);
+    expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(1);
+    expect(apiMocks.getChecksLocal).toHaveBeenCalledTimes(1);
+    gate.resolve(checks("success"));
+    await first;
+  });
+
+  it("delivers cached metadata without another API request", async () => {
+    const snapshot = await loadPullRequestHeadChecks(REPO, PR);
+    const onDetail = vi.fn();
+    await loadPullRequestHeadChecks(REPO, PR, { maxAgeMs: 60_000, onDetail });
+    expect(onDetail).toHaveBeenCalledWith(snapshot.detail);
+    expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(1);
+  });
+
+  it("isolates a throwing consumer while other readers and checks succeed", async () => {
+    const onDetail = vi.fn(() => {
+      throw new Error("consumer failed");
+    });
+    const first = loadPullRequestHeadChecks(REPO, PR, { onDetail });
+    const other = vi.fn();
+    const second = loadPullRequestHeadChecks(REPO, PR, { onDetail: other });
+    expect(second).toBe(first);
+    await expect(first).resolves.toMatchObject({ headSha: "head" });
+    expect(onDetail).toHaveBeenCalledOnce();
+    expect(other).toHaveBeenCalledOnce();
+  });
+
+  it("does not notify on metadata rejection and still rejects the original request", async () => {
+    apiMocks.getPRLocal.mockRejectedValueOnce(new Error("offline"));
+    const onDetail = vi.fn();
+    await expect(
+      loadPullRequestHeadChecks(REPO, PR, { onDetail })
+    ).rejects.toThrow("offline");
+    expect(onDetail).not.toHaveBeenCalled();
+    expect(apiMocks.getChecksLocal).not.toHaveBeenCalled();
+  });
+
+  it("keeps delivered metadata when the later checks request fails", async () => {
+    apiMocks.getChecksLocal.mockRejectedValueOnce(
+      new Error("checks unavailable")
+    );
+    const onDetail = vi.fn();
+    await expect(
+      loadPullRequestHeadChecks(REPO, PR, { onDetail })
+    ).rejects.toThrow("checks unavailable");
+    expect(onDetail).toHaveBeenCalledOnce();
+  });
+});

@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "已指派的工作項目",
       "standaloneProject": "獨立項目",
+      "channelMentionSubtitle": "頻道中提及了你",
       "mentionSubtitle": "在留言中被提及",
       "mentionedYou": "提及了你",
       "threadComments_other": "此討論串中有 {{count}} 則留言",

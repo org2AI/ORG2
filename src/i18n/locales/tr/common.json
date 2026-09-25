@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "Atanan iş öğesi",
       "standaloneProject": "Bağımsız",
+      "channelMentionSubtitle": "Bir kanalda bahsedildi",
       "mentionSubtitle": "Bir yorumda bahsedildi",
       "mentionedYou": "sizden bahsetti",
       "threadComments_one": "Bu konuda {{count}} yorum var",

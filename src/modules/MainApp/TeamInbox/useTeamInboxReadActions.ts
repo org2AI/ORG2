@@ -41,8 +41,8 @@ export function useTeamInboxReadActions({
   const markItemRead = useCallback(
     (item: TeamInboxItem) => {
       if (item.readAt !== null) return;
-      void performTeamInboxReadTransition("read", item, dataSource).then(
-        (result) => {
+      void performTeamInboxReadTransition("read", item, dataSource)
+        .then((result) => {
           if (result.ok) {
             setLoadState({ status: "ready", message: null });
           } else {
@@ -51,8 +51,13 @@ export function useTeamInboxReadActions({
               message: t("teamInbox.errors.markRead"),
             });
           }
-        }
-      );
+        })
+        .catch(() => {
+          setLoadState({
+            status: "error",
+            message: t("teamInbox.errors.markRead"),
+          });
+        });
     },
     [dataSource, t, setLoadState]
   );
@@ -80,8 +85,8 @@ export function useTeamInboxReadActions({
 
   const handleMarkUnread = (item: TeamInboxItem) => {
     if (item.readAt === null) return;
-    void performTeamInboxReadTransition("unread", item, dataSource).then(
-      (result) => {
+    void performTeamInboxReadTransition("unread", item, dataSource)
+      .then((result) => {
         if (result.ok) {
           setLoadState({ status: "ready", message: null });
         } else {
@@ -90,8 +95,13 @@ export function useTeamInboxReadActions({
             message: t("teamInbox.errors.markUnread"),
           });
         }
-      }
-    );
+      })
+      .catch(() => {
+        setLoadState({
+          status: "error",
+          message: t("teamInbox.errors.markUnread"),
+        });
+      });
   };
 
   const handleMarkAllRead = () => {

@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "割り当てられた作業項目",
       "standaloneProject": "単独",
+      "channelMentionSubtitle": "チャンネルでメンションされました",
       "mentionSubtitle": "コメントでメンションされました",
       "mentionedYou": "があなたをメンションしました",
       "threadComments_other": "このスレッドには {{count}} 件のコメントがあります",

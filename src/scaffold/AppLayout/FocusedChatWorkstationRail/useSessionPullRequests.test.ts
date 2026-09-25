@@ -5,8 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getChecksLocal, getPRLocal } from "@src/api/tauri/github";
 import { readSessionPullRequests } from "@src/api/tauri/session/sessionPullRequests";
+import { shouldMountFocusedChatWorkstationControls } from "@src/engines/ChatPanel/focusedChatWorkstationLayout";
 import {
   type PullRequestHeadChecks,
+  getPullRequestMetadata,
   loadPullRequestHeadChecks,
 } from "@src/services/git/pullRequestHeadChecks";
 
@@ -21,6 +23,7 @@ vi.mock("@src/api/tauri/session/sessionPullRequests", () => ({
 }));
 vi.mock("@src/services/git/pullRequestHeadChecks", () => ({
   loadPullRequestHeadChecks: vi.fn(),
+  getPullRequestMetadata: vi.fn(),
   PULL_REQUEST_HEAD_CHECKS_REUSE_MS: 7500,
 }));
 const url = (number: number) => `https://github.com/org2ai/org2/pull/${number}`;
@@ -46,6 +49,7 @@ function metadata(number: number): PullRequestHeadChecks {
   };
 }
 let latest: ReturnType<typeof useSessionPullRequests>;
+let commits: Array<ReturnType<typeof useSessionPullRequests>>;
 function Probe({
   sessionId,
   reloadKey,
@@ -56,12 +60,22 @@ function Probe({
   const result = useSessionPullRequests(sessionId, reloadKey);
   useEffect(() => {
     latest = result;
+    commits.push(result);
   }, [result]);
   return createElement(
     "output",
     null,
     result.items.map((item) => item.title).join(",")
   );
+}
+function RailGate({ focused }: { focused: boolean }) {
+  return shouldMountFocusedChatWorkstationControls({
+    activeTabType: "session",
+    isChatFocus: focused,
+    showSessionContent: true,
+  })
+    ? createElement(Probe, { sessionId: "session" })
+    : null;
 }
 let root: Root;
 let container: HTMLDivElement;
@@ -71,6 +85,7 @@ const reactEnv = globalThis as typeof globalThis & {
 };
 beforeEach(() => {
   reactEnv.IS_REACT_ACT_ENVIRONMENT = true;
+  commits = [];
   visibility = "visible";
   Object.defineProperty(document, "visibilityState", {
     configurable: true,
@@ -191,6 +206,48 @@ describe("explicit conversation pull request attachments", () => {
       expect(container.textContent).toBe("Updated PR title");
     } finally {
       clock.mockRestore();
+      actual.clearPullRequestHeadChecks();
+    }
+  });
+  it("keeps titles on every workstation return while detail reconciliation refreshes", async () => {
+    const actual = await vi.importActual<
+      typeof import("@src/services/git/pullRequestHeadChecks")
+    >("@src/services/git/pullRequestHeadChecks");
+    actual.clearPullRequestHeadChecks();
+    vi.mocked(loadPullRequestHeadChecks).mockImplementation(
+      actual.loadPullRequestHeadChecks
+    );
+    vi.mocked(getPullRequestMetadata).mockImplementation(
+      actual.getPullRequestMetadata
+    );
+    vi.mocked(getPRLocal).mockResolvedValue(metadata(2152).detail);
+    const toggle = async (focused: boolean) => {
+      await act(async () => root.render(createElement(RailGate, { focused })));
+    };
+    try {
+      await toggle(true);
+      expect(container.textContent).toBe("PR 2152");
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await toggle(false);
+        // Detail refresh/reconcile invalidates freshness while the rail is absent.
+        actual.invalidatePullRequestHeadChecks("org2ai/org2", 2152);
+        const pending = deferred<Record<string, unknown>>();
+        vi.mocked(getPRLocal).mockReturnValueOnce(pending.promise);
+        commits = [];
+        await toggle(true);
+        expect(container.textContent).toBe("PR 2152");
+        expect(
+          commits
+            .flatMap((value) => value.items)
+            .every(
+              (item) =>
+                item.title === "PR 2152" && item.metadataLoading === false
+            )
+        ).toBe(true);
+        await act(async () => pending.resolve(metadata(2152).detail));
+      }
+      expect(getPRLocal).toHaveBeenCalledTimes(4);
+    } finally {
       actual.clearPullRequestHeadChecks();
     }
   });

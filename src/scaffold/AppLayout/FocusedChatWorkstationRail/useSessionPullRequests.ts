@@ -8,6 +8,7 @@ import {
 } from "@src/services/git/branchPullRequestStatus";
 import {
   PULL_REQUEST_HEAD_CHECKS_REUSE_MS,
+  getPullRequestMetadata,
   loadPullRequestHeadChecks,
 } from "@src/services/git/pullRequestHeadChecks";
 import { parseGitHubPullRequestUrl } from "@src/util/git/githubPullRequestUrl";
@@ -39,6 +40,29 @@ interface State {
   error: boolean;
 }
 const EMPTY: SessionPullRequest[] = [];
+
+function withMetadata(
+  item: SessionPullRequest,
+  detail: Record<string, unknown>
+): SessionPullRequest {
+  const head = detail.head as { ref?: unknown } | undefined;
+  const state =
+    detail.merged === true || Boolean(detail.merged_at)
+      ? "merged"
+      : typeof detail.state === "string"
+        ? detail.state
+        : "unknown";
+  return {
+    ...item,
+    metadataLoading: false,
+    title: typeof detail.title === "string" ? detail.title : item.title,
+    state,
+    draft: detail.draft === true,
+    headBranch: typeof head?.ref === "string" ? head.ref : "",
+    ciStatus: state === "open" ? (item.ciStatus ?? "checking") : null,
+    error: false,
+  };
+}
 
 /** Explicit conversation attachments only. No polling or additional metadata cache. */
 export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
@@ -88,22 +112,25 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
             .filter((url): url is string => Boolean(url))
         ),
       ].slice(0, 100);
-      const items = urls.map((url) => {
+      const items = urls.map((url): SessionPullRequest => {
         const ref = parseGitHubPullRequestUrl(url)!;
-        return (
-          stale.find((item) => item.url === url) ?? {
-            url,
-            number: ref.number,
-            repoFullName: `${ref.owner}/${ref.repo}`,
-            title: `#${ref.number}`,
-            metadataLoading: true,
-            state: "unknown",
-            draft: false,
-            headBranch: "",
-            ciStatus: null,
-            error: false,
-          }
-        );
+        const previousItem = stale.find((item) => item.url === url);
+        const item: SessionPullRequest = previousItem ?? {
+          url,
+          number: ref.number,
+          repoFullName: `${ref.owner}/${ref.repo}`,
+          title: `#${ref.number}`,
+          metadataLoading: true,
+          state: "unknown",
+          draft: false,
+          headBranch: "",
+          ciStatus: null,
+          error: false,
+        };
+        const known = getPullRequestMetadata(item.repoFullName, item.number);
+        // Seed before publishing rows: a remount must not commit a cold
+        // placeholder while the same PR already has known metadata.
+        return known ? withMetadata(item, known) : item;
       });
       setState({ sessionId, items: [...items], loading: true, error: false });
       let cursor = 0;
@@ -117,25 +144,7 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
             const showDetail = (detail: Record<string, unknown>) => {
               if (cancelled) return;
               loadedDetail = detail;
-              const head = detail.head as { ref?: unknown } | undefined;
-              items[index] = {
-                ...items[index],
-                metadataLoading: false,
-                title:
-                  typeof detail.title === "string"
-                    ? detail.title
-                    : items[index].title,
-                state:
-                  detail.merged === true || Boolean(detail.merged_at)
-                    ? "merged"
-                    : typeof detail.state === "string"
-                      ? detail.state
-                      : "unknown",
-                draft: detail.draft === true,
-                headBranch: typeof head?.ref === "string" ? head.ref : "",
-                ciStatus: detail.state === "open" ? "checking" : null,
-                error: false,
-              };
+              items[index] = withMetadata(items[index], detail);
               setState({
                 sessionId,
                 items: [...items],

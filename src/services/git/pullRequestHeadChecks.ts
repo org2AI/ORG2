@@ -208,7 +208,18 @@ export function loadPullRequestHeadChecks(
   return request;
 }
 
-/** Something changed the pull request: forget what was read before it. */
+/**
+ * A display-only seed, never evidence that the PR or its checks are fresh.
+ * Callers still load the current snapshot; full cache clear removes this too.
+ */
+export function getPullRequestMetadata(
+  repoFullName: string,
+  prNumber: number
+): Record<string, unknown> | undefined {
+  return metadata.get(keyOf(repoFullName, prNumber))?.detail;
+}
+
+/** Invalidate freshness after a mutation, retaining the last-known display seed. */
 export function invalidatePullRequestHeadChecks(
   repoFullName: string,
   prNumber: number
@@ -216,7 +227,8 @@ export function invalidatePullRequestHeadChecks(
   const key = keyOf(repoFullName, prNumber);
   epochs.set(key, (epochs.get(key) ?? 0) + 1);
   recent.delete(key);
-  metadata.delete(key);
+  // Preserve the last-known title while the required fresh read is pending.
+  // The advanced epoch still prevents pre-invalidation requests from caching.
 }
 
 /** Capture before a read that will later be offered through `prime`. */

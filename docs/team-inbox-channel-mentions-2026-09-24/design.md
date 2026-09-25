@@ -4,7 +4,7 @@
 
 A channel message's `mentioned_user_ids` is the authoritative recipient list. The frontend never searches body text for notification recipients. The previous Inbox RPC only queried session comments; it could not deliver a stored channel mention. The channel composer repair in ORG2 #2150 supplies explicit identities. This follow-up consumes those identities through a capability-gated Inbox API.
 
-The existing Inbox mention category presents both sources, with distinct `session_comment` and `channel_message` targets and source-qualified item IDs. Channel rows display `#channel-name`, the author and the actual message. Opening the shared detail marks it read; the existing Open control opens the corresponding cloud channel. It does not yet scroll an older channel transcript to the specific historical message; the exact mentioned body is available in the Inbox detail.
+The existing Inbox mention category presents both sources, with distinct `session_comment` and `channel_message` targets and source-qualified item IDs. Channel rows display `#channel-name`, the author and the actual message. Opening the shared detail marks it read once per viewer/selection transition; explicit unread survives subsequent snapshot refreshes; the existing Open control opens the corresponding cloud channel. It does not yet scroll an older channel transcript to the specific historical message; the exact mentioned body is available in the Inbox detail.
 
 The existing native notification tracker and badge consume the same coordinator snapshot. No second notification store, body parser, polling loop, or model execution path is introduced. Initial historical rows do not generate notification bursts. Existing persisted explicit channel mentions become queryable when the capability is enabled; no historical body or recipient rewrite is performed.
 
@@ -25,7 +25,7 @@ Profile erasure cascades receipt deletion; channel hard deletion cascades throug
 
 The existing `channelMessages` invalidation plane refreshes Inbox content, including remote receipt changes. Its existing reconnect/coarse recovery owns recovery after missed broadcasts. Channel ACL/list revision is part of the coordinator generation: a channel membership change clears stale snapshots and aborts in-flight work before revalidation, even if the next request fails. Unrelated org versions do not change the effective revision. Existing comments/focus recovery also refreshes the unified listing.
 
-The coordinator retains its existing single-flight requests, bounded cache, request cancellation, mutation ordering, and 15-second content-refresh floor. Channel ACL changes bypass that content floor by starting a new scope. There are no new timers or listeners; a signal burst can arm the existing one-shot trailing refresh. Runtime CPU/RAM and native Realtime delivery for the new API have not been measured in this patch.
+The coordinator retains its existing single-flight requests, bounded cache, request cancellation, mutation ordering, and 15-second content-refresh floor. Channel ACL changes bypass that content floor by starting a new scope. There are no new timers or listeners; a signal burst can arm the existing one-shot trailing refresh. Runtime CPU/RAM and native Realtime delivery for the new API have not been measured. Local native REST acceptance is documented below.
 
 ## Compatibility and rollout
 
@@ -46,12 +46,17 @@ All ten layers assessed: (1) TypeScript compilation; (2) one coordinator and one
 | Scope/isolation    | fix     | Channel content previously had no Inbox target        | Current ACL enforced in SQL and ACL revision clears client scope    | Authenticated SQL denial tests, hook scope transition, coordinator reset |
 | Rendering/hot path | keep    | Existing row, detail, notification tracker and badge  | Channel payload hydrated only for bounded page                      | Mixed-page/receipt tests and rendered component tests                    |
 
-Performance verdict: blocked for native measurement of this new backend capability. The migration is tested locally; it has not been deployed to the isolated desktop instances' configured Supabase endpoint. Visible/hidden native CPU/RAM, disconnected two-instance catch-up and native OS notification delivery are not claimed. This is distinct from the earlier Share Sessions WebKit investigation.
+Performance verdict: blocked for complete native performance/Realtime acceptance. Two isolated native instances ran against a loopback PostgREST endpoint with the actual migrations and fixture authentication. That environment intentionally has no Realtime service, so refresh-driven delivery is proven, not automatic broadcast delivery, disconnected catch-up, or OS notification delivery. Visible/hidden CPU/RAM and separate-machine network behavior remain unmeasured. The two fixes retain one selection key and one scoped action error; they introduce no timer, listener, retry loop, or growing cache. This is distinct from the earlier Share Sessions WebKit investigation.
 
 ## Verification
 
-- `pnpm test src/modules/MainApp/TeamInbox src/features/Org2Cloud/teamInboxMentionsClient.test.ts src/features/Org2Cloud/org2CloudCapabilities.test.ts`: 28 files, 227 tests passed
+- `pnpm test src/modules/MainApp/TeamInbox src/features/Org2Cloud/teamInboxMentionsClient.test.ts src/features/Org2Cloud/org2CloudCapabilities.test.ts`: 30 files, 231 tests passed
 - `pnpm typecheck:fast`: passed
 - `pnpm exec eslint <changed TypeScript files>`: passed
 - Companion backend: fresh local PostgreSQL migrations, repeat migration, production-writer fixtures and authenticated API checks passed; mixed-source same-time/same-ID pagination, 105-row unloaded mark-all, private outsider, revocation, tombstone, erasure, privileges and legacy contract covered
-- Existing shared UI geometry and controls are retained. Rendered tests cover the new channel title, absence of fictitious thread counts, and the real shared Open action. New native screenshots and complete desktop acceptance remain outstanding until an environment serves the new API
+- Existing shared UI geometry and controls are retained. Rendered tests cover the channel-specific subtitle, absence of fictitious thread counts, and the shared Open action. Native screenshot/AX inspection covered empty, unread, read, and failed-write states in the task; no screenshot binary is included in this PR.
+- Native and HTTP acceptance: see [acceptance.md](./acceptance.md)
+
+## Native acceptance fixes
+
+The first native run found two issues in the shared Inbox read flow. The receipt table was correct; the desktop produced an unwanted second write when its auto-read effect reran after a manual unread snapshot. Auto-read now follows a viewer-scoped selection transition instead of every snapshot replacement. A rejected write also triggered a successful list refresh that overwrote its error notice. Page hydration and action feedback now have separate state owners; explicit refresh or a successful action clears the notice, and callbacks from an obsolete scope cannot change the new viewer's feedback. Neither issue needs historical data cleanup: users can set unread again, and no message or recipient data was changed.

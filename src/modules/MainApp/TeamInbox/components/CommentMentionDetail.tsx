@@ -64,7 +64,11 @@ const CommentMentionDetail: React.FC<CommentMentionDetailProps> = ({
   return (
     <TeamInboxDetailLayout
       title={targetTitle}
-      subtitle={t("teamInbox.detail.mentionSubtitle")}
+      subtitle={t(
+        item.target.kind === "channel_message"
+          ? "teamInbox.detail.channelMentionSubtitle"
+          : "teamInbox.detail.mentionSubtitle"
+      )}
       icon={AtIcon}
       unread={item.readAt === null}
       markReadLabel={t("teamInbox.actions.markRead")}

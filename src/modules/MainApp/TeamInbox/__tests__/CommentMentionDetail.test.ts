@@ -219,6 +219,9 @@ describe("CommentMentionDetail", () => {
       )
     );
     expect(container.textContent).toContain("#design");
+    expect(container.textContent).toContain(
+      "teamInbox.detail.channelMentionSubtitle"
+    );
     expect(container.textContent).not.toContain("comments in this thread");
     act(() =>
       container

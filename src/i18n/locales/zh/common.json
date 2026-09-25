@@ -2348,6 +2348,7 @@
     "detail": {
       "assignedSubtitle": "分配给你的工作项",
       "standaloneProject": "独立工作项",
+      "channelMentionSubtitle": "频道中提及了你",
       "mentionSubtitle": "评论中提及了你",
       "mentionedYou": "提及了你",
       "threadComments_one": "此话题中有 {{count}} 条评论",

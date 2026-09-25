@@ -1,21 +1,34 @@
-/**
- * Git / GitHub rows of the focused-chat workstation rail: the active repo's
- * Review row, its compare link and branch pull request, plus the pull request
- * linked to the session's own branch when it differs from the local one.
- */
+/** Git workspace actions and the active conversation's associated pull request. */
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
 
 import GitHubIcon from "@src/assets/channelIcons/github.svg";
-import { isSameFocusedChatGitEnvironment } from "@src/engines/ChatPanel/focusedChatWorkstationLayout";
 import { useActiveRepoRef } from "@src/hooks/git/useActiveRepoRef";
 import { useBranchPullRequestStatus } from "@src/hooks/git/useBranchPullRequestStatus";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
-import { FileDiffIcon, GitPullRequestIcon } from "@src/icons";
+import {
+  FileDiffIcon,
+  GitMergeIcon,
+  GitPullRequestClosedIcon,
+  GitPullRequestDraftIcon,
+  GitPullRequestIcon,
+  HugeiconsIcon,
+  Loading03Icon,
+  Refresh04Icon,
+} from "@src/icons";
 import { WorkStationViewService } from "@src/services/workStation/WorkStationViewService";
+import { openPullRequestTab } from "@src/services/workStation/openPullRequestTab";
+import {
+  getPrStatusLabelKey,
+  getPrStatusVariant,
+} from "@src/util/git/pr/prStatus";
 import { openLink } from "@src/util/ui/openLink";
 
 import type { FocusedChatRailItem, FocusedChatSessionContext } from "./types";
+import {
+  canonicalPullRequestUrl,
+  useSessionPullRequests,
+} from "./useSessionPullRequests";
 
 const GitHubRailIcon = ({
   size = 24,
@@ -34,72 +47,37 @@ export function useWorkstationRailGitHub({
 }) {
   const { currentBranch } = useRepoSelection({ autoLoad: false });
   const activeBranchName = currentBranch || undefined;
-
   const { repoId, repoPath: activeRepoPath } = useActiveRepoRef();
-  const {
-    ciStatus: branchCiStatus,
-    compareUrl: branchCompareUrl,
-    pr: branchPullRequest,
-  } = useBranchPullRequestStatus({
-    branchName: activeBranchName,
-    repoId,
-    repoPath: activeRepoPath,
-  });
-  const sessionSharesLocalGitEnvironment = isSameFocusedChatGitEnvironment({
-    localBranchName: activeBranchName,
-    localRepoPath: activeRepoPath,
-    sessionBranchName:
-      sessionContext?.worktreeBranchName ?? sessionContext?.branchName,
-    sessionRepoPath: sessionContext?.repoPath,
-  });
-  const sessionGitLookupEnabled = Boolean(
-    (sessionContext?.worktreeBranchName ?? sessionContext?.branchName) &&
-    sessionContext.repoPath &&
-    !sessionSharesLocalGitEnvironment
+  const attached = useSessionPullRequests(
+    sessionContext?.sessionId,
+    sessionContext?.updatedAt
   );
-  const { ciStatus: sessionBranchCiStatus, pr: sessionBranchPullRequest } =
-    useBranchPullRequestStatus({
-      branchName: sessionGitLookupEnabled
-        ? (sessionContext?.worktreeBranchName ?? sessionContext?.branchName)
-        : undefined,
-      repoPath: sessionGitLookupEnabled ? sessionContext?.repoPath : undefined,
-    });
-  const resolvedSessionBranchCiStatus = sessionSharesLocalGitEnvironment
-    ? branchCiStatus
-    : sessionGitLookupEnabled
-      ? sessionBranchCiStatus
-      : null;
-  const resolvedSessionBranchPullRequest = sessionSharesLocalGitEnvironment
-    ? branchPullRequest
-    : sessionGitLookupEnabled
-      ? sessionBranchPullRequest
-      : null;
+  // An unresolved conversation scope never borrows the active workspace's PR.
+  const sessionBranch =
+    sessionContext?.worktreeBranchName ?? sessionContext?.branchName;
+  const sessionRepoPath =
+    sessionContext?.worktreePath ?? sessionContext?.repoPath;
+  const sessionRepoId = sessionRepoPath === activeRepoPath ? repoId : undefined;
+  const sessionStatus = useBranchPullRequestStatus({
+    branchName: sessionBranch,
+    repoPath: sessionRepoPath,
+    repoId: sessionRepoId,
+    includeClosed: true,
+  });
 
-  const branchPullRequestStatus = useMemo<
-    FocusedChatRailItem["status"] | undefined
-  >(() => {
-    if (!branchPullRequest || !branchCiStatus) return undefined;
-    const label =
-      branchCiStatus === "success"
-        ? t("common:git.pr.checks.passedShort")
-        : branchCiStatus === "failure"
-          ? t("common:git.pr.checks.failedShort")
-          : branchCiStatus === "pending"
-            ? t("common:git.pr.checks.runningShort")
-            : branchCiStatus === "checking"
-              ? t("common:git.pr.checks.checkingShort")
-              : branchCiStatus === "none"
-                ? t("common:git.pr.checks.noneShort")
-                : t("common:git.pr.checks.unavailableShort");
-    return {
-      label,
-      state: branchCiStatus,
-      title: t("common:git.pr.checks.branchStatus", {
-        number: branchPullRequest.number,
-        status: label,
-      }),
-    };
-  }, [branchCiStatus, branchPullRequest, t]);
+  const sharesScope = Boolean(
+    sessionRepoPath &&
+    sessionRepoPath === activeRepoPath &&
+    sessionBranch === activeBranchName
+  );
+  const workspaceStatus = useBranchPullRequestStatus({
+    branchName: sharesScope ? undefined : activeBranchName,
+    repoId,
+    repoPath: sharesScope ? undefined : activeRepoPath,
+  });
+  const branchCompareUrl = sharesScope
+    ? sessionStatus.compareUrl
+    : workspaceStatus.compareUrl;
 
   const workspaceItems = useMemo<FocusedChatRailItem[]>(
     () => [
@@ -124,80 +102,144 @@ export function useWorkstationRailGitHub({
             },
           ]
         : []),
-      ...(branchPullRequest
-        ? [
-            {
-              key: `pull-request:${branchPullRequest.number}`,
-              label: `#${branchPullRequest.number}`,
-              icon: GitPullRequestIcon,
-              external: true,
-              status: branchPullRequestStatus,
-              onClick: () => openLink(branchPullRequest.url),
-            },
-          ]
-        : []),
-      // Terminal / Files / Browser rows are parked in the expanded list:
-      // each of them left the focused chat for the Workstation, which is the
-      // opposite of what the trail is for. The terminal now stays in the
-      // pane — the header's terminal control and the trail's native
-      // right-click menu open `WorkstationTrailTerminal` instead.
     ],
-    [
-      t,
-      repoId,
-      activeRepoPath,
-      branchCompareUrl,
-      branchPullRequest,
-      branchPullRequestStatus,
-    ]
+    [t, repoId, activeRepoPath, branchCompareUrl]
   );
 
-  const sessionPullRequestStatus = useMemo<
-    FocusedChatRailItem["status"] | undefined
-  >(() => {
-    if (!resolvedSessionBranchPullRequest || !resolvedSessionBranchCiStatus) {
-      return undefined;
+  const pullRequestItems = useMemo<FocusedChatRailItem[]>(() => {
+    const { pr, ciStatus, error, loading, refresh } = sessionStatus;
+    const items: FocusedChatRailItem[] = [];
+    const linked = attached.items.map((item) => ({ ...item, attached: true }));
+    const branchUrl = pr ? canonicalPullRequestUrl(pr.url) : null;
+    if (
+      pr &&
+      sessionRepoPath &&
+      sessionBranch &&
+      !linked.some((item) => item.url === branchUrl)
+    ) {
+      linked.push({
+        ...pr,
+        title: pr.title || `#${pr.number}`,
+        draft: pr.draft === true,
+        url: branchUrl ?? pr.url,
+        repoFullName: sessionStatus.repoFullName ?? "",
+        headBranch: sessionBranch,
+        ciStatus,
+        error: false,
+        attached: false,
+      });
     }
-    const label =
-      resolvedSessionBranchCiStatus === "success"
-        ? t("common:git.pr.checks.passedShort")
-        : resolvedSessionBranchCiStatus === "failure"
-          ? t("common:git.pr.checks.failedShort")
-          : resolvedSessionBranchCiStatus === "pending"
-            ? t("common:git.pr.checks.runningShort")
-            : resolvedSessionBranchCiStatus === "checking"
-              ? t("common:git.pr.checks.checkingShort")
-              : resolvedSessionBranchCiStatus === "none"
-                ? t("common:git.pr.checks.noneShort")
-                : t("common:git.pr.checks.unavailableShort");
-    return {
-      label,
-      state: resolvedSessionBranchCiStatus,
-      title: t("common:git.pr.checks.branchStatus", {
-        number: resolvedSessionBranchPullRequest.number,
-        status: label,
-      }),
-    };
-  }, [resolvedSessionBranchCiStatus, resolvedSessionBranchPullRequest, t]);
+    for (const linkedPr of linked) {
+      const pr = linkedPr;
+      const ciStatus = linkedPr.ciStatus;
+      const lifecycle =
+        pr.state.toLowerCase() === "open" && pr.draft
+          ? "draft"
+          : pr.state.toLowerCase();
+      const glyph =
+        lifecycle === "merged"
+          ? GitMergeIcon
+          : lifecycle === "closed"
+            ? GitPullRequestClosedIcon
+            : lifecycle === "draft"
+              ? GitPullRequestDraftIcon
+              : GitPullRequestIcon;
+      const icon = ({
+        size = 24,
+      }: {
+        size?: number;
+        [key: string]: unknown;
+      }) => (
+        <HugeiconsIcon
+          icon={glyph}
+          size={size}
+          className={getPrStatusVariant(lifecycle).textClass}
+        />
+      );
+      const label = pr.metadataLoading
+        ? `#${pr.number} · ${t("common:actions.loading")}`
+        : pr.title || `#${pr.number}`;
+      const ciLabel = ciStatus
+        ? t(
+            `common:git.pr.checks.${ciStatus === "success" ? "passed" : ciStatus === "failure" ? "failed" : ciStatus === "pending" ? "running" : ciStatus}Short`
+          )
+        : undefined;
+      items.push({
+        key: `pull-request:${pr.url}`,
+        label,
+        icon,
+        title: `${label === `#${pr.number}` ? label : `#${pr.number} ${label}`} · ${t(`common:${getPrStatusLabelKey(lifecycle)}`)}`,
+        ...(pr.state.toLowerCase() === "open" && ciStatus && ciLabel
+          ? {
+              status: {
+                state: ciStatus,
+                label: ciLabel,
+                title: t("common:git.pr.checks.branchStatus", {
+                  number: pr.number,
+                  status: ciLabel,
+                }),
+                iconOnly: true,
+              },
+            }
+          : {}),
+        onClick: () => {
+          const nativeRepo =
+            sessionRepoPath &&
+            (!linkedPr.attached ||
+              (sessionStatus.repoFullName &&
+                linkedPr.repoFullName.toLowerCase() ===
+                  sessionStatus.repoFullName.toLowerCase()));
+          openPullRequestTab({
+            prNumber: pr.number,
+            prTitle: label,
+            prUrl: pr.url,
+            prStatus: lifecycle,
+            headBranch: linkedPr.headBranch,
+            repoPath: nativeRepo ? sessionRepoPath! : "",
+            repoId: nativeRepo ? sessionRepoId : undefined,
+          });
+        },
+      });
+      if (linkedPr.error)
+        items.push({
+          key: `pull-request-retry:${pr.url}`,
+          label: `${t("common:actions.retry")} #${pr.number}`,
+          title: t("common:labels.failedToLoadPullRequest"),
+          icon: Refresh04Icon,
+          onClick: () => attached.refresh(pr.url),
+        });
+    }
+    if (error || attached.error)
+      items.push({
+        key: "pull-request-retry",
+        title: t("common:labels.failedToLoadPullRequest"),
+        label: t("common:actions.retry"),
+        icon: Refresh04Icon,
+        onClick: () => {
+          refresh();
+          attached.refresh();
+        },
+      });
+    else if ((loading || attached.loading) && items.length === 0)
+      items.push({
+        key: "pull-request-loading",
+        label: t("common:actions.loading"),
+        icon: Loading03Icon,
+      });
+    return items;
+  }, [
+    sessionStatus,
+    attached,
+    sessionRepoPath,
+    sessionBranch,
+    sessionRepoId,
+    t,
+  ]);
 
-  const sessionItems = useMemo<FocusedChatRailItem[]>(
-    () =>
-      resolvedSessionBranchPullRequest
-        ? [
-            {
-              key: `session-pull-request:${resolvedSessionBranchPullRequest.number}`,
-              label: t("common:git.pr.linkedBranch", {
-                number: resolvedSessionBranchPullRequest.number,
-              }),
-              icon: GitPullRequestIcon,
-              external: true,
-              status: sessionPullRequestStatus,
-              onClick: () => openLink(resolvedSessionBranchPullRequest.url),
-            },
-          ]
-        : [],
-    [resolvedSessionBranchPullRequest, sessionPullRequestStatus, t]
-  );
-
-  return { activeBranchName, sessionItems, workspaceItems };
+  return {
+    activeBranchName,
+    sessionItems: [],
+    workspaceItems,
+    pullRequestItems,
+  };
 }

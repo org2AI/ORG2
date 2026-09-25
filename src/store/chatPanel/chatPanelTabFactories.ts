@@ -19,6 +19,7 @@ import type {
   GitHubIssueDetailTabData,
   GitHubPrDetailTabData,
 } from "@src/types/githubDetail";
+import { githubPullRequestTabKey } from "@src/util/git/githubPullRequestUrl";
 
 import { defineChatPanelTabFactory } from "./chatPanelTabFactory";
 import {
@@ -193,7 +194,7 @@ export const createGitHubPrTab =
     idStrategy: {
       type: "keyed",
       prefix: "github-pr",
-      getKey: (data) => `${data.repoPath}:${data.prNumber}`,
+      getKey: githubPullRequestTabKey,
     },
     getTitle: (data) => `#${data.prNumber} ${data.prTitle}`,
     toPayload: (data) => ({ githubPr: data }),

@@ -42,6 +42,7 @@ mod provider_commands;
 mod provider_wrappers;
 mod scan;
 mod session_sources;
+mod session_pull_requests;
 
 pub use cursor::*;
 pub use imported_windows::*;
@@ -50,6 +51,7 @@ pub use provider_commands::*;
 pub use provider_wrappers::*;
 pub use scan::*;
 pub use session_sources::*;
+pub use session_pull_requests::*;
 
 #[cfg(test)]
 mod tests {

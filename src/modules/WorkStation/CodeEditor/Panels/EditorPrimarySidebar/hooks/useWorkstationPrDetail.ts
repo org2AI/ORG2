@@ -39,6 +39,7 @@ import {
   workstationPrScopeKey,
   workstationSelectedPrAtomFamily,
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+import { parseGitHubPullRequestUrl } from "@src/util/git/githubPullRequestUrl";
 import { readRequestedReviewers } from "@src/util/git/pr/prLevelActions";
 
 import { useWorkstationPrChecksPolling } from "./useWorkstationPrChecksPolling";
@@ -66,7 +67,7 @@ export function useWorkstationPrDetail({
   pr,
   visibilityRef,
 }: UseWorkstationPrDetailOptions) {
-  const scopeKey = workstationPrScopeKey(repoId, repoPath, pr?.number);
+  const scopeKey = workstationPrScopeKey(repoId, repoPath, pr?.number, pr?.url);
   const setSelectedPr = useSetAtom(workstationSelectedPrAtomFamily(scopeKey));
   const setOpenPrs = useSetAtom(
     workstationAllOpenPrsAtomFamily(workstationRepoScopeKey(repoId, repoPath))
@@ -96,6 +97,7 @@ export function useWorkstationPrDetail({
         ...(changes.title !== undefined ? { title: changes.title } : {}),
         ...(changes.base !== undefined ? { base_branch: changes.base } : {}),
       };
+      if (!repoPath) return;
       setOpenPrs((current) =>
         current.map((item) =>
           item.number === prNumber ? { ...item, ...patch } : item
@@ -106,31 +108,37 @@ export function useWorkstationPrDetail({
     [repoPath, setOpenPrs]
   );
 
-  // ── Resolve owner/repo from the origin remote ─────────────────────────────
-  const [repoFullName, setRepoFullName] = useState<string | null>(null);
+  // The PR URL is authoritative; local remote lookup is only a legacy fallback.
+  const urlRef = pr?.url ? parseGitHubPullRequestUrl(pr.url) : null;
+  const urlRepo =
+    urlRef && urlRef.number === pr?.number
+      ? `${urlRef.owner}/${urlRef.repo}`
+      : null;
+  const localKey = JSON.stringify([repoId, repoPath]);
+  const [localRepo, setLocalRepo] = useState<{
+    key: string;
+    name: string | null;
+  } | null>(null);
+  const repoFullName =
+    urlRepo ?? (localRepo?.key === localKey ? localRepo.name : null);
   useEffect(() => {
+    if (urlRepo || !repoPath) return;
     let cancelled = false;
-    if (!repoPath) {
-      setRepoFullName(null);
-      return;
-    }
-    void (async () => {
-      try {
-        const remotes = await getGitRemotes({
-          repo_id: repoId ?? "default",
-          repo_path: repoPath,
-        });
-        const origin = remotes?.remotes?.find((r) => r.name === "origin");
-        const full = origin?.url ? parseGithubRepoFullName(origin.url) : null;
-        if (!cancelled) setRepoFullName(full ?? null);
-      } catch {
-        if (!cancelled) setRepoFullName(null);
-      }
-    })();
+    void getGitRemotes({ repo_id: repoId ?? "default", repo_path: repoPath })
+      .then((remotes) => {
+        const origin = remotes?.remotes?.find(
+          (remote) => remote.name === "origin"
+        );
+        const name = origin?.url ? parseGithubRepoFullName(origin.url) : null;
+        if (!cancelled) setLocalRepo({ key: localKey, name });
+      })
+      .catch(() => {
+        if (!cancelled) setLocalRepo({ key: localKey, name: null });
+      });
     return () => {
       cancelled = true;
     };
-  }, [repoPath, repoId]);
+  }, [urlRepo, repoPath, repoId, localKey]);
 
   const {
     reviewerCandidates,

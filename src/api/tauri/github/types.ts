@@ -11,6 +11,8 @@ export interface LocalPRResponse {
 }
 
 export interface LocalFindPRResponse {
+  title?: string;
+  draft?: boolean;
   number: number;
   url: string;
   state: string;

@@ -209,7 +209,8 @@ describe("useBranchPullRequestStatus", () => {
 
     expect(findPullRequestLocalMock).toHaveBeenCalledWith(
       "acme/repo",
-      "feature"
+      "feature",
+      false
     );
     expect(getChecksLocalMock).toHaveBeenCalledWith("acme/repo", "abc");
     expect(latest.pr?.number).toBe(12);
@@ -676,5 +677,68 @@ describe("useBranchPullRequestStatus", () => {
     expect(latest.ciStatus).toBeNull();
     expect(getPRLocalMock).not.toHaveBeenCalled();
     expect(getChecksLocalMock).not.toHaveBeenCalled();
+  });
+  it("keeps closed summaries separate from open-only readers and skips head checks", async () => {
+    findPullRequestLocalMock.mockImplementation(
+      async (_repo, _branch, includeClosed) =>
+        includeClosed
+          ? {
+              number: 12,
+              state: "merged",
+              title: "Finished work",
+              url: "https://github.com/acme/repo/pull/12",
+            }
+          : null
+    );
+    let summary!: UseBranchPullRequestStatusResult;
+    let openOnly!: UseBranchPullRequestStatusResult;
+    await act(async () => {
+      root.render(
+        createElement(Probe, {
+          options: {
+            repoPath: "/repo",
+            branchName: "feature",
+            includeClosed: true,
+          },
+          onValue: (value) => {
+            summary = value;
+          },
+        })
+      );
+    });
+    expect(summary.pr?.state).toBe("merged");
+    expect(getPRLocalMock).not.toHaveBeenCalled();
+    await act(async () => {
+      root.render(
+        createElement(Probe, {
+          options: { repoPath: "/repo", branchName: "feature" },
+          onValue: (value) => {
+            openOnly = value;
+          },
+        })
+      );
+    });
+    expect(openOnly.pr).toBeNull();
+  });
+
+  it("exposes lookup failure and supports retry without discarding the cached PR", async () => {
+    let latest!: UseBranchPullRequestStatusResult;
+    await act(async () => {
+      root.render(
+        createElement(Probe, {
+          options: { repoPath: "/repo", branchName: "feature" },
+          onValue: (value) => {
+            latest = value;
+          },
+        })
+      );
+    });
+    findPullRequestLocalMock.mockRejectedValueOnce(new Error("offline"));
+    await act(async () => latest.refresh());
+    expect(latest.error).toBe(true);
+    expect(latest.pr?.number).toBe(12);
+    await act(async () => latest.refresh());
+    expect(latest.error).toBe(false);
+    expect(latest.pr?.number).toBe(12);
   });
 });

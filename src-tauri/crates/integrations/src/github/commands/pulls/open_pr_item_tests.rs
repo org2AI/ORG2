@@ -189,3 +189,74 @@ fn accepts_only_mutable_pull_request_states() {
     );
     assert!(validate_pull_request_state("merged".to_string()).is_err());
 }
+
+#[tokio::test]
+async fn branch_lookup_prefers_open_and_returns_display_metadata() {
+    let mut calls = Vec::new();
+    let pr = find_branch_pull_request("org/repo", "feature/a&b", true, |path| {
+        calls.push(path);
+        std::future::ready(Ok(json!([{
+            "number": 42, "html_url": "https://github.com/org/repo/pull/42",
+            "title": "Rail PR", "state": "open", "draft": true
+        }])))
+    })
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(calls.len(), 1);
+    assert!(calls[0].contains("head=org%3Afeature%2Fa%26b"));
+    assert_eq!(pr.title, "Rail PR");
+    assert!(pr.draft);
+    assert_eq!(pr.state, "open");
+}
+
+#[tokio::test]
+async fn branch_lookup_closed_fallback_is_opt_in_and_bounded() {
+    for include_closed in [false, true] {
+        let mut calls = Vec::new();
+        let pr = find_branch_pull_request("org/repo", "feature", include_closed, |path| {
+            let closed = path.contains("state=closed");
+            calls.push(path);
+            std::future::ready(Ok(if closed {
+                json!([{
+                    "number": 41, "html_url": "https://github.com/org/repo/pull/41",
+                    "title": "Merged PR", "state": "closed", "merged_at": "2026-09-25T00:00:00Z"
+                }])
+            } else {
+                json!([])
+            }))
+        })
+        .await
+        .unwrap();
+        assert_eq!(calls.len(), if include_closed { 2 } else { 1 });
+        if include_closed {
+            assert_eq!(pr.unwrap().state, "merged");
+            assert!(calls[1].contains("sort=updated&direction=desc&per_page=1"));
+        } else {
+            assert!(pr.is_none());
+        }
+    }
+}
+
+#[tokio::test]
+async fn branch_lookup_preserves_error_instead_of_treating_it_as_empty() {
+    let mut calls = 0;
+    let result = find_branch_pull_request("org/repo", "feature", true, |_| {
+        calls += 1;
+        std::future::ready(Err("unauthorized".to_string()))
+    })
+    .await;
+    assert_eq!(result.unwrap_err(), "unauthorized");
+    assert_eq!(calls, 1);
+}
+
+#[test]
+fn branch_lookup_distinguishes_closed_from_merged() {
+    let pr = parse_found_pull_request(&json!([{
+        "number": 40, "html_url": "https://github.com/org/repo/pull/40",
+        "title": "Closed PR", "state": "closed", "merged_at": null
+    }]))
+    .unwrap();
+    assert_eq!(pr.state, "closed");
+    assert!(!pr.draft);
+}

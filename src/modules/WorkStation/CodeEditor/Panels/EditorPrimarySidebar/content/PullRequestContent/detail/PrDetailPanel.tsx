@@ -74,7 +74,12 @@ export const PrDetailTabs: React.FC<PrDetailTabsProps> = ({
   trailing,
   variant = "row",
 }) => {
-  const scopeKey = workstationPrScopeKey(repoId, repoPath, identity.number);
+  const scopeKey = workstationPrScopeKey(
+    repoId,
+    repoPath,
+    identity.number,
+    identity.url
+  );
   const [state, setState] = useAtom(workstationSelectedPrAtomFamily(scopeKey));
   const activeTab = state.viewState.activeTab;
 
@@ -133,7 +138,12 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
     setConversationDraft,
     setSelectedCommitSha,
     setSelectedChangedFilePath,
-  } = usePrDetailViewState({ repoId, repoPath, prNumber: identity.number });
+  } = usePrDetailViewState({
+    repoId,
+    repoPath,
+    prNumber: identity.number,
+    prUrl: identity.url,
+  });
 
   const currentIdentity = useMemo(
     () => ({

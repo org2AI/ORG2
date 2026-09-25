@@ -13,6 +13,7 @@ import type {
   PullRequestMergeMethod,
 } from "@src/api/tauri/github";
 import { BoundedMap } from "@src/util/collections/BoundedMap";
+import { parseGitHubPullRequestUrl } from "@src/util/git/githubPullRequestUrl";
 
 import { workstationRepoScopeKey } from "./workstationPrAtom";
 
@@ -24,8 +25,13 @@ import { workstationRepoScopeKey } from "./workstationPrAtom";
 export function workstationPrScopeKey(
   repoId: string | null | undefined,
   repoPath: string | null | undefined,
-  prNumber: number | null | undefined
+  prNumber: number | null | undefined,
+  prUrl?: string
 ): string {
+  const remote =
+    !repoId && !repoPath && prUrl ? parseGitHubPullRequestUrl(prUrl) : null;
+  if (remote && remote.number === prNumber)
+    return `github.com:${remote.owner.toLowerCase()}/${remote.repo.toLowerCase()}:pr:${prNumber}`;
   return `${workstationRepoScopeKey(repoId, repoPath)}:pr:${prNumber ?? "none"}`;
 }
 

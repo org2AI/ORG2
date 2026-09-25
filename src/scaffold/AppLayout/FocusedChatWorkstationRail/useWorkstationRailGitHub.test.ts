@@ -126,10 +126,51 @@ describe("conversation pull request association", () => {
       })
     );
     latest.pullRequestItems[2].onClick?.({} as never);
-    expect(openLink).toHaveBeenCalledWith(
-      "https://github.com/other/repo/pull/9"
+    expect(openLink).not.toHaveBeenCalled();
+    expect(openPr).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        prNumber: 9,
+        prUrl: "https://github.com/other/repo/pull/9",
+        repoPath: "",
+        repoId: undefined,
+      })
     );
-    expect(openPr).toHaveBeenCalledTimes(1);
+    expect(openPr).toHaveBeenCalledTimes(2);
+  });
+  it("opens attached PRs in the existing detail tab before local repository resolution", async () => {
+    attachments.mockReturnValue({
+      items: [
+        {
+          number: 2153,
+          url: "https://github.com/org2ai/ORG2/pull/2153",
+          repoFullName: "org2ai/ORG2",
+          title: "Conversation PR",
+          state: "open",
+          draft: false,
+          headBranch: "feature",
+          ciStatus: "success",
+          error: false,
+        },
+      ],
+      loading: false,
+      error: false,
+      refresh: vi.fn(),
+    });
+    lookup.mockReturnValue({ pr: null, repoFullName: null });
+    await render({
+      sessionId: "conversation",
+      repoPath: "/active",
+      branchName: "main",
+    });
+    latest.pullRequestItems[0].onClick?.({} as never);
+    expect(openPr).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prNumber: 2153,
+        repoPath: "",
+        prUrl: "https://github.com/org2ai/ORG2/pull/2153",
+      })
+    );
+    expect(openLink).not.toHaveBeenCalled();
   });
   it("uses the session worktree and opens native PR details with that scope", async () => {
     lookup.mockImplementation(({ repoPath }) => ({

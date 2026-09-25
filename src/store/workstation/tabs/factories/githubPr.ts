@@ -7,6 +7,7 @@
  * first-class My Station tab rather than in the Source Control sidebar.
  */
 import type { GitHubPrDetailTabData } from "@src/types/githubDetail";
+import { githubPullRequestTabKey } from "@src/util/git/githubPullRequestUrl";
 
 import { defineTabFactory } from "../tabFactory";
 import type { WorkStationTab } from "../types";
@@ -19,7 +20,7 @@ export const githubPrDetailTabFactory = defineTabFactory<GitHubPrDetailTabData>(
     idStrategy: {
       type: "keyed",
       prefix: "github-pr-detail",
-      getKey: (data) => `${data.repoPath}:${data.prNumber}`,
+      getKey: githubPullRequestTabKey,
     },
     getTitle: (data) => `#${data.prNumber}`,
     icon: "GitPullRequest",

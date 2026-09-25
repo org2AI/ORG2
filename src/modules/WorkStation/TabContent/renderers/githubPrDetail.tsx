@@ -34,12 +34,14 @@ const GitHubPrDetailTabRenderer: React.FC<UnifiedTabContentProps> = memo(
     const scopeKey = workstationPrScopeKey(
       tabData.repoId,
       tabData.repoPath,
-      tabData.prNumber
+      tabData.prNumber,
+      tabData.prUrl
     );
     const selectedPr = useAtomValue(workstationSelectedPrAtomFamily(scopeKey));
 
     const handleFileSelect = useCallback(
       (path: string) => {
+        if (!tabData.repoPath) return;
         const absolutePath =
           path.startsWith("/") || !tabData.repoPath
             ? path
@@ -104,7 +106,7 @@ const GitHubPrDetailTabRenderer: React.FC<UnifiedTabContentProps> = memo(
         repoPath={tabData.repoPath}
         repoId={tabData.repoId}
         tabsPlacement="hostHeader"
-        onFileSelect={handleFileSelect}
+        onFileSelect={tabData.repoPath ? handleFileSelect : undefined}
       />
     );
   }

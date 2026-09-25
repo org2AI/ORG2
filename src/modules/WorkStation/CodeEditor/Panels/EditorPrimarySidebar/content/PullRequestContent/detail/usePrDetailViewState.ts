@@ -10,6 +10,7 @@ interface UsePrDetailViewStateOptions {
   repoId?: string;
   repoPath: string;
   prNumber: number;
+  prUrl?: string;
 }
 
 /**
@@ -20,8 +21,9 @@ export function usePrDetailViewState({
   repoId,
   repoPath,
   prNumber,
+  prUrl,
 }: UsePrDetailViewStateOptions) {
-  const scopeKey = workstationPrScopeKey(repoId, repoPath, prNumber);
+  const scopeKey = workstationPrScopeKey(repoId, repoPath, prNumber, prUrl);
   const [state, setState] = useAtom(workstationSelectedPrAtomFamily(scopeKey));
   const detailViewState = state.viewState;
   const setDetailViewState = useCallback(

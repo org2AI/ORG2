@@ -189,18 +189,14 @@ export function useWorkstationRailGitHub({
               (sessionStatus.repoFullName &&
                 linkedPr.repoFullName.toLowerCase() ===
                   sessionStatus.repoFullName.toLowerCase()));
-          if (!nativeRepo) {
-            openLink(pr.url);
-            return;
-          }
           openPullRequest({
             prNumber: pr.number,
             prTitle: label,
             prUrl: pr.url,
             prStatus: lifecycle,
             headBranch: linkedPr.headBranch,
-            repoPath: sessionRepoPath!,
-            repoId: sessionRepoId,
+            repoPath: nativeRepo ? sessionRepoPath! : "",
+            repoId: nativeRepo ? sessionRepoId : undefined,
           });
         },
       });

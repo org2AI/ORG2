@@ -47,28 +47,26 @@ export function useChannelMentionMembers(
     if (!key || !channelId) return;
     const controller = new AbortController();
     void (async () => {
-      try {
-        const token = await getToken();
-        if (controller.signal.aborted) return;
-        const members = await listCloudChannelMembers(
-          token,
-          orgId,
-          channelId,
-          controller.signal
+      const token = await getToken();
+      if (controller.signal.aborted) return;
+      const members = await listCloudChannelMembers(
+        token,
+        orgId,
+        channelId,
+        controller.signal
+      );
+      if (!controller.signal.aborted) setResolved({ key, members });
+    })().catch(() => {
+      if (!controller.signal.aborted) {
+        log.warnRateLimited(
+          "roster-unavailable",
+          60_000,
+          "Channel mention roster unavailable"
         );
-        if (!controller.signal.aborted) setResolved({ key, members });
-      } catch {
-        if (!controller.signal.aborted) {
-          log.warnRateLimited(
-            "roster-unavailable",
-            60_000,
-            "Channel mention roster unavailable"
-          );
-        }
-        // Keep the audience unavailable on failure. A send with a mention
-        // is refused by the composer instead of silently losing recipients.
       }
-    })();
+      // Keep the audience unavailable on failure. A send with a mention
+      // is refused by the composer instead of silently losing recipients.
+    });
     return () => controller.abort();
   }, [channelId, getToken, key, orgId]);
 

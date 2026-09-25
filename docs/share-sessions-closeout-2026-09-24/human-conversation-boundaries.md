@@ -49,3 +49,26 @@ The original 164-item failure remains unresolved. Both recovered copies of the n
 - Both native databases retained only the two prerequisite session events, with zero turn intents, Agent sessions, and model-usage rows after human chat operations.
 
 Full channel Inbox delivery, private-channel desktop membership revocation, Luna continuation, original-incident reproduction, attachment-heavy long-run performance, and two-physical-host behavior are **not** claimed as passing. Small-session idle and 2,000-event native-window measurements were collected separately; large-history WebKit footprint remains a performance investigation, not an improvement claim for this patch.
+
+## CI follow-up: private roster rejection handling
+
+The typed-lint gate rejected the async roster IIFE because the returned promise
+had no explicit rejection handler, despite its internal try/catch. Attach the
+existing failure behavior with `.catch`; keep request cancellation, identity keys,
+and fail-closed mention submission unchanged. No retries or timers are added.
+
+| Area               | Verdict | Evidence                                                | Change or reason kept                                    | Verification                                              |
+| ------------------ | ------- | ------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------- |
+| Background work    | fix     | One effect-owned request and AbortController            | Explicit promise rejection handler; cleanup still aborts | Existing hook regression passes rejection and close cases |
+| Memory             | keep    | One resolved roster per mounted hook                    | No new cache or retained collection                      | Source inspection                                         |
+| Scope/isolation    | keep    | Endpoint/user identity, org, channel and version in key | Late results rejected after identity change              | Existing hook regression passes stale-result rejection    |
+| Rendering/hot path | keep    | Effect dependency list unchanged                        | No new subscriptions or updates                          | Typecheck and changed-file ESLint pass                    |
+
+`pnpm test src/features/DiscussionChannels/ChannelPanelView/useChannelMentionMembers.test.ts`
+passed (one lifecycle regression). `pnpm typecheck:fast` and
+`pnpm exec eslint src/features/DiscussionChannels/ChannelPanelView/useChannelMentionMembers.ts`
+passed. This is not a new runtime performance measurement.
+
+Performance verdict: blocked for full acceptance; the previously measured WebKit
+retention and large replay/file workloads remain open. The CI-only adjustment
+preserves the request lifecycle covered by the existing hook test.

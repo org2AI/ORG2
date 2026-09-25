@@ -32,7 +32,11 @@ The SQL migration suite separately covers mixed same-UUID/same-timestamp paginat
 - `pnpm test src/modules/MainApp/TeamInbox src/features/Org2Cloud/teamInboxMentionsClient.test.ts src/features/Org2Cloud/org2CloudCapabilities.test.ts`: 30 files / 231 tests passed.
 - `pnpm typecheck:fast`, changed-file ESLint and production `pnpm build`: passed.
 
-## Limits
+## Follow-up: real Realtime and measured lifecycle
+
+The subsequent [Realtime acceptance](realtime-acceptance.md) supersedes the transport and idle-performance gaps below: real bidirectional push, same-account receipts, outage recovery, hidden/foreground catch-up, automatic ACL eviction and a 1,000-message burst were exercised. Full performance is still blocked by measured retained WebKit allocations and the separate large replay/file workload.
+
+## Original run limits
 
 This is same-machine isolated native acceptance with a real REST/database boundary. It does not prove live Supabase Realtime broadcasts, same-account cross-desktop automatic read synchronization, OS notifications, full hidden/idle performance or physical two-machine behavior. Those remain open; refresh-driven success must not be presented as automatic push success. Auth refresh and hosted OAuth were fixture prerequisites, not test subjects. Source navigation opens the channel rather than scrolling an arbitrarily old transcript to a message ID. The original 164-item provider transcript discrepancy and Luna acceptance are unaffected.
 

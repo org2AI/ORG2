@@ -102,6 +102,14 @@ describe("sparse native interrupted stream cache", () => {
       native
     );
   });
+  it("recovers output when unrelated failed-user sidecars make the cache sparse", () => {
+    const { native, sparse, partial } = fixture();
+    const failed = message("queued-user:rejected:", "user", "rejected");
+    failed.result.deliveryStatus = "failed";
+    expect(
+      mergeInterruptedConversationProjection(native, [...sparse, failed])
+    ).toEqual([...native, partial]);
+  });
   it("does not duplicate persisted output rows", () => {
     const { native, sparse, partial } = fixture();
     expect(

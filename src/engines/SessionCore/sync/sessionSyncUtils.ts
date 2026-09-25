@@ -7,6 +7,7 @@
  * All functions here are pure or depend only on stable external APIs
  * (no React hooks, no atoms).
  */
+import { mergeSparseInterruptedOutput } from "@src/engines/SessionCore/conversations/nativeConversationReconciliation";
 import { retryLineageEvents } from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
@@ -151,18 +152,21 @@ export async function loadOwnSessionInitialEvents(
  * the UI history. Pending dispatch still belongs to the durable queue and
  * accepted turns still belong to the provider transcript. Retry lineage is
  * durable control metadata too: dropping it during native replacement revives
- * superseded prompts even though canonical continuation excludes them.
+ * superseded prompts even though canonical continuation excludes them. Finalized
+ * interrupted output is also local-only when the provider never flushed it;
+ * recover it against native intent/lifecycle evidence before adding sidecars.
  */
 export function mergeLocalHistoryProjection(
   history: readonly SessionEvent[],
   projected: readonly SessionEvent[],
   sessionId: string
 ): SessionEvent[] {
+  const recovered = mergeSparseInterruptedOutput(history, projected);
   const lineage = retryLineageEvents(projected).filter(
     (event) => event.sessionId === sessionId
   );
   const lineageIds = new Set(lineage.map((event) => event.id));
-  const historyIds = new Set(history.map((event) => event.id));
+  const historyIds = new Set(recovered.map((event) => event.id));
   const failed = projected.filter(
     (event) =>
       !historyIds.has(event.id) &&
@@ -172,12 +176,12 @@ export function mergeLocalHistoryProjection(
       event.result.turnIntentId.length > 0
   );
   if (failed.length === 0 && lineage.length === 0) {
-    return history as SessionEvent[];
+    return recovered;
   }
 
   // The cached control row is the durable latest verdict. Replace a stale
   // same-id window copy, while retaining every provider-native audit event.
-  const merged = history.filter((event) => !lineageIds.has(event.id));
+  const merged = recovered.filter((event) => !lineageIds.has(event.id));
   for (const event of failed) {
     const insertAt = merged.findIndex(
       (candidate) => candidate.createdAt > event.createdAt

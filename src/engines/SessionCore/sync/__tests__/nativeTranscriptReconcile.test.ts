@@ -338,12 +338,18 @@ describe("single-owner native transcript reconcile", () => {
     expect(mocks.closeTerminalEvents.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.getPersisted.mock.invocationCallOrder[0]
     );
-    // A later read after the in-memory job has gone must recover from the same sparse cache.
+    // Background idle refresh has no preserveInterruptedSuffix flag and must
+    // retain the same cache output with its conditional-write guard.
     await expect(
       reconcileNativeTranscript(sessionId, {
-        preserveInterruptedSuffix: true,
+        refreshGuard: () => true,
       })
     ).resolves.toEqual([...native, partial]);
+    expect(mocks.set).toHaveBeenLastCalledWith(
+      [...native, partial],
+      sessionId,
+      10
+    );
   });
 
   it("keeps retry control metadata across terminal native replacement without duplicate reads", async () => {

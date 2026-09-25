@@ -96,7 +96,7 @@ export function mergeInterruptedConversationProjection(
     nativeItems.length >= projectedItems.length ||
     !nativeConversationItemsArePrefix(nativeItems, projectedItems)
   ) {
-    return [...nativeEvents];
+    return mergeSparseInterruptedOutput(nativeEvents, projectedEvents);
   }
 
   const suffixSourceIds = new Set(
@@ -115,11 +115,12 @@ export function mergeInterruptedConversationProjection(
  * Recover only the last interrupted native turn, anchored by its durable intent.
  * A completed/provider-authored answer always wins over a cached partial.
  */
-function mergeSparseInterruptedOutput(
+export function mergeSparseInterruptedOutput(
   nativeEvents: readonly SessionEvent[],
   projectedEvents: readonly SessionEvent[]
 ): SessionEvent[] {
-  const unchanged = () => [...nativeEvents];
+  const unchanged = () => nativeEvents as SessionEvent[];
+  if (projectedEvents.length === 0) return unchanged();
   let userIndex = -1;
   for (let index = nativeEvents.length - 1; index >= 0; index -= 1) {
     if (nativeEvents[index].source === "user") {

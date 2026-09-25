@@ -722,3 +722,11 @@ Validation actually run: seven targeted Vitest suites, **204 passed**; `pnpm exe
 A 708.15-second Combined5 mixed startup/generation/Stop/idle/normal-Quit sample measured backend CPU 2.396% of one core / peak RSS 209.52 MiB, WebKit 5.722% / 668.02 MiB, and source app-server 0.240% / 169.41 MiB. All measured process groups released on normal Quit. This mixed window does not prove idle-only behavior, an absence of leaks, or all-provider/platform coverage.
 
 Performance verdict: **blocked** pending successful rebuilt streaming, Stop visibility and reopening acceptance. Combined5's functional streaming/Stop verdict is **fail**.
+
+## Cold-load and idle-refresh recovery boundary
+
+Production-entry review found that terminal reconciliation alone did not cover initial `loadPersistedHistory` or guarded idle native refresh. Both now apply the narrow intent/lifecycle-validated sparse-output merger at the shared local projection boundary, using the existing cache read. Cached failed-delivery sidecars no longer prevent canonical continuation from recovering the matching finalized output. Recovery runs before local failed-user sidecars are inserted; provider-native user ordering remains the anchor. Unchanged histories retain reference identity, and an empty projection skips the scan. No additional timer, subscription, retained cache, native write or database read is introduced.
+
+Actual-entry regressions cover repeated cold loads, guarded idle refresh without the terminal preservation flag, and canonical continuation with sparse output plus an unrelated failed user. Five targeted suites passed **102 tests** with `pnpm exec vitest run --config config/vitest.config.ts` for nativeConversationReconciliation, nativeConversationMaterializer, canonicalConversationEvents, sessionSyncUtils and nativeTranscriptReconcile. Typecheck, changed-file ESLint and diff checks passed. The initially cancelled Combined6 build is not acceptance evidence.
+
+Performance verdict: **blocked** pending rebuilt real GUI streaming, Stop and reopening verification; previous failed GUI evidence remains unchanged.

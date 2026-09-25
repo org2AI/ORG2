@@ -15,6 +15,10 @@ import {
   recoverLocalConversationTurn,
 } from "@src/engines/SessionCore/conversations/localConversationContinuation";
 import {
+  NATIVE_SOURCE_EVENT_ID_ARG,
+  nativeSourceEventId,
+} from "@src/engines/SessionCore/conversations/nativeSourceEventIdentity";
+import {
   QueuedConversationRecoveryBlockedError,
   QueuedConversationRecoveryPendingError,
   QueuedConversationTurnClosedError,
@@ -290,8 +294,22 @@ export async function runConversationTurn(
     emptyFailure && params.retry
       ? await persistCloudEmptyFailure(params.retry, result.sessionId)
       : false;
-  const terminalTail =
-    result.terminalStatus === "failed" && result.agentTail.length === 0
+  // A native receipt already exists in the owner's transcript. Publish that
+  // receipt with its global source identity; inventing a second error event
+  // makes the replay and conversation planes disagree about the same failure.
+  const diagnostic = result.terminalDiagnostic;
+  const terminalTail = diagnostic
+    ? [
+        ...result.agentTail,
+        {
+          ...diagnostic,
+          args: {
+            ...diagnostic.args,
+            [NATIVE_SOURCE_EVENT_ID_ARG]: nativeSourceEventId(diagnostic),
+          },
+        },
+      ]
+    : result.terminalStatus === "failed" && result.agentTail.length === 0
       ? [
           buildPushedDispatchFailureEvent(
             new Error(result.terminalError ?? "Agent request failed"),

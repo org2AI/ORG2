@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
-import { nativeTurnFailureMessage } from "./nativeTerminalDiagnostic";
+import { nativeTurnFailureDiagnostic } from "./nativeTerminalDiagnostic";
 
 describe("accepted terminal error provenance", () => {
   const user = {
@@ -23,22 +23,25 @@ describe("accepted terminal error provenance", () => {
   } as unknown as SessionEvent;
   it("preserves the exact typed failure of the accepted turn", () => {
     expect(
-      nativeTurnFailureMessage([user, diagnostic, lifecycle], "failed-intent")
-    ).toBe(fixture.diagnostic.result.error);
+      nativeTurnFailureDiagnostic(
+        [user, diagnostic, lifecycle],
+        "failed-intent"
+      )
+    ).toBe(diagnostic);
   });
   it("does not borrow an old error or an unproven diagnostic", () => {
     const next = { ...user, result: { turnIntentId: "next" } };
     expect(
-      nativeTurnFailureMessage([user, diagnostic, lifecycle, next], "next")
+      nativeTurnFailureDiagnostic([user, diagnostic, lifecycle, next], "next")
     ).toBeUndefined();
     expect(
-      nativeTurnFailureMessage(
+      nativeTurnFailureDiagnostic(
         [user, diagnostic, lifecycle, next],
         "failed-intent"
       )
     ).toBeUndefined();
     expect(
-      nativeTurnFailureMessage([user, diagnostic], "failed-intent")
+      nativeTurnFailureDiagnostic([user, diagnostic], "failed-intent")
     ).toBeUndefined();
   });
 });

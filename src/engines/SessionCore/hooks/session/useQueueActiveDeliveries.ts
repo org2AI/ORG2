@@ -299,7 +299,9 @@ export function useQueueActiveDeliveries({
                   ))
                 )
                   return;
-                Message.error({ content: error.message, duration: 5000 });
+                // The execution lifecycle already owns terminal notification
+                // and the transcript owns its error. Queue settlement only
+                // owns Retry; another toast would announce this failure twice.
                 return;
               }
               if (accepted) {

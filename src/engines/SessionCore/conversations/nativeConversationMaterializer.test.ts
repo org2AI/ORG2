@@ -501,26 +501,29 @@ describe("native conversation materialization", () => {
     });
   });
 
-  it("preserves failed and interrupted tool-result semantics", () => {
-    const event = tool();
-    event.displayStatus = "failed";
-    event.result = {
-      observation: "partial tool output",
-      status: "interrupted",
-      interrupted: true,
-    };
-
-    expect(projectNativeConversationItems([event])).toEqual([
-      expect.objectContaining({ kind: "tool_call", callId: "call-1" }),
-      expect.objectContaining({
-        kind: "tool_result",
-        callId: "call-1",
-        output: "partial tool output",
-        isError: true,
+  it.each(["partial tool output", ""])(
+    "preserves interrupted tool-result semantics for output %j",
+    (output) => {
+      const event = tool();
+      event.displayStatus = "failed";
+      event.result = {
+        observation: output,
+        status: "interrupted",
         interrupted: true,
-      }),
-    ]);
-  });
+      };
+
+      expect(projectNativeConversationItems([event])).toEqual([
+        expect.objectContaining({ kind: "tool_call", callId: "call-1" }),
+        expect.objectContaining({
+          kind: "tool_result",
+          callId: "call-1",
+          output,
+          isError: true,
+          interrupted: true,
+        }),
+      ]);
+    }
+  );
 
   it("does not synthesize an empty provider-native compact", () => {
     const empty = compactMarker("empty-compact");

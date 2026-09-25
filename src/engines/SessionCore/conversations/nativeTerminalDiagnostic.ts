@@ -88,10 +88,10 @@ export function provenFailedNativeDiagnosticSources(
 }
 
 /** Read only this intent's typed terminal receipt, never an earlier turn's error. */
-export function nativeTurnFailureMessage(
+export function nativeTurnFailureDiagnostic(
   events: readonly SessionEvent[],
   turnIntentId: string
-): string | undefined {
+): SessionEvent | undefined {
   let anchor = -1;
   for (let index = events.length - 1; index >= 0; index -= 1) {
     if (events[index].source === "user") {
@@ -108,7 +108,7 @@ export function nativeTurnFailureMessage(
   for (const event of suffix) {
     if (!sources.has(nativeSourceEventId(event))) continue;
     const error = event.result?.error;
-    if (typeof error === "string" && error.trim()) return error.trim();
+    if (typeof error === "string" && error.trim()) return event;
   }
   return undefined;
 }

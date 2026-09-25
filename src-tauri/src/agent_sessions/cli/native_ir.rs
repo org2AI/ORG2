@@ -350,11 +350,11 @@ pub(super) fn append_native_items_from_chunks(
                 let interrupted =
                     chunk.result.get("interrupted").and_then(Value::as_bool) == Some(true);
                 let output = chunk_text(chunk);
-                // A call with no provider result cannot cross a runtime
-                // boundary. If Stop already observed durable output, however,
-                // carry an honest interrupted result: both native writers can
-                // encode it as failure (Claude is_error / Codex exit 130).
-                if (status_is_pending || interrupted) && (!interrupted || output.is_empty()) {
+                // Pending calls have no terminal result. Stop may still have
+                // observed durable partial output, which is transferable as
+                // interrupted. A terminal interrupted result is also valid
+                // with an empty body: emptiness does not mean it is missing.
+                if status_is_pending && (!interrupted || output.is_empty()) {
                     continue;
                 }
                 let is_error = chunk.result.get("is_error").and_then(Value::as_bool) == Some(true)
@@ -1185,6 +1185,25 @@ mod tests {
         ));
 
         assert!(native_items_from_chunks(&[interrupted("")]).is_empty());
+
+        let mut terminal = interrupted("");
+        terminal.result["status"] = json!("interrupted");
+        terminal.result["exit_code"] = json!(130);
+        assert!(matches!(
+            native_items_from_chunks(&[terminal]).as_slice(),
+            [
+                NativeConversationItem::ToolCall { call_id, .. },
+                NativeConversationItem::ToolResult {
+                    call_id: result_call_id,
+                    output,
+                    is_error: true,
+                    interrupted: true,
+                    ..
+                }
+            ] if call_id == "call_interrupted"
+                && result_call_id == "call_interrupted"
+                && output.is_empty()
+        ));
     }
 
     #[test]

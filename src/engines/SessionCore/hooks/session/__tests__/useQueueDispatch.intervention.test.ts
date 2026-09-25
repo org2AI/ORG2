@@ -840,7 +840,7 @@ describe("useQueueDispatch Agent Org intervention", () => {
     expect(mocks.messageError).not.toHaveBeenCalled();
   });
 
-  it("holds an accepted turn that the provider failed outright as a failed row", async () => {
+  it("holds an accepted failure for retry without duplicating its terminal notification", async () => {
     mocks.dispatchCanonicalConversation.mockImplementationOnce(
       async (_store, message, callbacks) => {
         await callbacks.onAccepted(`runner-${message.id}`);
@@ -876,7 +876,7 @@ describe("useQueueDispatch Agent Org intervention", () => {
       }),
       SESSION_ID
     );
-    expect(mocks.messageError).toHaveBeenCalledOnce();
+    expect(mocks.messageError).not.toHaveBeenCalled();
     await vi.waitFor(() =>
       expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2)
     );

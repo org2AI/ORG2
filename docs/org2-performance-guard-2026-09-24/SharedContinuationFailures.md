@@ -39,6 +39,29 @@ Architecture layers reviewed: compilation (targeted tests, typecheck and lint), 
 
 The original nine-character discrepancy is still unresolved. The two currently available materialized copies have identical 11,899-character outputs; trimming would remove only one character, and neither contains CRLF. That rules out those simple transformations for the available copies, but does not identify what happened to the unavailable 11,890-character artifact. No fuzzy comparison or historical rewrite is used.
 
+## Fresh OSS follow-up: terminal identity and empty results
+
+Fresh testing reproduced another duplicate at the authoritative native/Cloud merge boundary. The native owner already retained one typed `task_complete` failure receipt. `runConversationTurn` discarded that receipt from provider context correctly, but published a newly invented `convturn-error-<intent>` row instead. Read-only Cloud inspection found one synthetic error row; the native replay contained the original receipt. Different source identities made them two canonical events and therefore two visible cards. This was not duplicate RPC insertion or a rendering-only defect.
+
+Continuation now carries the proven receipt separately from the agent tail. Publication retains its provenance and stamps its globally scoped source identity; canonical source reconciliation derives the same identity for the original receipt. One failure has one identity across owner replay and the conversation plane. Distinct receipts remain distinct even with identical messages. A failure after partial output publishes both that output and the terminal receipt. Failures without a proven native receipt retain the deterministic fallback. Queue settlement also stops issuing a second toast for accepted empty failures: execution lifecycle notifications own that announcement, while settlement owns the Retry action.
+
+The latest Linux CI exposed a related empty-result boundary defect in the existing opaque-result round-trip test. Native IR treated every interrupted empty body as an unresolved call. The parser now correctly preserved interruption, making that latent projection rule drop a real terminal result. Projection now distinguishes pending/running calls from explicit terminal results; an empty terminal interrupted result remains portable. The dangling-call exclusion and strict mismatch checks remain intact. The full CLI Rust suite passed locally: 605 passed, 15 opt-in ignored.
+
+New producer-to-merge regression coverage failed before the receipt fix and passes afterward. It asserts the published receipt identity, one merged owner error, one receiver error, separate equal-text receipts, exclusion from provider context, and partial-answer preservation. The existing dual-writer raw JSONL matrix covers empty, JSON-looking, diagnostic-looking, CRLF, whitespace and Unicode output under success/failure/interruption for Codex and Claude writers. Historical synthetic error rows were not deleted or rewritten; old duplicate cards can remain where the original publication lacked source identity.
+
+## Fresh real-provider evidence
+
+- Built-in Agent, personal workspace: new GPT Reserve session read only a 162-byte fixture and completed a second context-recall turn.
+- Native Codex, personal workspace: read the same fixture, completed a second turn, received the selected Luna quota rejection, retried on GPT Reserve successfully, and completed a further context-recall turn.
+- Native Codex, ORG2 OSS: a new session read the fixture and completed a second turn. Luna quota rejection reproduced the two-card defect before the follow-up patch.
+- Rebuilt app, fresh ORG2 OSS session after the receipt fix: fixture read succeeded; Luna rejection showed one error card and Retry; selecting GPT Reserve and Retry completed with `OSS_RETRY_FIXED_OK`; the next send returned the original marker, Unicode line and `OSS_AFTER_RECOVERY_OK`.
+- Final frontend notification check, another fresh ORG2 OSS session: one quota-error card and one lifecycle toast were observed. Without clicking Retry, switching to GPT Reserve and sending a new prompt returned `OSS_NOTICE_READY INDEPENDENT_SEND_OK`; the held failed attempt did not block independent work.
+- Read-only Cloud conversation-plane inspection of that fixed session found one provenance-preserving error row followed by successful retry and follow-up events. Cloud replay metadata also exists for the root. This is owner-to-Cloud evidence, not a second receiver desktop acceptance.
+- Before/after read-only replay ledgers: 3,518 to 3,521 rows, three new test-session rows, no missing pre-existing rows and no changed epochs on existing rows. Conversation-plane payloads were checked separately; replay counts alone are not acceptance evidence.
+- Real native tool output across original and materialized retry transcripts matched exactly after the parser's content-part concatenation: 201 characters, four CRLF pairs, SHA-256 `8e6cedfffe59a8bb30449a71aa8684b9da9e343e341c410e2bcbe5ec605813af`. Literal JSON, diagnostic-looking content, whitespace and Unicode were preserved. This does not explain the unavailable original 164-item artifact.
+- Claude autodetection returned HTTP 401 for the local expired OAuth login. No successful Claude request was made in this follow-up. Luna success is also not claimed: successful requests used GPT Reserve.
+- Native process restarts preserved the session roster, but desktop automation could not reliably activate an existing sidebar session row (`noWindowsAvailable` on coordinate actions; AX row action hit Pin). Successful continuation after native restart and a second receiver desktop remain unverified. New-session actions and model selection were exercised through the real UI, not injected application state.
+
 ## Historical remediation and compatibility
 
 Legacy accepted failed-send projections are restored in canonical reads only when existing sender-local native retry lineage matches the root session, intent, and queue identity. Cloud user publication alone is not treated as acceptance. No native transcript, Cloud audit row, or historical error is deleted. Previously persisted duplicate error cards can remain in old UI history; new attempts use the corrected lifecycle.
@@ -66,15 +89,17 @@ Legacy accepted failed-send projections are restored in canonical reads only whe
 | Codex                | Original 164-item / nine-character output difference                                | Not reproduced with both original artifacts              | Not run                                             | Preserve exact tool output                                       | Still unresolved; not explained by the interruption-status fix                            |
 | All                  | Offline, account/endpoint switch, hide/show, compact/rotate/delete, large histories | Not measured on this patch                               | Physical second machine not used                    | Full lifecycle and performance acceptance                        | Not run; no claim of full performance or multi-machine acceptance                         |
 
-The desktop checks used the patched frontend with the existing isolated acceptance binary. The changed Rust parser was compiled and exercised through the native parser test suite; it was not rebuilt into that desktop binary. Real provider success remains blocked by the account's usage limit. A real CUA screenshot and accessibility states were inspected for the light-theme narrow chat pane, loading/sending and error states. Screenshots are not committed because they include existing team-session/account content. Dark theme and additional viewport checks were not run.
+The initial desktop checks used the patched frontend with the existing isolated acceptance binary. The follow-up rebuilt the native application, including the parser and empty interrupted-result projection fix, and restarted the isolated app against the current frontend. Real GPT Reserve requests succeeded; the separately selected GPT 5.6 Luna Medium returned a real usage-limit error. A real CUA screenshot and accessibility states were inspected for the light-theme narrow chat pane, loading/sending and error states. Screenshots are not committed because they include existing team-session/account content. Dark theme and additional viewport checks were not run.
 
 ## Verification
 
-- Targeted Vitest run: 16 suites, 382 tests passed (exact file list in the PR).
+- Follow-up targeted Vitest run: 18 suites, 424 tests passed (the original 16 suites plus settled-tail and continuation-events coverage). The notification ownership follow-up reran the queue suite: 37 passed.
 - Retirement/retry regression: `pnpm test src/engines/SessionCore/hooks/session/__tests__/useQueueDispatch.intervention.test.ts src/engines/ChatPanel/ChatHistory/hooks/__tests__/useEditUserMessage.test.ts`: 8 failed before the follow-up fix; 66 passed after it. This includes projection failure/recovery and another send failure during retired-owner retry. These follow-up fault paths were tested through the production hooks with injected dependencies, not re-exercised in the real desktop.
 - `pnpm run typecheck:fast`: passed.
 - `pnpm exec eslint <changed TS/TSX files> --max-warnings 0`: passed.
 - `cargo test -p orgtrack_core sources::codex::app::transcript --lib`: 30 passed, 3 existing opt-in image acceptance tests ignored (local artifacts/resource acceptance required).
+- `CARGO_TARGET_DIR=<isolated acceptance target> CARGO_BUILD_JOBS=2 cargo test -p org2 --lib agent_sessions::cli::`: 605 passed, 15 opt-in ignored.
+- `CARGO_TARGET_DIR=<isolated acceptance target> CARGO_BUILD_JOBS=2 cargo build -p org2 --bin org2`: passed; rebuilt binary used for the fresh OSS follow-up.
 - `git diff --check`: passed.
 - Changed action-control source inspected: new Retry uses shared `Button` with `variant="ghost"` and `size="small"`; no native/button substitute bypass introduced.
 

@@ -2355,6 +2355,7 @@
     "detail": {
       "assignedSubtitle": "असाइन किया गया कार्य आइटम",
       "standaloneProject": "स्वतंत्र",
+      "channelMentionSubtitle": "चैनल में आपका उल्लेख किया गया",
       "mentionSubtitle": "एक टिप्पणी में उल्लेख किया गया",
       "mentionedYou": "ने आपका उल्लेख किया",
       "threadComments_one": "इस थ्रेड में {{count}} टिप्पणी",

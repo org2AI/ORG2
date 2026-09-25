@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "Mục công việc được giao",
       "standaloneProject": "Độc lập",
+      "channelMentionSubtitle": "Bạn được nhắc đến trong một kênh",
       "mentionSubtitle": "Được nhắc đến trong một bình luận",
       "mentionedYou": "đã nhắc đến bạn",
       "threadComments_other": "{{count}} bình luận trong chuỗi này",

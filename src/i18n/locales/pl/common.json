@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "Przypisany element pracy",
       "standaloneProject": "Samodzielny",
+      "channelMentionSubtitle": "Wspomniano w kanale",
       "mentionSubtitle": "Wspomniano w komentarzu",
       "mentionedYou": "wspomniał(a) o Tobie",
       "threadComments_one": "{{count}} komentarz w tym wątku",

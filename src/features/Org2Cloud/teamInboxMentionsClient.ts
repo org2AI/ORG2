@@ -28,7 +28,7 @@ const NullableStringSchema = z
   .transform((value) => value ?? undefined)
   .optional();
 
-const TeamInboxMentionSchema = z.object({
+const SessionInboxMentionSchema = z.object({
   comment: z.object({
     id: z.string(),
     parentId: NullableStringSchema,
@@ -47,6 +47,24 @@ const TeamInboxMentionSchema = z.object({
   commentCount: z.number().int().nonnegative(),
   threadCount: z.number().int().nonnegative(),
 });
+
+const ChannelInboxMentionSchema = z.object({
+  kind: z.literal("channel_message"),
+  message: z.object({ id: z.string().uuid() }),
+  channel: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    visibility: z.enum(["org", "private"]),
+  }),
+  author: z.object({ userId: z.string(), displayName: NullableStringSchema }),
+  body: z.string(),
+  createdAt: z.string(),
+  readAt: z.string().nullable(),
+});
+const TeamInboxMentionSchema = z.union([
+  ChannelInboxMentionSchema,
+  SessionInboxMentionSchema,
+]);
 
 const TeamInboxMentionsPageSchema = z.object({
   // Rows parse individually in `parseMentionRows` — one malformed row must
@@ -74,9 +92,12 @@ function parseMentionRows(
     }
     dropped += 1;
     if (dropped === 1) {
-      const record = row as { comment?: { id?: unknown } } | null;
-      const rowId =
-        typeof record?.comment?.id === "string" ? record.comment.id : "<no id>";
+      const record = row as {
+        comment?: { id?: unknown };
+        message?: { id?: unknown };
+      } | null;
+      const id = record?.message?.id ?? record?.comment?.id;
+      const rowId = typeof id === "string" ? id : "<no id>";
       const issue = result.error.issues[0];
       firstDrop = `${rowId.slice(0, 64)} (${
         issue
@@ -148,7 +169,7 @@ async function callTeamInboxRpc(
 }
 
 /**
- * Lists managed-cloud comment mentions for the authenticated viewer.
+ * Lists managed-cloud session and capability-gated channel mentions for the authenticated viewer.
  *
  * The viewer is derived by the RPC from the JWT bearer token. The client does
  * not accept or send a viewer/user id, inspect comment bodies for mentions, or
@@ -163,7 +184,9 @@ export async function listTeamInboxMentions(
 ): Promise<TeamInboxMentionsPage> {
   const input = TeamInboxMentionRequestSchema.parse({ orgId, cursor, limit });
   const payload = await callTeamInboxRpc(
-    TEAM_INBOX_MENTIONS_RPC,
+    (await getCloudCapabilities(accessToken)).channelInboxMentions
+      ? `${TEAM_INBOX_MENTIONS_RPC}_v2`
+      : TEAM_INBOX_MENTIONS_RPC,
     accessToken,
     {
       p_org_id: input.orgId,
@@ -202,16 +225,29 @@ export async function listInitialTeamInboxMentions(
 export async function setTeamInboxMentionRead(
   accessToken: string,
   orgId: string,
-  commentId: string,
+  sourceId: string,
   read: boolean,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  sourceKind: "session_comment" | "channel_message" = "session_comment"
 ): Promise<TeamInboxReadMutation> {
+  const unified = (await getCloudCapabilities(accessToken))
+    .channelInboxMentions;
+  if (sourceKind === "channel_message" && !unified) {
+    throw new Error("Channel Inbox is unavailable on this endpoint");
+  }
   const payload = await callTeamInboxRpc(
-    SET_TEAM_INBOX_MENTION_READ_RPC,
+    unified
+      ? `${SET_TEAM_INBOX_MENTION_READ_RPC}_v2`
+      : SET_TEAM_INBOX_MENTION_READ_RPC,
     accessToken,
     {
       p_org_id: z.string().min(1).parse(orgId),
-      p_comment_id: z.string().min(1).parse(commentId),
+      ...(unified
+        ? {
+            p_source_kind: sourceKind,
+            p_source_id: z.string().min(1).parse(sourceId),
+          }
+        : { p_comment_id: z.string().min(1).parse(sourceId) }),
       p_read: read,
     },
     signal
@@ -226,7 +262,9 @@ export async function markAllTeamInboxMentionsRead(
   signal?: AbortSignal
 ): Promise<TeamInboxReadMutation> {
   const payload = await callTeamInboxRpc(
-    MARK_ALL_TEAM_INBOX_MENTIONS_READ_RPC,
+    (await getCloudCapabilities(accessToken)).channelInboxMentions
+      ? `${MARK_ALL_TEAM_INBOX_MENTIONS_READ_RPC}_v2`
+      : MARK_ALL_TEAM_INBOX_MENTIONS_READ_RPC,
     accessToken,
     { p_org_id: z.string().min(1).parse(orgId) },
     signal

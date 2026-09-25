@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "할당된 작업 항목",
       "standaloneProject": "독립 항목",
+      "channelMentionSubtitle": "채널에서 멘션됨",
       "mentionSubtitle": "댓글에서 멘션됨",
       "mentionedYou": "님이 회원님을 멘션했습니다",
       "threadComments_other": "이 스레드에 댓글 {{count}}개가 있습니다",

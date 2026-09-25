@@ -198,4 +198,45 @@ describe("CommentMentionDetail", () => {
       workItemId: "ORG-42",
     });
   });
+  it("renders channel context and navigates through the shared Open control", () => {
+    const onNavigate = vi.fn();
+    act(() =>
+      root.render(
+        createElement(CommentMentionDetail, {
+          item: {
+            ...mention,
+            target: {
+              kind: "channel_message",
+              orgId: "org",
+              channelId: "channel",
+              channelName: "design",
+              visibility: "private",
+              messageId: "message",
+            },
+          },
+          onNavigate,
+        })
+      )
+    );
+    expect(container.textContent).toContain("#design");
+    expect(container.textContent).toContain(
+      "teamInbox.detail.channelMentionSubtitle"
+    );
+    expect(container.textContent).not.toContain("comments in this thread");
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="team-inbox-open-source"]'
+        )
+        ?.click()
+    );
+    expect(onNavigate).toHaveBeenCalledWith({
+      kind: "open_channel_message",
+      orgId: "org",
+      channelId: "channel",
+      channelName: "design",
+      visibility: "private",
+      messageId: "message",
+    });
+  });
 });

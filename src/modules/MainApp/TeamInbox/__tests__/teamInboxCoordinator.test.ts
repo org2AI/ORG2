@@ -473,3 +473,47 @@ describe("TeamInboxCoordinator", () => {
     expect(store.get(teamInboxCacheAtom).hasMore).toBe(false);
   });
 });
+
+describe("channel mentions in the shared Inbox coordinator", () => {
+  const channel: TeamInboxMention = {
+    kind: "channel_message",
+    message: { id: "same-id" },
+    channel: { id: "channel-1", name: "design", visibility: "private" },
+    author: { userId: "author" },
+    body: "Private channel message",
+    createdAt: "2026-09-24T21:00:00Z",
+    readAt: null,
+  };
+  it("keeps source IDs distinct, persists typed receipts, and clears revoked channel snapshots", async () => {
+    const deps = dependencies({
+      listInitialMentions: vi.fn(async () => ({
+        mentions: [channel, mention("same-id")],
+        unreadCount: 2,
+      })),
+    });
+    const coordinator = new TeamInboxCoordinator(deps);
+    const store = createStore();
+    const viewer = scope({
+      key: "org:acl-1",
+      accessToken: "jwt",
+      activeCloudOrgId: "org",
+    });
+    await coordinator.refresh(store, viewer, "v1");
+    const items = store.get(teamInboxCacheAtom).items;
+    expect(items).toHaveLength(2);
+    expect(new Set(items.map((i) => i.id)).size).toBe(2);
+    const target = items.find((i) => i.target.kind === "channel_message")!;
+    await coordinator.markRead(store, viewer, target);
+    expect(deps.setMentionRead).toHaveBeenCalledWith(
+      "jwt",
+      "org",
+      "same-id",
+      true,
+      expect.any(AbortSignal),
+      "channel_message"
+    );
+    coordinator.ensureScope(store, "org:acl-2");
+    expect(store.get(teamInboxCacheAtom).items).toEqual([]);
+    expect(store.get(teamInboxCacheAtom).unreadCount).toBe(0);
+  });
+});

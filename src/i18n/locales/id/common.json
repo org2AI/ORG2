@@ -2355,6 +2355,7 @@
     "detail": {
       "assignedSubtitle": "Item kerja yang ditugaskan",
       "standaloneProject": "Mandiri",
+      "channelMentionSubtitle": "Disebut dalam kanal",
       "mentionSubtitle": "Disebut dalam komentar",
       "mentionedYou": "menyebut Anda",
       "threadComments_one": "{{count}} komentar dalam utas ini",

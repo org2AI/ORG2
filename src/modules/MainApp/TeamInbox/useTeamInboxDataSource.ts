@@ -1,8 +1,12 @@
-import { useAtom, useAtomValue, useStore } from "jotai";
+import { atom, useAtom, useAtomValue, useStore } from "jotai";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import { invalidateProjectCache } from "@src/api/http/project";
 import type { MemberEntry } from "@src/api/http/project";
+import {
+  org2CloudChannelMessagesVersionAtom,
+  org2CloudChannelsVersionAtom,
+} from "@src/features/Org2Cloud/channels/channelsAtom";
 import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
@@ -118,6 +122,36 @@ export function useTeamInboxDataSource(): {
     }
     return [...byId.values()];
   }, [cloudMembers, members]);
+  // Derived scalar subscriptions keep unrelated org traffic out of the Inbox render.
+  // These atoms belong to the mounted hook, not an app-lifetime per-org registry.
+  const channelAclRevision = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          activeCloudOrgId
+            ? (get(org2CloudChannelsVersionAtom)[activeCloudOrgId] ?? 0)
+            : 0
+        ),
+      [activeCloudOrgId]
+    )
+  );
+  const channelMessageRevision = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          activeCloudOrgId
+            ? Object.entries(get(org2CloudChannelMessagesVersionAtom))
+                .filter(
+                  ([key]) =>
+                    key === activeCloudOrgId ||
+                    key.startsWith(`${activeCloudOrgId}|`)
+                )
+                .reduce((sum, [, version]) => sum + version, 0)
+            : 0
+        ),
+      [activeCloudOrgId]
+    )
+  );
   const commentsSignals = useAtomValue(org2CloudCommentsSignalAtom);
   // Every consumer observes the same version; the coordinator single-flights
   // the resulting request instead of giving each hook its own request state.
@@ -126,7 +160,7 @@ export function useTeamInboxDataSource(): {
   const activeCloudCommentsRevision = activeCloudOrgId
     ? (commentsSignals[orgCommentsKey(activeCloudOrgId)] ?? 0)
     : 0;
-  const viewerKey = `${viewerMemberIds.join("|")}::${authIdentityKey ?? "signed-out"}::${activeCloudOrgId ?? "local"}`;
+  const viewerKey = `${viewerMemberIds.join("|")}::${authIdentityKey ?? "signed-out"}::${activeCloudOrgId ?? "local"}::channel-acl-${channelAclRevision}`;
   const scope = useMemo<TeamInboxCoordinatorScope>(
     () => ({
       key: viewerKey,
@@ -176,7 +210,7 @@ export function useTeamInboxDataSource(): {
     pendingVersion: string;
   }>({ scopeKey: "", lastAtMs: 0, timer: null, pendingVersion: "" });
   useEffect(() => {
-    const requestVersion = `${invalidation}:${activeCloudCommentsRevision}:${activeCloudRosterVersion}:${scopeMembers.length}:${memberSnapshot.issue?.code ?? "members-ok"}`;
+    const requestVersion = `${invalidation}:${channelMessageRevision}:${activeCloudCommentsRevision}:${activeCloudRosterVersion}:${scopeMembers.length}:${memberSnapshot.issue?.code ?? "members-ok"}`;
     const floor = refreshFloorRef.current;
     const now = Date.now();
     const elapsed = now - floor.lastAtMs;
@@ -202,6 +236,7 @@ export function useTeamInboxDataSource(): {
     }, TEAM_INBOX_REFRESH_FLOOR_MS - elapsed);
   }, [
     activeCloudCommentsRevision,
+    channelMessageRevision,
     activeCloudRosterVersion,
     invalidation,
     memberSnapshot.issue?.code,

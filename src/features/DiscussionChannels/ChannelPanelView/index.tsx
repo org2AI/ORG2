@@ -38,6 +38,7 @@ import type { ComposerInputRef } from "@src/components/ComposerInput";
 import { Placeholder } from "@src/components/Placeholder";
 import { INPUT_AREA } from "@src/config/inputAreaTokens";
 import LocalChannelSettingsDialog from "@src/features/LocalChannels/components/LocalChannelSettingsDialog";
+import { buildTeamChatMentionOptions } from "@src/features/Org2Cloud/SessionConversation/teamChatMentions";
 import ChannelSettingsDialog from "@src/features/Org2Cloud/channels/components/ChannelSettingsDialog";
 import {
   isOptimisticChannelMessageId,
@@ -59,11 +60,13 @@ import ChannelComposer from "./ChannelComposer";
 import ChannelMessageList from "./ChannelMessageList";
 import ChannelPanelHeader from "./ChannelPanelHeader";
 import type { ChannelFeedMessage } from "./channelFeedRows";
+import { resolveChannelMentionedUserIds } from "./channelMentions";
 import {
   createChannelPostHandler,
   createCloudChannelPostHandler,
   resolveCloudChannelErrorKey,
 } from "./channelPostHandler";
+import { useChannelMentionMembers } from "./useChannelMentionMembers";
 import { useChannelSessionDrop } from "./useChannelSessionDrop";
 
 /**
@@ -323,6 +326,16 @@ const CloudChannelPanel: React.FC<CloudChannelPanelProps> = ({
   // refuses the write with ORG2_CHANNEL_ARCHIVED regardless, so offering an
   // enabled composer (or row edit/delete) here would only produce a refusal.
   const canPost = phase === "ready" && !archived;
+  const mentionMembers = useChannelMentionMembers(orgId, channel, canPost);
+  const mentionOptions = useMemo(
+    () =>
+      buildTeamChatMentionOptions(
+        mentionMembers ?? [],
+        currentUserId,
+        t("sessions:conversation.mentionGroup")
+      ),
+    [mentionMembers, currentUserId, t]
+  );
 
   const sessionDrop = useChannelSessionDrop({
     surfaceRef,
@@ -364,10 +377,12 @@ const CloudChannelPanel: React.FC<CloudChannelPanelProps> = ({
     () =>
       createCloudChannelPostHandler({
         post: postMessage,
+        resolveMentions: (input) =>
+          resolveChannelMentionedUserIds(input, mentionMembers, currentUserId),
         translate: (key) => t(key),
         onError: setComposerError,
       }),
-    [postMessage, t]
+    [postMessage, mentionMembers, currentUserId, t]
   );
 
   const handleEdit = useCallback(
@@ -500,6 +515,7 @@ const CloudChannelPanel: React.FC<CloudChannelPanelProps> = ({
             send — and `acceptDraggedPills` goes off for the same reason. */}
         <ChannelComposer
           composerId={`channel-cloud-${orgId}-${channelId}`}
+          mentionOptions={mentionOptions}
           placeholder={t("cloud.channels.feed.composerPlaceholder", {
             name: displayName,
           })}

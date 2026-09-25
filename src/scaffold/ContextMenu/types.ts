@@ -76,6 +76,7 @@ export interface ContextMenuProps {
   onModeSelect: (mode: ComposerModeEntry["id"]) => void;
   /** Offer Project mode alongside Build, Plan, and Ask. */
   includeProjectMode?: boolean;
+  showModes?: boolean;
   /** Additional first-class @mention suggestions rendered alongside normal context options. */
   customMentionOptions?: ReadonlyArray<ContextMenuCustomMentionOption>;
   onCustomMentionSelect?: (option: ContextMenuCustomMentionOption) => void;

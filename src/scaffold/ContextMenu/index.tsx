@@ -72,6 +72,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   currentMode,
   onModeSelect,
   includeProjectMode = false,
+  showModes = true,
   customMentionOptions = [],
   onCustomMentionSelect,
   searchQuery = "",
@@ -99,7 +100,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       entries.push({ kind: "image", flatIndex: flatIndex++ });
     }
 
-    for (const mode of modeOptions) {
+    for (const mode of showModes ? modeOptions : []) {
       if (
         matchesSearch(
           query,
@@ -141,6 +142,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     imageLabel,
     searchQuery,
     modeOptions,
+    showModes,
     onImageUpload,
     t,
   ]);

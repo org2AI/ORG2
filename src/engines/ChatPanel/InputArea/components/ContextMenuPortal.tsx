@@ -40,6 +40,7 @@ interface ContextMenuPortalProps {
   currentMode: ComposerModeEntry["id"];
   onModeSelect: (mode: ComposerModeEntry["id"]) => void;
   includeProjectMode?: boolean;
+  showModes?: boolean;
   customMentionOptions?: ReadonlyArray<ContextMenuCustomMentionOption>;
   onCustomMentionSelect?: (option: ContextMenuCustomMentionOption) => void;
   searchQuery: string;
@@ -77,6 +78,7 @@ const VisibleContextMenuPortal: React.FC<
   currentMode,
   onModeSelect,
   includeProjectMode,
+  showModes,
   customMentionOptions,
   onCustomMentionSelect,
   searchQuery,
@@ -137,6 +139,7 @@ const VisibleContextMenuPortal: React.FC<
         currentMode={currentMode}
         onModeSelect={onModeSelect}
         includeProjectMode={includeProjectMode}
+        showModes={showModes}
         customMentionOptions={mergedCustomMentionOptions}
         onCustomMentionSelect={onCustomMentionSelect}
         searchQuery={searchQuery}

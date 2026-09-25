@@ -134,6 +134,45 @@ describe("ContextMenu shared + / @ contract", () => {
     ).not.toBeNull();
   });
 
+  it("human composers navigate directly to members without agent mode actions", async () => {
+    const onModeSelect = vi.fn();
+    const onCustomMentionSelect = vi.fn();
+    const option = { id: "member-a", label: "Alice", groupLabel: "Teammates" };
+    await act(async () => {
+      root.render(
+        React.createElement(
+          Provider,
+          null,
+          React.createElement(ContextMenu, {
+            visible: true,
+            onClose: vi.fn(),
+            onSelect: vi.fn(),
+            currentMode: "build",
+            onModeSelect,
+            showModes: false,
+            customMentionOptions: [option],
+            onCustomMentionSelect,
+          })
+        )
+      );
+    });
+    expect(
+      container.querySelector('[data-testid^="context-menu-mode-option"]')
+    ).toBeNull();
+    expect(container.textContent).toContain("Alice");
+    act(() => {
+      container.querySelector(".context-menu")?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+    expect(onCustomMentionSelect).toHaveBeenCalledWith(option);
+    expect(onModeSelect).not.toHaveBeenCalled();
+  });
+
   it("routes Work Items as an action instead of opening a nested list", async () => {
     const onClose = vi.fn();
     const onSelect = vi.fn();

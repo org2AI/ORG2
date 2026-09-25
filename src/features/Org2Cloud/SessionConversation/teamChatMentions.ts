@@ -246,6 +246,9 @@ export function resolveTeamChatMentionedUserIds(
   viewerUserId?: string | null
 ): string[] {
   const targets = resolveTeamChatAudienceTargets(body, members, snapshot);
+  // Default channel visibility is not an explicit notification request.
+  // In particular an unrecognized @ token must not notify the whole org.
+  if (targets.length === 0) return [];
   const audience = resolveMessageAudience("team_chat", targets);
   if (audience.human.scope === "channel") {
     return [

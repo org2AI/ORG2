@@ -53,6 +53,7 @@ export interface ActiveOrgMembersState {
   /** Active org members; empty while disabled, loading, or on failure. */
   members: readonly CloudOrgMember[];
   loading: boolean;
+  error: boolean;
 }
 
 const NO_MEMBERS: readonly CloudOrgMember[] = [];
@@ -79,6 +80,7 @@ export function useActiveOrgMembers(
   const [resolved, setResolved] = useState<{
     key: string;
     members: CloudOrgMember[];
+    error: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -100,22 +102,24 @@ export function useActiveOrgMembers(
         }
         setResolved({
           key: requestKey,
+          error: false,
           members: loaded.members.filter(
             (member) => member.status === "active"
           ),
         });
       })
       .catch(() => {
-        if (!cancelled) setResolved({ key: requestKey, members: [] });
+        if (!cancelled)
+          setResolved({ key: requestKey, members: [], error: true });
       });
     return () => {
       cancelled = true;
     };
   }, [auth, identityKey, orgId, requestKey, rosterVersion, setAuth, store]);
 
-  if (!requestKey) return { members: NO_MEMBERS, loading: false };
+  if (!requestKey) return { members: NO_MEMBERS, loading: false, error: false };
   if (resolved?.key === requestKey) {
-    return { members: resolved.members, loading: false };
+    return { members: resolved.members, loading: false, error: resolved.error };
   }
-  return { members: NO_MEMBERS, loading: true };
+  return { members: NO_MEMBERS, loading: true, error: false };
 }

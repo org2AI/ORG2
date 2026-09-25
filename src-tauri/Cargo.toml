@@ -33,6 +33,7 @@ members = [
     "crates/orgtrack-protocol",
     "crates/perf-utils",
     "crates/project-management",
+    "crates/remote-exec",
     "crates/search",
     "crates/session-persistence",
     "crates/settings",

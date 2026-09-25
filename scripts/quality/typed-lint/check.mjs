@@ -20,7 +20,7 @@ const lint = new ESLint({
   overrideConfigFile: path.join(root, "config/eslint.typed.cjs"),
 });
 const findings = collectFindings(
-  await lint.lintFiles(["src/**/*.{ts,tsx}"]),
+  await lint.lintFiles(["src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"]),
   root
 );
 if (args.includes("--write-baseline")) {

@@ -420,6 +420,8 @@ module.exports = (env, argv) => {
       ],
     },
     resolve: {
+      // Compile linked workspace source and watch its real files for updates.
+      symlinks: true,
       extensions: [".tsx", ".ts", ".js", ".mjs"],
       // Only resolve from node_modules. src/ paths are handled by aliases (@src, etc.)
       // Having src in modules causes extra filesystem lookups for every bare import.

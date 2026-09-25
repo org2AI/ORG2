@@ -77,116 +77,112 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
     const retry = new Set(retryUrls.current);
     retryUrls.current.clear();
     setState({ sessionId, items: stale, loading: true, error: false });
-    void (async () => {
-      try {
-        const raw = await readSessionPullRequests(sessionId);
-        if (cancelled) return;
-        const urls = [
-          ...new Set(
-            raw
-              .map(canonicalPullRequestUrl)
-              .filter((url): url is string => Boolean(url))
-          ),
-        ].slice(0, 100);
-        const items = urls.map((url) => {
-          const ref = parseGitHubPullRequestUrl(url)!;
-          return (
-            stale.find((item) => item.url === url) ?? {
-              url,
-              number: ref.number,
-              repoFullName: `${ref.owner}/${ref.repo}`,
-              title: `#${ref.number}`,
-              state: "unknown",
-              draft: false,
-              headBranch: "",
-              ciStatus: null,
-              error: false,
-            }
-          );
-        });
-        setState({ sessionId, items: [...items], loading: true, error: false });
-        let cursor = 0;
-        // Bound metadata fanout; hidden/unmounted/superseded rails stop dequeuing work.
-        await Promise.all(
-          Array.from({ length: Math.min(3, items.length) }, async () => {
-            while (!cancelled && cursor < items.length) {
-              const index = cursor++;
-              const item = items[index];
-              try {
-                const result = await loadPullRequestHeadChecks(
-                  item.repoFullName,
-                  item.number,
-                  {
-                    maxAgeMs: retry.has(item.url)
-                      ? 0
-                      : PULL_REQUEST_HEAD_CHECKS_REUSE_MS,
-                  }
-                ).catch(async (error: unknown) => {
-                  if (cancelled) throw error;
-                  return {
-                    detail: await getPRLocal(item.repoFullName, item.number),
-                    checks: null,
-                  };
-                });
-                if (cancelled) return;
-                const detail = result.detail;
-                const lifecycle =
-                  detail.merged === true || Boolean(detail.merged_at)
-                    ? "merged"
-                    : typeof detail.state === "string"
-                      ? detail.state
-                      : "unknown";
-                const head = detail.head as { ref?: unknown } | undefined;
-                const pr = {
-                  number: item.number,
-                  url: item.url,
-                  title:
-                    typeof detail.title === "string"
-                      ? detail.title
-                      : item.title,
-                  state: lifecycle,
-                  draft: detail.draft === true,
-                };
-                items[index] = {
-                  ...item,
-                  ...pr,
-                  headBranch: typeof head?.ref === "string" ? head.ref : "",
-                  ciStatus:
-                    lifecycle === "open"
-                      ? resolveBranchCiStatus({
-                          pr,
-                          checks: result.checks,
-                          checksUnavailable: !result.checks,
-                          loading: false,
-                        })
-                      : null,
-                  error: lifecycle === "open" && !result.checks,
-                };
-              } catch {
-                if (cancelled) return;
-                items[index] = { ...item, error: true };
-              }
-              setState({
-                sessionId,
-                items: [...items],
-                loading: true,
-                error: false,
-              });
-            }
-          })
-        );
-        if (!cancelled)
-          setState({
-            sessionId,
-            items: [...items],
-            loading: false,
+    (async () => {
+      const raw = await readSessionPullRequests(sessionId);
+      if (cancelled) return;
+      const urls = [
+        ...new Set(
+          raw
+            .map(canonicalPullRequestUrl)
+            .filter((url): url is string => Boolean(url))
+        ),
+      ].slice(0, 100);
+      const items = urls.map((url) => {
+        const ref = parseGitHubPullRequestUrl(url)!;
+        return (
+          stale.find((item) => item.url === url) ?? {
+            url,
+            number: ref.number,
+            repoFullName: `${ref.owner}/${ref.repo}`,
+            title: `#${ref.number}`,
+            state: "unknown",
+            draft: false,
+            headBranch: "",
+            ciStatus: null,
             error: false,
-          });
-      } catch {
-        if (!cancelled)
-          setState({ sessionId, items: stale, loading: false, error: true });
-      }
-    })();
+          }
+        );
+      });
+      setState({ sessionId, items: [...items], loading: true, error: false });
+      let cursor = 0;
+      // Bound metadata fanout; hidden/unmounted/superseded rails stop dequeuing work.
+      await Promise.all(
+        Array.from({ length: Math.min(3, items.length) }, async () => {
+          while (!cancelled && cursor < items.length) {
+            const index = cursor++;
+            const item = items[index];
+            try {
+              const result = await loadPullRequestHeadChecks(
+                item.repoFullName,
+                item.number,
+                {
+                  maxAgeMs: retry.has(item.url)
+                    ? 0
+                    : PULL_REQUEST_HEAD_CHECKS_REUSE_MS,
+                }
+              ).catch(async (error: unknown) => {
+                if (cancelled) throw error;
+                return {
+                  detail: await getPRLocal(item.repoFullName, item.number),
+                  checks: null,
+                };
+              });
+              if (cancelled) return;
+              const detail = result.detail;
+              const lifecycle =
+                detail.merged === true || Boolean(detail.merged_at)
+                  ? "merged"
+                  : typeof detail.state === "string"
+                    ? detail.state
+                    : "unknown";
+              const head = detail.head as { ref?: unknown } | undefined;
+              const pr = {
+                number: item.number,
+                url: item.url,
+                title:
+                  typeof detail.title === "string" ? detail.title : item.title,
+                state: lifecycle,
+                draft: detail.draft === true,
+              };
+              items[index] = {
+                ...item,
+                ...pr,
+                headBranch: typeof head?.ref === "string" ? head.ref : "",
+                ciStatus:
+                  lifecycle === "open"
+                    ? resolveBranchCiStatus({
+                        pr,
+                        checks: result.checks,
+                        checksUnavailable: !result.checks,
+                        loading: false,
+                      })
+                    : null,
+                error: lifecycle === "open" && !result.checks,
+              };
+            } catch {
+              if (cancelled) return;
+              items[index] = { ...item, error: true };
+            }
+            setState({
+              sessionId,
+              items: [...items],
+              loading: true,
+              error: false,
+            });
+          }
+        })
+      );
+      if (!cancelled)
+        setState({
+          sessionId,
+          items: [...items],
+          loading: false,
+          error: false,
+        });
+    })().catch(() => {
+      if (!cancelled)
+        setState({ sessionId, items: stale, loading: false, error: true });
+    });
     return () => {
       cancelled = true;
     };

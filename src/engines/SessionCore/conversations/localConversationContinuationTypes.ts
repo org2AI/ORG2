@@ -71,6 +71,8 @@ export interface ContinueLocalConversationResult {
   sessionId: string;
   terminalStatus: TurnTerminalStatus;
   agentTail: SessionEvent[];
+  /** Typed provider terminal diagnostic for this exact accepted intent. */
+  terminalError?: string;
 }
 
 export interface RecoverLocalConversationParams extends ContinueLocalConversationParams {

@@ -147,12 +147,13 @@ export function useEditUserMessage(
       const createdAt = chatItem.event?.createdAt;
       const failedSyntheticIntent = Boolean(
         initiatedSessionId &&
-        chatItem.event?.displayStatus === "failed" &&
-        chatItem.event.result?.syntheticUserInput === true
+        (chatItem.event?.displayStatus === "failed" ||
+          Boolean(chatItem.event?.result?.executionError)) &&
+        chatItem.event?.result?.syntheticUserInput === true
       );
 
-      // A delivery failure happened before the provider accepted this turn,
-      // so it is not a history-edit boundary. Retry through the ordinary
+      // A rejected send or proved empty execution failure owns an explicit
+      // retry, not a history-edit boundary. Retry through the ordinary
       // submit/queue path and remove only the superseded failed placeholder;
       // never truncate later turns or offer a file rewind for this case.
       if (failedSyntheticIntent && initiatedSessionId && chatItem.event) {
@@ -183,7 +184,7 @@ export function useEditUserMessage(
                   .find(
                     (message) =>
                       message.id === queueMessageId &&
-                      Boolean(message.deliveryError)
+                      Boolean(message.deliveryError || message.executionError)
                   )
               : undefined;
           let durableFailedQueueRow = findDurableFailedQueueRow();

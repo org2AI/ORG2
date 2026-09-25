@@ -294,7 +294,7 @@ export async function runConversationTurn(
     result.terminalStatus === "failed" && result.agentTail.length === 0
       ? [
           buildPushedDispatchFailureEvent(
-            new Error("Agent request failed"),
+            new Error(result.terminalError ?? "Agent request failed"),
             new Date().toISOString(),
             turnIntentId
           ),
@@ -314,7 +314,9 @@ export async function runConversationTurn(
     await params.publishTail(turnIntentId, agentTail);
   }
   if (retryableEmptyFailure) {
-    throw new QueuedConversationTurnFailedError("Agent request failed");
+    throw new QueuedConversationTurnFailedError(
+      result.terminalError ?? "Agent request failed"
+    );
   }
   log.info(
     `continued ${rootLabel} in ${result.sessionId}; ` +

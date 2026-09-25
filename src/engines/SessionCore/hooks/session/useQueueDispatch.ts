@@ -224,14 +224,17 @@ export function useQueueDispatch(
 
     // ── Natural FIFO drain ──────────────────────────────────────────────────
     // A Stop-held head is still the FIFO head. A definitive pre-acceptance
-    // failure is different: its failed bubble remains independently
-    // retryable/editable, but it never entered provider history and therefore
-    // must not freeze later natural messages in the same scope.
+    // failure or terminal empty execution failure is different: its row
+    // remains independently retryable/editable, but no provider owns active
+    // work, so it must not freeze later messages in the same scope.
     const naturalHeadIds = new Set<string>();
     const naturalScopes = new Set<string>();
     for (const candidate of candidates) {
       if (candidate.priority === "now") continue;
-      if (candidate.requiresExplicitDispatch && candidate.deliveryError)
+      if (
+        candidate.requiresExplicitDispatch &&
+        (candidate.deliveryError || candidate.executionError)
+      )
         continue;
       const scopeKey = queuedMessageScopeKey(candidate);
       if (naturalScopes.has(scopeKey)) continue;

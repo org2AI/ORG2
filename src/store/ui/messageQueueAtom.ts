@@ -89,6 +89,8 @@ export interface QueuedMessage {
    * failed instead of pending. An explicit retry/edit clears it.
    */
   deliveryError?: string;
+  /** Accepted execution failed; this held row owns explicit retry only. */
+  executionError?: string;
   createdAt: string;
 }
 
@@ -302,12 +304,14 @@ export const forceSendMessageAtom = atom(
               // backend intent; mint once for that failed row. An edit has
               // already minted and persisted its replacement intent, while an
               // ordinary parked unsent row must retain its original intent.
-              turnIntentId: msg.deliveryError
-                ? mintTurnIntentId()
-                : msg.turnIntentId,
+              turnIntentId:
+                msg.deliveryError || msg.executionError
+                  ? mintTurnIntentId()
+                  : msg.turnIntentId,
               priority: "now",
               requiresExplicitDispatch: false,
               deliveryError: undefined,
+              executionError: undefined,
             }
           : msg
       )
@@ -444,6 +448,7 @@ export const editMessageAtom = atom(
               conversationDispatch: update.conversationDispatch,
             }),
           deliveryError: undefined,
+          executionError: undefined,
         };
         const siblings = prev.filter((item) => item.id !== msg.id);
         if (queueAdmissionResult(siblings, next)) return msg;

@@ -275,10 +275,14 @@ export function useQueueActiveDeliveries({
               if (error instanceof QueuedConversationTurnFailedError) {
                 // The provider closed the accepted turn with a definitive
                 // failure and no tail. The optimistic row is the visible retry
-                // owner: fail it with the reason and hold it for an explicit
+                // owner: preserve its sent status and hold it for an explicit
                 // resend instead of reconnecting to a turn that cannot recover.
                 if (
-                  !(await projectActiveCanonicalFailure(currentDelivery, error))
+                  !(await projectActiveCanonicalFailure(
+                    currentDelivery,
+                    error,
+                    true
+                  ))
                 ) {
                   log.warn(
                     "[useQueueDispatch] failed transcript projection will be restored from delivery owner"
@@ -287,7 +291,8 @@ export function useQueueActiveDeliveries({
                 if (
                   !(await returnFailedCanonicalDeliveryToQueue(
                     currentDelivery,
-                    error
+                    error,
+                    true
                   ))
                 )
                   return;

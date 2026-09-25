@@ -850,14 +850,17 @@ describe("useQueueDispatch Agent Org intervention", () => {
       }
     );
 
-    await mountWithMessages([makeCanonicalMessage("canonical-rejected")]);
+    await mountWithMessages([
+      makeCanonicalMessage("canonical-rejected"),
+      makeCanonicalMessage("canonical-next"),
+    ]);
 
     await vi.waitFor(() =>
       expect(store.get(messageQueueAtom)).toEqual([
         expect.objectContaining({
           id: "canonical-rejected",
           requiresExplicitDispatch: true,
-          deliveryError: "The requested model is not available",
+          executionError: "The requested model is not available",
         }),
       ])
     );
@@ -865,15 +868,21 @@ describe("useQueueDispatch Agent Org intervention", () => {
     expect(mocks.updateById).toHaveBeenCalledWith(
       "queued-user:canonical-rejected:",
       expect.objectContaining({
-        displayStatus: "failed",
+        displayStatus: "completed",
         result: expect.objectContaining({
-          deliveryStatus: "failed",
-          deliveryError: "The requested model is not available",
+          deliveryStatus: "sent",
+          executionError: "The requested model is not available",
         }),
       }),
       SESSION_ID
     );
     expect(mocks.messageError).toHaveBeenCalledOnce();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2)
+    );
+    expect(mocks.dispatchCanonicalConversation.mock.calls[1][1].id).toBe(
+      "canonical-next"
+    );
   });
 
   it("retains an accepted canonical owner for recovery without immediately resending", async () => {

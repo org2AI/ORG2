@@ -188,55 +188,60 @@ describe("chatEventsAtom live streaming overlay", () => {
     ]);
   });
 
-  it("overlays a durable delivery failure onto its unpatched optimistic row", () => {
-    const store = createStore();
-    store.set(sessionIdAtom, "session-1");
-    const optimisticRow = makeChatEvent(
-      "queued-user:queue-stale:",
-      "2026-06-06T20:00:01.000Z",
-      {
-        source: "user",
-        functionName: "user",
-        displayVariant: "message",
-        displayStatus: "pending",
-        displayText: "retry this request",
-        result: {
-          deliveryStatus: "pending",
-          queueMessageId: "queue-stale",
+  it.each(["delivery", "execution"] as const)(
+    "overlays a durable %s failure onto its unpatched optimistic row",
+    (kind) => {
+      const store = createStore();
+      store.set(sessionIdAtom, "session-1");
+      const optimisticRow = makeChatEvent(
+        "queued-user:queue-stale:",
+        "2026-06-06T20:00:01.000Z",
+        {
+          source: "user",
+          functionName: "user",
+          displayVariant: "message",
+          displayStatus: kind === "execution" ? "completed" : "pending",
+          displayText: "retry this request",
+          result: {
+            deliveryStatus: kind === "execution" ? "sent" : "pending",
+            queueMessageId: "queue-stale",
+            turnIntentId: "turn-stale",
+            message: { content: "retry this request", role: "user" },
+          },
+        }
+      );
+      store.set(derivedSnapshotAtom, makeSnapshot([optimisticRow], false));
+      store.set(messageQueueAtom, [
+        {
+          id: "queue-stale",
           turnIntentId: "turn-stale",
-          message: { content: "retry this request", role: "user" },
+          sessionId: "session-1",
+          content: "retry this request",
+          displayContent: "retry this request",
+          priority: "next",
+          requiresExplicitDispatch: true,
+          status: "queued",
+          [kind === "execution" ? "executionError" : "deliveryError"]:
+            "shared session is no longer available",
+          createdAt: "2026-06-06T20:00:01.000Z",
         },
-      }
-    );
-    store.set(derivedSnapshotAtom, makeSnapshot([optimisticRow], false));
-    store.set(messageQueueAtom, [
-      {
-        id: "queue-stale",
-        turnIntentId: "turn-stale",
-        sessionId: "session-1",
-        content: "retry this request",
-        displayContent: "retry this request",
-        priority: "next",
-        requiresExplicitDispatch: true,
-        status: "queued",
-        deliveryError: "shared session is no longer available",
-        createdAt: "2026-06-06T20:00:01.000Z",
-      },
-    ]);
+      ]);
 
-    expect(store.get(chatEventsAtom)).toEqual([
-      expect.objectContaining({
-        id: "queued-user:queue-stale:",
-        displayStatus: "failed",
-        result: expect.objectContaining({
-          deliveryStatus: "failed",
-          deliveryError: "shared session is no longer available",
-          queueMessageId: "queue-stale",
-          turnIntentId: "turn-stale",
+      expect(store.get(chatEventsAtom)).toEqual([
+        expect.objectContaining({
+          id: "queued-user:queue-stale:",
+          displayStatus: kind === "execution" ? "completed" : "failed",
+          result: expect.objectContaining({
+            deliveryStatus: kind === "execution" ? "sent" : "failed",
+            [kind === "execution" ? "executionError" : "deliveryError"]:
+              "shared session is no longer available",
+            queueMessageId: "queue-stale",
+            turnIntentId: "turn-stale",
+          }),
         }),
-      }),
-    ]);
-  });
+      ]);
+    }
+  );
 
   it("restores the failed queue owner after native history replaced its optimistic row and a later turn succeeded", () => {
     const nativeUser = makeChatEvent(

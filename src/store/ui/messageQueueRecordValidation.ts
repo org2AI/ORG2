@@ -34,6 +34,8 @@ export function isQueuedMessage(value: unknown): value is QueuedMessage {
     (item.imageDataUrls === undefined ||
       (Array.isArray(item.imageDataUrls) &&
         item.imageDataUrls.every((image) => typeof image === "string"))) &&
+    (item.executionError === undefined ||
+      typeof item.executionError === "string") &&
     (item.deliveryError === undefined ||
       typeof item.deliveryError === "string") &&
     (item.priority === "now" || item.priority === "next") &&
@@ -109,6 +111,8 @@ export function isActiveDelivery(
         Number.isSafeInteger(candidate.runnerEventStartIndex) &&
         candidate.runnerEventStartIndex >= 0)) &&
     typeof candidate.createdAt === "string" &&
+    (candidate.executionError === undefined ||
+      typeof candidate.executionError === "string") &&
     (candidate.deliveryError === undefined ||
       typeof candidate.deliveryError === "string") &&
     (retryAt === undefined || typeof retryAt === "string") &&

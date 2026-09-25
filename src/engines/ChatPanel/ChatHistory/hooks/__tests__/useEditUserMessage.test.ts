@@ -490,61 +490,68 @@ describe("useEditUserMessage resend projection", () => {
     );
   });
 
-  it("retries a hydrated failed queue row in place without losing attachments", async () => {
-    queuedDeliveries.current = [
-      {
-        id: "queue-failed",
-        turnIntentId: "turn-intent-failed",
-        sessionId: "osagent-session-1",
-        content: "retry this exact request",
-        displayContent: "retry this exact request",
-        imageDataUrls: ["data:image/png;base64,keep"],
-        priority: "next",
-        status: "queued",
-        requiresExplicitDispatch: true,
-        deliveryError: "provider unavailable",
-        createdAt: "2026-01-01T00:00:00.000Z",
-      },
-    ];
-    const failed = {
-      event: {
-        id: "queued-user-turn-intent-failed",
-        displayText: "retry this exact request",
-        displayStatus: "failed",
-        result: {
-          syntheticUserInput: true,
-          deliveryStatus: "failed",
-          queueMessageId: "queue-failed",
+  it.each(["delivery", "execution"] as const)(
+    "retries a hydrated %s failure in place without losing attachments",
+    async (kind) => {
+      queuedDeliveries.current = [
+        {
+          id: "queue-failed",
           turnIntentId: "turn-intent-failed",
+          sessionId: "osagent-session-1",
+          content: "retry this exact request",
+          displayContent: "retry this exact request",
+          imageDataUrls: ["data:image/png;base64,keep"],
+          priority: "next",
+          status: "queued",
+          requiresExplicitDispatch: true,
+          [kind === "execution" ? "executionError" : "deliveryError"]:
+            "provider unavailable",
+          createdAt: "2026-01-01T00:00:00.000Z",
         },
-      },
-      chunk_id: "queued-user-turn-intent-failed",
-    } as unknown as OptimizedChatItem;
+      ];
+      const failed = {
+        event: {
+          id: "queued-user-turn-intent-failed",
+          displayText: "retry this exact request",
+          displayStatus: kind === "execution" ? "completed" : "failed",
+          result: {
+            syntheticUserInput: true,
+            deliveryStatus: kind === "execution" ? "sent" : "failed",
+            ...(kind === "execution"
+              ? { executionError: "provider unavailable" }
+              : {}),
+            queueMessageId: "queue-failed",
+            turnIntentId: "turn-intent-failed",
+          },
+        },
+        chunk_id: "queued-user-turn-intent-failed",
+      } as unknown as OptimizedChatItem;
 
-    await act(async () => {
-      await editUserMessage?.(failed, "retry this exact request");
-    });
+      await act(async () => {
+        await editUserMessage?.(failed, "retry this exact request");
+      });
 
-    expect(updateByIdSpy).toHaveBeenCalledWith(
-      "queued-user:queue-failed:",
-      expect.objectContaining({
-        displayText: "retry this exact request",
-        displayStatus: "pending",
-        result: expect.objectContaining({
-          images: ["data:image/png;base64,keep"],
-          turnIntentId: expect.not.stringMatching("turn-intent-failed"),
-          deliveryStatus: "pending",
-          queueMessageId: "queue-failed",
+      expect(updateByIdSpy).toHaveBeenCalledWith(
+        "queued-user:queue-failed:",
+        expect.objectContaining({
+          displayText: "retry this exact request",
+          displayStatus: "pending",
+          result: expect.objectContaining({
+            images: ["data:image/png;base64,keep"],
+            turnIntentId: expect.not.stringMatching("turn-intent-failed"),
+            deliveryStatus: "pending",
+            queueMessageId: "queue-failed",
+          }),
         }),
-      }),
-      "osagent-session-1"
-    );
-    expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
-    expect(storeSetSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
-      "queue-failed"
-    );
-  });
+        "osagent-session-1"
+      );
+      expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+      expect(storeSetSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
+        "queue-failed"
+      );
+    }
+  );
 
   it("retries a held canonical row with the runtime the picker shows now", async () => {
     const admittedDispatch: QueuedConversationDispatch = {

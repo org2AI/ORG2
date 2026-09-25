@@ -158,6 +158,7 @@ describe("runConversationTurn", () => {
     mocks.continueLocalConversation.mockResolvedValueOnce({
       sessionId: "runner",
       terminalStatus: "failed",
+      terminalError: "Usage limit reached until tomorrow",
       agentTail: [],
     });
     const params = retryParams();
@@ -172,6 +173,11 @@ describe("runConversationTurn", () => {
       mocks.persistCloudEmptyFailure.mock.invocationCallOrder[0]
     ).toBeLessThan(params.publishTail.mock.invocationCallOrder[0]!);
     expect(params.publishTail).toHaveBeenCalledOnce();
+    expect(params.publishTail.mock.calls[0][1]).toEqual([
+      expect.objectContaining({
+        displayText: "Usage limit reached until tomorrow",
+      }),
+    ]);
   });
 
   it("recovers an ambiguous failure publication without sending the provider again", async () => {

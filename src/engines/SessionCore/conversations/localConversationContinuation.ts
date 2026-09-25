@@ -125,7 +125,8 @@ async function continueLocalConversationAtQueueHead(
         await hydrateSynchronizedConversationProjection(
           compatible.sessionId,
           beforeSynchronization,
-          synchronized.events
+          synchronized.events,
+          preparation.userEvent
         );
       }
       // Reveal/follow the writable episode before dispatch. The ordinary

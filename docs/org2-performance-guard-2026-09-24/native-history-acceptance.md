@@ -730,3 +730,29 @@ Production-entry review found that terminal reconciliation alone did not cover i
 Actual-entry regressions cover repeated cold loads, guarded idle refresh without the terminal preservation flag, and canonical continuation with sparse output plus an unrelated failed user. Five targeted suites passed **102 tests** with `pnpm exec vitest run --config config/vitest.config.ts` for nativeConversationReconciliation, nativeConversationMaterializer, canonicalConversationEvents, sessionSyncUtils and nativeTranscriptReconcile. Typecheck, changed-file ESLint and diff checks passed. The initially cancelled Combined6 build is not acceptance evidence.
 
 Performance verdict: **blocked** pending rebuilt real GUI streaming, Stop and reopening verification; previous failed GUI evidence remains unchanged.
+
+## Combined7 real GUI follow-up (2026-09-24 local)
+
+Signed Combined7 combines PR HEAD `8c2d97a596` with the separately scoped Reserve dependency only for local acceptance. The combined branch, diagnostic code and bundles are not published.
+
+- Cold load: previous interrupted Diagnostic5 output is visible from the ordinary native-history load path (10,078 characters); no provider cancellation context appears as a fabricated user turn.
+- Real Send: current turn requested `ORG2_COMBINED7_STREAM_0924`. At roughly 10, 15 and 44.7 seconds the current assistant position still showed the prior Diagnostic5 reply. **Live streaming fails.** Provider generation is not inferred from the UI: actual current output was subsequently read from the authoritative finalized cache after Stop.
+- Actual Stop: navigating to the latest turn shows one current partial, 10,224 characters, in correct order. Normal Quit/reopen and ordinary Search/latest-turn navigation retains the same complete body (whitespace-normalized AX comparison), with exactly one reply marker. SHA-256 of the persisted body: `7adab91be8d9a5c2167d948900b1127c08de38e8f14a5f12ea7b9dbe0a07fb89`.
+- 141.57-second mixed Send/generation/Stop/Quit sample: backend 4.407% of one core / peak RSS 143.125 MiB; WebKit 12.474% / 562.672 MiB; source app-server 0.856% / 191 MiB. All observed process identities released on normal Quit. This sample is not a sustained or idle-only baseline.
+- Exact published HEAD `8c2d97a59626aa8a32297aa8e32380a5c4a25d87`: 20 checks SUCCESS; MERGEABLE. No merge performed.
+
+Evidence: `combined7-verdict.json`, `combined7-after-stop-tail-ax.txt`, `combined7-after-stop-tail.png`, `combined7-reopen-tail-ax.txt`, `combined7-reopen-tail.png`, `combined7-stream-stop.json`, `combined7-ci-final.json` in the private acceptance directory. No DB writes, raw-history rewrites or lock clearing were used.
+
+Performance verdict: **fail** for stale live rendering; sustained/provider/platform lifecycle matrix remains incomplete. Stop persistence and cold recovery are passed cells, not an overall pass.
+
+Additional 240.04-second idle-with-build-contention sample: backend 0.446% one core, RSS 129.75→57.69 MiB (peak129.81); WebKit 1.735%, RSS148.11→34.58 MiB (peak203.05); no process membership changes. System memory pressure can reduce RSS; this is not leak-free evidence or an unloaded-machine baseline. Evidence: `combined7-idle-build-contention.json`.
+
+## Resume projection duplication and Diagnostic8
+
+A bounded private diagnostic established that current provider text reaches the live buffer and leaf renderer and grows from below 1,000 to above 6,000 characters. Actual latest-turn/bottom navigation showed the new river-story reply while generation continued. The earlier unchanged visible garden text was an extra copy of the prior interrupted reply, placed between the new user and its live output. Thus Combined7's user-visible failure remains valid, but it does not establish that the live buffer stopped updating.
+
+The producing boundary is pre-dispatch `hydrateSynchronizedConversationProjection`. Native synchronization appends a recovered partial to the rollout under a provider row id; EventStore already has that same output under its Rust-finalized id, followed by the prepared user. Merging the native suffix appends a second historical reply after the new user. The correction installs the complete verified native projection, merges existing failed-delivery/retry-lineage sidecars, and appends the exact prepared user row last. It runs once only when synchronization changes the native prefix, before provider dispatch under queue preparation ownership. Unchanged prefixes do no additional read/write. It adds one resident EventStore read for changed prefixes and one full replacement instead of suffix merge; large-prefix cost remains an uncovered performance cell. There is no content-based deduplication, new timer, cache, background scan or schema change.
+
+Four hydration regressions cover rematerialized interrupted output, failed sidecars/retry lineage, changed native ids with distinct equal replies, and the no-change no-I/O path. Against the old implementation three fail; after the correction, hydration, continuation and settled-tail suites pass **108/108**. Typecheck and changed-file ESLint passed. Existing historical duplicates are transient projection state repaired by ordinary authoritative reconciliation; no manual database/raw-history deletion was performed. Diagnostic code is excluded from the PR.
+
+Performance verdict: **blocked** until the corrected package passes ordinary-send streaming visibility, Stop/reopen and remaining sustained lifecycle checks. The diagnostic changes only observability and does not serve as acceptance of the correction.

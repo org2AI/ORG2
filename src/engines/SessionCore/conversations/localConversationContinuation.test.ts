@@ -2465,8 +2465,17 @@ describe("local native conversation continuation", () => {
       sessionId: "cliagent-existing",
       timeline,
     });
-    expect(mocks.mergeEvents).toHaveBeenCalledWith(
-      [expect.objectContaining({ displayText: "remote answer" })],
+    expect(mocks.setEvents).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({ displayText: "existing" }),
+        expect.objectContaining({ displayText: "remote answer" }),
+        expect.objectContaining({
+          displayText: "continue after remote turn",
+          result: expect.objectContaining({
+            turnIntentId: "turn-native-delta",
+          }),
+        }),
+      ],
       "cliagent-existing"
     );
     expect(mocks.create).not.toHaveBeenCalled();

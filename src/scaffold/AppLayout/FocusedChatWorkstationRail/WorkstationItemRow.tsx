@@ -14,6 +14,7 @@ import {
   WORKSTATION_TRAIL_ROW,
   WORKSTATION_TRAIL_ROW_HOVER_CLASS,
 } from "@src/components/layout/tokens/workstationTrailTokens";
+import { SessionSourceThumbnail } from "@src/features/SessionSources/SessionSourceThumbnail";
 import { useWorkingTreeDiffTotals } from "@src/hooks/git/useWorkingTreeDiffTotals";
 import {
   ArrowRight01Icon,
@@ -23,7 +24,6 @@ import {
   StopCircleIcon,
 } from "@src/icons";
 
-import { RailImageThumbnail } from "./RailImageThumbnail";
 import { RailItemStatus } from "./RailItemStatus";
 import type { FocusedChatRailItem } from "./types";
 
@@ -64,7 +64,7 @@ export function WorkstationItemRow({
       >
         <span className={WORKSTATION_TRAIL_ROW.icon}>
           {item.imageRef ? (
-            <RailImageThumbnail
+            <SessionSourceThumbnail
               key={item.imageRef}
               imageRef={item.imageRef}
               size={WORKSTATION_TRAIL_ROW.iconSize}

@@ -84,6 +84,7 @@ export const DEFAULT_CATEGORY_BY_TYPE: Record<
   terminal: "terminal",
   search: "search",
   "search-sessions": "search-sessions",
+  "session-sources": "preview",
   "url-preview": "preview",
   "browser-session": "browser",
   "project-dashboard": "project",

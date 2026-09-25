@@ -39,6 +39,7 @@ async fn live_luna_reserve_app_server() {
     let result = tokio::time::timeout(std::time::Duration::from_secs(90), run_app_server_turn(
             child.stdin.take().unwrap(), child.stdout.take().unwrap(), CodexAppServerTurn {
                 session_id: "reserve-live-canary".into(),
+                turn_intent_id: None,
                 user_input: "Reply exactly ORG2_APP_SERVER_RESERVE_OK. Do not use tools, read files or run commands.".into(),
                 developer_instructions: None, working_dir: workspace.path().to_string_lossy().into_owned(),
                 project_id: None, resume_thread_id: None, model: wire,

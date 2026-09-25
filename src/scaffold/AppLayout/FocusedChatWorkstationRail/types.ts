@@ -30,6 +30,8 @@ export type FocusedChatRailItem = {
   /** Image reference shown as a thumbnail in place of the icon. */
   imageRef?: string;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Section-level navigation remains reachable when its preview rows are folded. */
+  visibleWhenCollapsed?: boolean;
   /**
    * Row opens a second-level panel anchored to itself: it must not close the
    * compact menu it lives in, and it advertises the popup to AT.
@@ -76,7 +78,7 @@ export interface FocusedChatRailSubagent {
   status: "pending" | "running" | "completed" | "failed";
 }
 
-/** One image or web link the user sent in the rail's active session. */
+/** One resource or tool activity group in the rail's active session. */
 export type FocusedChatRailSource = SessionSource;
 
 export interface FocusedChatWorkstationRailProps {
@@ -86,8 +88,10 @@ export interface FocusedChatWorkstationRailProps {
   conversationMinimapHostRef: (node: HTMLDivElement | null) => void;
   /** Active session scope moved out of the transcript's former context row. */
   sessionContext?: FocusedChatSessionContext;
-  /** Images and links the user sent in the active session, newest first. */
+  /** Conversation resources and tool activity groups, newest first. */
   sources: FocusedChatRailSource[];
+  /** Open or focus the session-scoped Sources workstation tab. */
+  onOpenSources?: () => void;
   /** The active session's spawned subagent sessions, newest first. */
   subagents: FocusedChatRailSubagent[];
   /**

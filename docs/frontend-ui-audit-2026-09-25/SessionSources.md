@@ -1,0 +1,17 @@
+# Session Sources UI audit
+
+| Line                         | Element                         | Verdict          | Reason                                                                                                | Suggested change                                           |
+| ---------------------------- | ------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| SessionSourceRow.tsx         | Resource rows                   | fix              | Earlier standalone row styling duplicated sidebar chrome                                              | Resolved with SidebarRow and shared file/model icons       |
+| SessionToolActivityGroup.tsx | Activity disclosure             | fix              | Local typography overrides conflicted with detail panel defaults                                      | Resolved with SidebarSectionHeader and useCollapsible      |
+| SessionToolActivityGroup.tsx | Failure details                 | fix              | Error surface should follow shared feedback appearance                                                | Resolved with PageNotice                                   |
+| SessionSourcesView.tsx       | Canvas                          | fix              | Generic surface grey differed from work area                                                          | Resolved with EDITOR_TAB_CANVAS_BG_CLASS                   |
+| SessionSourcesView.tsx       | Category headers / pagination   | keep with reason | Shared SidebarSectionHeader and Button own geometry and controls                                      | Preserve shared components                                 |
+| SessionSourceThumbnail.tsx   | 3px miniature radius and size   | keep with reason | Tiny source previews need their icon-sized optical geometry; width follows caller's shared icon scale | No global token change                                     |
+| SessionSourcesView.tsx       | 8px row / 16px category spacing | keep with reason | Explicit user-approved density uses standard spacing utilities                                        | Preserve local layout                                      |
+| SessionSourceRow.tsx         | Path tooltip                    | keep with reason | Shared Tooltip exposes truncated human-readable location; encoded transport refs stay private         | Preserve                                                   |
+| features/SessionSources      | Shared presentation/navigation  | abstract         | Rail preview, source detail rows and complete page need one identity/navigation implementation        | Implemented feature module; old rail-only wrappers removed |
+
+Totals: 4 resolved fixes, 4 keep with reason, 1 implemented abstraction. No raw production buttons, inputs or clickable substitutes introduced. Metadata colors use semantic tokens; shared components own typography/hover/focus. No global design-system sweep.
+
+Visual evidence in ../verification-2026-09-25/session-sources: final categorized light page, dark 340px page, empty/loading/error states. These render actual feature and shared components using fictional source fixtures; navigation and image loading are mocked. They are not native-app E2E evidence. The user subsequently explicitly requested their original application screenshot; user-screenshot.png is included unchanged as the primary PR illustration.

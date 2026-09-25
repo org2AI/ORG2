@@ -595,3 +595,9 @@ configuration or migration. The source invariant is one live projection per
 surface with terminal partial text remaining durable. No historical cleanup.
 The performance report separates native exit success, the observed display
 failure, unit regression results and pending rebuilt GUI verification.
+
+## Interrupted native output follow-up
+
+Covered layers: provider ingestion, durable identity/storage ownership, canonical reconciliation, and rendered turn lifecycle. Configuration, network/auth, catalog/billing, and platform launch policy are unchanged in this follow-up. Native raw history remains authoritative; the sparse finalized-output cache is joined only by a unique accepted intent on the last interrupted native user turn. Provider-completed output wins, and reset/missing anchors fail closed. No schema or wire format changes, historical deletion, or UI string filter is introduced. Rollback is a code revert; the raw source and cache are left intact.
+
+Real Combined5 inspection exposed the formerly synthetic test assumption that persisted events contain a complete native prefix. Reconcile/reopen regressions now use assistant-only cache fixtures. The Codex source parser separately excludes structured provider cancellation context while preserving literal user lookalikes. A transient completion latch can also suppress actual live output; its correction is tested at the turn-phase owner, with GUI validation pending. Recovery remains deliberately limited to the last interrupted native turn rather than reviving older cached output after newer native activity.

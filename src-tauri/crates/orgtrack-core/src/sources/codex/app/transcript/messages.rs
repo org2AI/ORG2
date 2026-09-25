@@ -214,7 +214,7 @@ pub(super) fn injected_user_message_chunk_from_response_message(
     if !is_orgii_injected {
         if let Some(kinds) = payload.pointer("/internal_chat_message_metadata_passthrough/content_item_kinds").and_then(Value::as_array) {
             let has_user_mirror = kinds.iter().any(|kind| kind.as_str().is_some_and(|kind| kind.starts_with("user.")));
-            let only_provider_context = !kinds.is_empty() && kinds.iter().all(|kind| matches!(kind.as_str(), Some("plugins.recommendations" | "agents_md.instructions" | "environments.environment_context" | "skills.selected_skill_instructions")));
+            let only_provider_context = !kinds.is_empty() && kinds.iter().all(|kind| matches!(kind.as_str(), Some("plugins.recommendations" | "agents_md.instructions" | "environments.environment_context" | "skills.selected_skill_instructions" | "generic.turn_aborted")));
             if has_user_mirror || only_provider_context {
                 return None;
             }

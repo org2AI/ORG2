@@ -706,3 +706,19 @@ src/engines/SessionCore/derived/__tests__/sessionScopedChatEvents.stability.test
 Performance verdict: blocked — live callback and cleanup unit regressions pass;
 actual continuous display, Stop/partial retention and remaining lifecycle cells
 require the newly rebuilt package.
+
+## Combined5 streaming/Stop failure and follow-up
+
+The rebuilt Combined5 package contains published `de628b7f207cea67d30e54975563af5d2c3a8d5f` plus the separately tracked reserve selector. In the real ORG2 Chat UI, a long no-tool reply showed only the typing indicator at 13 and 46 seconds. Clicking Stop persisted 11,615 characters in the native session's SQLite event cache, but did not display the partial. This is **failed functional acceptance**, not a retention pass. Native raw history did not contain that unfinished assistant response.
+
+A separate diagnostic build confirmed delivery through the Tauri session channel and CLI handler, with its streaming callback present. It again showed typing without a body at 35 seconds. Diagnostic logging was bounded, private, and removed from source before this follow-up. Neither run automated the native Codex GUI.
+
+The follow-up corrects two authoritative boundaries. Codex's structured `generic.turn_aborted` provider context no longer creates a user turn; real user-authored lookalike text is preserved. Native interrupted reconciliation now recognizes the actual sparse event-cache contract: only Rust-finalized output is persisted, without the native user/history prefix. It recovers output only for a unique, matching last native user intent followed by a failed lifecycle, with no native answer or completed lifecycle. Missing/duplicate anchors, newer native turns, foreign sessions, live placeholders and divergent histories fail closed. No raw history or database was manually changed. This intentionally does not reconstruct older interrupted turns after a newer native user turn has arrived.
+
+The rendering follow-up also prevents a transient idle snapshot from permanently latching an accepted turn closed when actual provider deltas arrive. The body-less synthetic typing sentinel alone cannot reopen a completed turn. This is covered by a rendered hook regression; the rebuilt real GUI verdict remains pending.
+
+Validation actually run: seven targeted Vitest suites, **204 passed**; `pnpm exec tsgo --noEmit`; ESLint on changed frontend files; `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core --lib --locked sources::codex::app::transcript`, **31 passed, 3 existing ignored**; `git diff --check`. The rendered live-row test uses Rust-exported aliases rather than the stale assistant aliases in the global test fixture, and verifies two growing buffer states with a structurally unchanged event and no cross-session text.
+
+A 708.15-second Combined5 mixed startup/generation/Stop/idle/normal-Quit sample measured backend CPU 2.396% of one core / peak RSS 209.52 MiB, WebKit 5.722% / 668.02 MiB, and source app-server 0.240% / 169.41 MiB. All measured process groups released on normal Quit. This mixed window does not prove idle-only behavior, an absence of leaks, or all-provider/platform coverage.
+
+Performance verdict: **blocked** pending successful rebuilt streaming, Stop visibility and reopening acceptance. Combined5's functional streaming/Stop verdict is **fail**.

@@ -688,6 +688,7 @@ fn codex_native_client_correlation_preserves_clean_text_and_replay_identity() {
         {"type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-2"}},
         {"type":"event_msg","payload":{"type":"task_started","turn_id":"turn-3"}},
         {"type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"user-3","client_id":"orgii-turn-intent:intent-3","content":[{"type":"text","text":"Same user text"}]}}},
+        {"type":"response_item","payload":{"type":"message","id":"msg_abort","role":"user","content":[{"type":"input_text","text":"<turn_aborted>provider interruption context</turn_aborted>"}],"internal_chat_message_metadata_passthrough":{"content_item_kinds":["generic.turn_aborted"]}}},
         {"type":"event_msg","payload":{"type":"turn_aborted","turn_id":"turn-3","reason":"interrupted"}}
     ]);
     let lines = rows
@@ -794,6 +795,50 @@ fn codex_native_client_correlation_rejects_foreign_and_malformed_identity() {
                 "paginated={paginated}, case={index}"
             );
         }
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn aborted_provider_context_is_not_a_user_turn_but_literal_user_text_is() {
+    let dir = std::env::temp_dir().join(format!("orgii-abort-context-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("rollout.jsonl");
+    let literal = "<turn_aborted>This is my own example</turn_aborted>";
+    let rows = serde_json::json!([
+        {"type":"turn_context","payload":{}},
+        {"type":"event_msg","payload":{"type":"task_started","turn_id":"turn-current"}},
+        {"type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"user-current","client_id":"orgii-turn-intent:current","content":[{"type":"text","text":literal}]}}},
+        {"type":"response_item","payload":{"type":"message","id":"msg_abort","role":"user","content":[{"type":"input_text","text":"<turn_aborted>provider control</turn_aborted>"}],"internal_chat_message_metadata_passthrough":{"content_item_kinds":["generic.turn_aborted"]}}},
+        {"type":"event_msg","payload":{"type":"turn_aborted","turn_id":"turn-current","reason":"interrupted"}}
+    ]);
+    let lines = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&path, format!("{lines}\n")).unwrap();
+    let full = load_codex_app_from_path("runner", &path).unwrap();
+    let window = super::load_codex_app_initial_window_from_path("runner", &path, 1).unwrap();
+    let mut visited = Vec::new();
+    super::visit_codex_app_from_path("runner", &path, &mut |turn| {
+        visited.extend(turn);
+        Ok(())
+    })
+    .unwrap();
+    for chunks in [&full, &window.chunks, &visited] {
+        let users = chunks
+            .iter()
+            .filter(|chunk| chunk.function == "user_message")
+            .collect::<Vec<_>>();
+        assert_eq!(users.len(), 1);
+        assert_eq!(users[0].result["message"]["content"], literal);
+        assert_eq!(users[0].result["turnIntentId"], "current");
+        assert!(chunks
+            .iter()
+            .any(|chunk| chunk.action_type == "task_failed"));
     }
     std::fs::remove_dir_all(dir).unwrap();
 }

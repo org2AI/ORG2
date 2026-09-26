@@ -119,6 +119,7 @@ export function ChatViewHistorySurface({
           />
         }
         overviewScopeKey={sessionId}
+        pinnedHeaderPortalHost={pinnedHeaderHost}
         surfaceBgClass={surfaceBgClass}
         bottomInset={historyBottomInset}
         viewportSessionKey={`agent-org-group:${agentOrgRunView.context.runId}`}

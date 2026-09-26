@@ -17,6 +17,8 @@ import type {
   ConversationRootLocator,
   LocalConversationTarget,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
+import { cloudWorkspaceRequiredDialogAtom } from "@src/features/Org2Cloud/SessionConversation/cloudWorkspaceRequiredDialogAtom";
+import type { Session } from "@src/store/session";
 
 import { SubmitValidationError } from "../useInputArea/types";
 import {
@@ -58,6 +60,9 @@ interface RouterHarnessProps {
   isDirectAgentOrgMember: boolean;
   onSurfaceSubmit: () => Promise<boolean>;
   selectedTarget: LocalConversationTarget | null;
+  conversationRoot: ConversationRootLocator | null;
+  currentSession?: Session;
+  importedCloudWorkspace: "pending" | "matched" | "missing" | null;
   onReady: (router: ConversationSubmitRouter) => void;
 }
 
@@ -66,14 +71,18 @@ function RouterHarness({
   isDirectAgentOrgMember,
   onSurfaceSubmit,
   selectedTarget: runtimeTarget,
+  conversationRoot,
+  currentSession,
+  importedCloudWorkspace,
   onReady,
 }: RouterHarnessProps): null {
   const router = useConversationSubmitRouter({
     sessionId,
     isDirectAgentOrgMember,
-    currentSession: undefined,
-    root,
+    currentSession,
+    root: conversationRoot,
     selectedTarget: runtimeTarget,
+    importedCloudWorkspace,
     onSurfaceSubmit,
   });
   useEffect(() => onReady(router), [onReady, router]);
@@ -81,23 +90,28 @@ function RouterHarness({
 }
 
 const mountedRoots: Array<{ container: HTMLDivElement; root: Root }> = [];
+let latestStore = createStore();
 
 function renderRouter(params: {
   sessionId?: string;
   isDirectAgentOrgMember?: boolean;
   onSurfaceSubmit?: () => Promise<boolean>;
   selectedTarget?: LocalConversationTarget | null;
+  conversationRoot?: ConversationRootLocator | null;
+  currentSession?: Session;
+  importedCloudWorkspace?: "pending" | "matched" | "missing" | null;
 }) {
   let router: ConversationSubmitRouter | undefined;
   const container = document.createElement("div");
   document.body.appendChild(container);
   const reactRoot = createRoot(container);
+  latestStore = createStore();
   mountedRoots.push({ container, root: reactRoot });
   act(() => {
     reactRoot.render(
       createElement(
         Provider,
-        { store: createStore() },
+        { store: latestStore },
         createElement(RouterHarness, {
           sessionId: params.sessionId ?? "root-session",
           isDirectAgentOrgMember: params.isDirectAgentOrgMember ?? false,
@@ -105,6 +119,12 @@ function renderRouter(params: {
             params.selectedTarget === undefined
               ? selectedTarget
               : params.selectedTarget,
+          conversationRoot:
+            params.conversationRoot === undefined
+              ? root
+              : params.conversationRoot,
+          currentSession: params.currentSession,
+          importedCloudWorkspace: params.importedCloudWorkspace ?? null,
           onSurfaceSubmit:
             params.onSurfaceSubmit ?? vi.fn().mockResolvedValue(false),
           onReady: (value) => {
@@ -210,6 +230,54 @@ describe("useConversationSubmitRouter", () => {
         target: selectedTarget,
       }),
     });
+  });
+
+  it("prompts to open a workspace before admitting an imported Cloud Agent turn", async () => {
+    const router = renderRouter({
+      currentSession: { importedFrom: { orgId: "org-1" } } as Session,
+      conversationRoot: {
+        authority: "org2-cloud",
+        authorityScope: ["org-1"],
+        conversationId: "source-1",
+      },
+      importedCloudWorkspace: "missing",
+      selectedTarget: { ...selectedTarget, workspaceRepoPath: null },
+    });
+
+    await expect(
+      router.submit({ displayText: "continue" })
+    ).rejects.toBeInstanceOf(SubmitValidationError);
+    expect(mocks.submitUserIntent).not.toHaveBeenCalled();
+    expect(latestStore.get(cloudWorkspaceRequiredDialogAtom)).toBe(true);
+  });
+
+  it("waits for local workspace resolution and never starts a bare-directory Agent", async () => {
+    const router = renderRouter({
+      currentSession: { importedFrom: { orgId: "org-1" } } as Session,
+      conversationRoot: null,
+      importedCloudWorkspace: "pending",
+      selectedTarget: null,
+    });
+
+    await expect(
+      router.submit({ displayText: "continue" })
+    ).rejects.toBeInstanceOf(SubmitValidationError);
+    expect(mocks.submitUserIntent).not.toHaveBeenCalled();
+    expect(latestStore.get(cloudWorkspaceRequiredDialogAtom)).toBe(false);
+  });
+
+  it("keeps human Team Chat available without a matching Agent workspace", async () => {
+    const router = renderRouter({
+      currentSession: { importedFrom: { orgId: "org-1" } } as Session,
+      importedCloudWorkspace: "missing",
+      onSurfaceSubmit: vi.fn().mockResolvedValue(true),
+    });
+
+    await expect(router.submit({ displayText: "human comment" })).resolves.toBe(
+      true
+    );
+    expect(mocks.submitUserIntent).not.toHaveBeenCalled();
+    expect(latestStore.get(cloudWorkspaceRequiredDialogAtom)).toBe(false);
   });
 
   it.each(["claude_code", "codex"])(

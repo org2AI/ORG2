@@ -386,6 +386,9 @@ export const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
     currentSession: session,
     root: conversationTargetBinding?.root ?? null,
     selectedTarget: conversationTargetBinding?.target ?? null,
+    importedCloudWorkspace:
+      conversationTargetBinding?.importedCloudWorkspace ??
+      (session?.importedFrom ? "pending" : null),
     onSurfaceSubmit: handleSurfaceSubmit,
   });
 

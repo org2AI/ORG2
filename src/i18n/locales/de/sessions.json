@@ -2624,6 +2624,10 @@
     "teamChatMode": "Team-Chat",
     "promptTooltip": "An den Agent senden",
     "teamChatTooltip": "Nachricht an Teammitglieder — löst den Agent nicht aus",
+    "workspaceResolving": "Lokaler Arbeitsbereich wird gesucht. Bitte gleich erneut versuchen.",
+    "workspaceRequiredTitle": "Passenden Arbeitsbereich öffnen",
+    "workspaceRequiredBody": "Um diese geteilte Unterhaltung mit einem Agenten fortzusetzen, öffnen Sie einen lokalen Checkout des Repositorys.",
+    "openWorkspace": "Arbeitsbereich öffnen",
     "imagesUnsupported": "Team-Chat-Nachrichten können keine Bilder enthalten",
     "participantsTooltip": "Teilnehmer der Unterhaltung und Diskussionsnachrichten",
     "mentionGroup": "Teammitglieder"

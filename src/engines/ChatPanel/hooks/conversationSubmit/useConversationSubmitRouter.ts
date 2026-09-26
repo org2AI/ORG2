@@ -11,12 +11,14 @@ import type {
   QueuedConversationDispatch,
   QueuedConversationDispatchResolution,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import { cloudWorkspaceRequiredDialogAtom } from "@src/features/Org2Cloud/SessionConversation/cloudWorkspaceRequiredDialogAtom";
 import {
   type Org2CloudAuthState,
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
 } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { useCloudSessionDownloadProgressEntry } from "@src/features/Org2Cloud/useCloudSessionDownloadSurface";
+import i18n from "@src/i18n";
 import type { Session } from "@src/store/session";
 
 import { isImportedSessionSubmitBlocked } from "../importedSessionSubmitReadiness";
@@ -33,6 +35,7 @@ interface UseConversationSubmitRouterOptions {
   currentSession: Session | undefined;
   root: ConversationRootLocator | null;
   selectedTarget: LocalConversationTarget | null;
+  importedCloudWorkspace: "pending" | "matched" | "missing" | null;
   /** Existing human/team-chat routing always gets first refusal. */
   onSurfaceSubmit: (input: SubmitOverrideInput) => Promise<boolean>;
 }
@@ -115,6 +118,7 @@ export function useConversationSubmitRouter({
   currentSession,
   root,
   selectedTarget,
+  importedCloudWorkspace,
   onSurfaceSubmit,
 }: UseConversationSubmitRouterOptions): ConversationSubmitRouter {
   const store = useStore();
@@ -135,6 +139,24 @@ export function useConversationSubmitRouter({
         throw new SubmitValidationError(
           "Wait for the shared session to finish loading before continuing"
         );
+      }
+
+      if (currentSession?.importedFrom) {
+        if (
+          importedCloudWorkspace === "pending" ||
+          !importedCloudWorkspace ||
+          !root
+        ) {
+          throw new SubmitValidationError(
+            i18n.t("sessions:conversation.workspaceResolving")
+          );
+        }
+        if (importedCloudWorkspace === "missing") {
+          store.set(cloudWorkspaceRequiredDialogAtom, true);
+          throw new SubmitValidationError(
+            i18n.t("sessions:conversation.workspaceRequiredBody")
+          );
+        }
       }
 
       const target = canonicalConversationTargetOrThrow(root, selectedTarget);
@@ -176,6 +198,7 @@ export function useConversationSubmitRouter({
     [
       currentSession,
       downloadProgress,
+      importedCloudWorkspace,
       root,
       selectedTarget,
       sessionId,

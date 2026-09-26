@@ -175,11 +175,8 @@ const Kanban: React.FC<TaskKanbanProps> = ({
       sessionIdFilter,
       followSidebarOrgScope,
     });
-  const {
-    replaySession: openRemoteSession,
-    forkSession,
-    busySessionRows,
-  } = useCloudSessionActions(cloudOrgId);
+  const { replaySession: openRemoteSession, busySessionRows } =
+    useCloudSessionActions(cloudOrgId);
 
   const renderListRowAction = useCallback(
     (task: KanbanTask): React.ReactNode => {
@@ -192,14 +189,14 @@ const Kanban: React.FC<TaskKanbanProps> = ({
           size="small"
           disabled={busySessionRows.has(remoteSession.id)}
           loading={busySessionRows.has(remoteSession.id)}
-          data-testid={`kanban-list-session-take-over-${remoteSession.sourceSessionId}`}
-          onClick={() => void forkSession(remoteSession)}
+          data-testid={`kanban-list-session-continue-${remoteSession.sourceSessionId}`}
+          onClick={() => void openRemoteSession(remoteSession)}
         >
-          {tCommon("workstation.takeOver")}
+          {tCommon("actions.continue")}
         </Button>
       );
     },
-    [busySessionRows, forkSession, remoteSessionsByTaskId, tCommon]
+    [busySessionRows, openRemoteSession, remoteSessionsByTaskId, tCommon]
   );
 
   const { visibleTasks, visibleDiaryTasks, visibleColumns, selectedTask } =

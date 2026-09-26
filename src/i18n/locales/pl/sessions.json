@@ -2624,6 +2624,10 @@
     "teamChatMode": "Czat zespołu",
     "promptTooltip": "Wyślij do Agenta",
     "teamChatTooltip": "Napisz do członków zespołu — nie wywołuje Agenta",
+    "workspaceResolving": "Trwa wyszukiwanie pasującego lokalnego obszaru roboczego. Spróbuj ponownie za chwilę.",
+    "workspaceRequiredTitle": "Otwórz pasujący obszar roboczy",
+    "workspaceRequiredBody": "Aby agent mógł kontynuować tę udostępnioną rozmowę, otwórz lokalną kopię repozytorium.",
+    "openWorkspace": "Otwórz obszar roboczy",
     "imagesUnsupported": "Wiadomości czatu zespołu nie mogą zawierać obrazów",
     "participantsTooltip": "Uczestnicy rozmowy i wiadomości dyskusji",
     "mentionGroup": "Członkowie zespołu"

@@ -2642,6 +2642,10 @@
     "teamChatMode": "團隊聊天",
     "promptTooltip": "傳送給 agent",
     "teamChatTooltip": "傳訊息給隊友 — 不會觸發 agent",
+    "workspaceResolving": "正在尋找符合的本機工作區，請稍後再試",
+    "workspaceRequiredTitle": "開啟符合的工作區",
+    "workspaceRequiredBody": "要讓 Agent 繼續此共享對話，請先開啟該儲存庫的本機工作區",
+    "openWorkspace": "開啟工作區",
     "imagesUnsupported": "團隊聊天訊息不能包含圖片",
     "participantsTooltip": "對話參與者與討論訊息",
     "mentionGroup": "隊友"

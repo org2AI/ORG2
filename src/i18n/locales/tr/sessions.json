@@ -2624,6 +2624,10 @@
     "teamChatMode": "Ekip sohbeti",
     "promptTooltip": "Agent'a gönder",
     "teamChatTooltip": "Takım arkadaşlarına mesaj gönder — agent'ı tetiklemez",
+    "workspaceResolving": "Eşleşen yerel çalışma alanı aranıyor. Birazdan tekrar deneyin.",
+    "workspaceRequiredTitle": "Eşleşen çalışma alanını aç",
+    "workspaceRequiredBody": "Bir ajanın bu paylaşılan konuşmayı sürdürmesi için deponun yerel bir kopyasını açın.",
+    "openWorkspace": "Çalışma alanını aç",
     "imagesUnsupported": "Ekip sohbeti mesajları görsel içeremez",
     "participantsTooltip": "Konuşma katılımcıları ve tartışma mesajları",
     "mentionGroup": "Takım arkadaşları"

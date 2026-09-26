@@ -14,6 +14,14 @@ import type {
   TranscriptViewportAnchor,
 } from "./transcriptNavigation";
 import {
+  KEYBOARD_LINE_DELTA_PX,
+  KEYBOARD_PAGE_DELTA_RATIO,
+  KEYBOARD_SCROLL_KEYS,
+  descendantOwnsWheel,
+  isInteractiveKeyboardTarget,
+  isScrollbarPointerDown,
+} from "./transcriptViewportInput";
+import {
   INITIAL_TRANSCRIPT_VIEWPORT_POLICY_STATE,
   type TranscriptFollowMode,
   type TranscriptViewportPolicyEvent,
@@ -24,17 +32,6 @@ export const TRANSCRIPT_ANCHOR_ATTRIBUTE = "data-transcript-anchor-id";
 
 const AT_TAIL_EPSILON_PX = 4;
 const MAX_ANCHOR_REVEAL_ATTEMPTS = 2;
-const KEYBOARD_SCROLL_KEYS = new Set([
-  "ArrowUp",
-  "ArrowDown",
-  "PageUp",
-  "PageDown",
-  "Home",
-  " ",
-  "Spacebar",
-]);
-const KEYBOARD_LINE_DELTA_PX = 40;
-const KEYBOARD_PAGE_DELTA_RATIO = 0.9;
 
 export type { TranscriptViewportAnchor } from "./transcriptNavigation";
 
@@ -72,54 +69,6 @@ export interface UseTranscriptViewportReturn {
   reconcileLayout: (duringReactCommit?: boolean) => void;
   showScrollToBottom: boolean;
   mode: TranscriptFollowMode;
-}
-
-// Descendant controls own activation and navigation keys before transcript scrolling.
-function isInteractiveKeyboardTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element &&
-    target.closest(
-      "input, textarea, select, button, a[href], summary, [contenteditable='true'], [role='textbox'], [role='button'], [role='slider'], [role='tab'], [role='menuitem']"
-    ) !== null
-  );
-}
-
-/** A descendant owns wheel intent while it can scroll in that direction. */
-function descendantOwnsWheel(event: WheelEvent, root: HTMLElement): boolean {
-  let element = event.target instanceof Element ? event.target : null;
-  while (element && element !== root) {
-    if (element.scrollHeight > element.clientHeight) {
-      const style = getComputedStyle(element);
-      if (style.overflowY === "auto" || style.overflowY === "scroll") {
-        const canScroll =
-          event.deltaY < 0
-            ? element.scrollTop > 0
-            : element.scrollTop + element.clientHeight < element.scrollHeight;
-        if (
-          canScroll ||
-          style.overscrollBehaviorY === "contain" ||
-          style.overscrollBehaviorY === "none"
-        ) {
-          return true;
-        }
-      }
-    }
-    element = element.parentElement;
-  }
-  return false;
-}
-
-function isScrollbarPointerDown(
-  event: PointerEvent,
-  element: HTMLElement
-): boolean {
-  if (event.button !== 0) return false;
-  const rect = element.getBoundingClientRect();
-  const nativeScrollbarWidth = Math.max(
-    0,
-    element.offsetWidth - element.clientWidth
-  );
-  return event.clientX >= rect.right - Math.max(12, nativeScrollbarWidth);
 }
 
 function isElementVisible(element: HTMLElement): boolean {

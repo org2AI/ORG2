@@ -381,6 +381,56 @@ function claudeCodeImportFixtureRoundLines(startRound, roundCount, baseMs) {
         message: { role: "user", content: `round-${round} prompt` },
       })
     );
+    if (round === CLAUDE_IMPORT_FIXTURE_ROUND_COUNT) {
+      const toolId = "e2e-browser-screenshot";
+      lines.push(
+        JSON.stringify({
+          type: "assistant",
+          sessionId: CLAUDE_IMPORT_FIXTURE_UUID,
+          cwd: CLAUDE_IMPORT_FIXTURE_CWD,
+          timestamp: new Date(baseMs + round * 2_000 + 100).toISOString(),
+          message: {
+            role: "assistant",
+            content: [
+              {
+                type: "tool_use",
+                id: toolId,
+                name: "mcp__Claude_Browser__browser_batch",
+                input: {},
+              },
+            ],
+          },
+        })
+      );
+      lines.push(
+        JSON.stringify({
+          type: "user",
+          sessionId: CLAUDE_IMPORT_FIXTURE_UUID,
+          cwd: CLAUDE_IMPORT_FIXTURE_CWD,
+          timestamp: new Date(baseMs + round * 2_000 + 200).toISOString(),
+          message: {
+            role: "user",
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: toolId,
+                content: [
+                  { type: "text", text: "Browser screenshot captured" },
+                  {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: "image/png",
+                      data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lXcAAAAASUVORK5CYII=",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        })
+      );
+    }
     lines.push(
       JSON.stringify({
         type: "assistant",

@@ -19,12 +19,16 @@ The projection now attaches galleries to their producing items before collapse. 
 - Production projection and gallery renderer regression: a Claude browser screenshot precedes the following reply, exactly one gallery, in expanded and collapsed states
 - Fixtures also cover screenshots after a reply, multiple image producers, repeated refs, image-only turns, unloaded previews, compact stacks, user attachment exclusion and input immutability
 - Playwright component evidence at 1040×980 light and 420×900 dark framing: images loaded, gallery precedes reply, no horizontal overflow, both expanded and collapsed states inspected
+- Isolated macOS Tauri/WebDriver run: `E2E_CHAT_RENDERING_SCENARIOS=claude-imported-image-order pnpm test -- --spec './specs/core/chat-rendering-ui.spec.mjs'` passed (1 scenario). The app discovered an on-disk Claude Code JSONL, a rendered sidebar click opened it, and the loaded image appeared at flat index 9 before the final reply at index 10. Native window screenshot below
+- The pre-existing `claude-imported-lazy-replay` scenario failed before its media assertions: the current app rendered all ten fixture rounds and no `turn-pagination-current-round` control. That stale pagination expectation was not changed as part of this image-order fix
 
-The screenshots below use actual server-rendered `GroupItemRenderer`/`OutputImageGallery` markup from the test fixture and existing built application CSS. The synthetic screenshot, page framing and tool/reply body stubs contain no private transcript data. They verify component placement; they are not full Tauri screenshots or provider ingestion E2E. Image loading/error behavior is unchanged and covered by existing gallery/thumbnail tests; no new loading/error UI was added.
+The first two screenshots use actual server-rendered `GroupItemRenderer`/`OutputImageGallery` markup from the test fixture and existing built application CSS. The synthetic screenshot, page framing and tool/reply body stubs contain no private transcript data. The third screenshot is the isolated Tauri app after real Claude Code JSONL ingestion. Image loading/error behavior is unchanged and covered by existing gallery/thumbnail tests; no new loading/error UI was added.
 
 ![Light desktop component fixture](history-images/light-desktop.png)
 
 ![Dark narrow component fixture](history-images/dark-narrow.png)
+
+![Imported Claude Code image before final reply in the isolated native app](history-images/claude-imported-native.png)
 
 ## Architecture and UI scope
 
@@ -52,15 +56,16 @@ The TSX edits only rename the existing ownership flag. No action control, input,
 | Scope/isolation    | keep    | Items retain session/event identity                            | No provider/root/account rewriting                                           | Multiple-turn and renderer tests                             |
 | Rendering/hot path | fix     | End-of-turn collection moved screenshots                       | One pass assigns images before collapse; gallery-only rows preserve position | 668 tests and component screenshots; no measured speed claim |
 
-| Provider          | Raw transition                                     | App/UI state            | Topology/boundary                                       | Expected invariant                                            | Observed evidence                                  |
-| ----------------- | -------------------------------------------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------- |
-| Claude Code       | Existing browser tool result, then assistant reply | Reported loaded history | Read-only raw JSONL                                     | Screenshot belongs to tool before reply                       | Raw source inspected; parser ownership confirmed   |
-| Shared projection | Loaded tool media, collapse/expand, multiple turns | Unit/component fixtures | Canonical events → flat items → actual gallery renderer | Preserve chronology, visibility and user attachment ownership | Regression tests and light/narrow-dark screenshots |
-| Claude Code       | Actual app reload/restart/append                   | Fixed desktop           | Native ingestion and virtualized GUI                    | No movement on hydration/reload                               | Not run                                            |
-| Other providers   | Native append/compaction/rotation                  | Fixed desktop           | Adapter/runtime                                         | No adapter compatibility claim                                | Not run; adapters unchanged                        |
-| All               | Visible/hidden idle and close/delete               | Runtime                 | CPU/RSS                                                 | No added background resource                                  | Source inspection; measurements not run            |
+| Provider          | Raw transition                                     | App/UI state            | Topology/boundary                                       | Expected invariant                                            | Observed evidence                                                     |
+| ----------------- | -------------------------------------------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Claude Code       | Existing browser tool result, then assistant reply | Reported loaded history | Read-only raw JSONL                                     | Screenshot belongs to tool before reply                       | Raw source inspected; parser ownership confirmed                      |
+| Shared projection | Loaded tool media, collapse/expand, multiple turns | Unit/component fixtures | Canonical events → flat items → actual gallery renderer | Preserve chronology, visibility and user attachment ownership | Regression tests and light/narrow-dark screenshots                    |
+| Claude Code       | Fresh import from on-disk JSONL                    | Isolated macOS Tauri    | Native ingestion and rendered GUI                       | Screenshot precedes the later reply                           | Rendered E2E passed; image index 9, reply index 10                    |
+| Claude Code       | Reload/restart/append                              | Fixed desktop           | Native ingestion and virtualized GUI                    | No movement after later history changes                       | Not run; old lazy-replay scenario has a stale pagination precondition |
+| Other providers   | Native append/compaction/rotation                  | Fixed desktop           | Adapter/runtime                                         | No adapter compatibility claim                                | Not run; adapters unchanged                                           |
+| All               | Visible/hidden idle and close/delete               | Runtime                 | CPU/RSS                                                 | No added background resource                                  | Source inspection; measurements not run                               |
 
-Performance verdict: blocked for full native runtime acceptance: fixed-build Tauri reload/restart and runtime CPU/RSS were not measured. The implemented path creates no new persistent/background resource.
+Performance verdict: the native initial-import path passed. Reload/restart behavior and runtime CPU/RSS were not measured. The implemented path creates no new persistent/background resource.
 
 ## Risks and rollback
 

@@ -8,6 +8,7 @@ import CloudShareImportDialog from "@src/features/Org2Cloud/CloudShareImportDial
 import CloudSyncLevelDialog from "@src/features/Org2Cloud/CloudSyncLevelDialog";
 import type { useCloudSyncLevelDialog } from "@src/features/Org2Cloud/CloudSyncLevelDialog/useCloudSyncLevelDialog";
 import JoinCloudOrgDialog from "@src/features/Org2Cloud/JoinCloudOrgDialog";
+import { CloudWorkspaceRequiredDialog } from "@src/features/Org2Cloud/SessionConversation/CloudWorkspaceRequiredDialog";
 import ForkCheckoutPickerDialog from "@src/features/TeamCollaboration/components/ForkCheckoutPickerDialog";
 import ForkSessionSetupDialog from "@src/features/TeamCollaboration/components/ForkSessionSetupDialog";
 import MoveToOrgDialog from "@src/features/TeamCollaboration/components/MoveToOrgDialog";
@@ -69,6 +70,7 @@ export const SidebarDialogs: React.FC<SidebarDialogsProps> = ({
       <JoinCloudOrgDialog />
       <ForkCheckoutPickerDialog />
       <ForkSessionSetupDialog />
+      <CloudWorkspaceRequiredDialog />
       {cloudChannelsDialogs}
       {localChannelsDialogs}
       {cloudMemberFilterDropdown}

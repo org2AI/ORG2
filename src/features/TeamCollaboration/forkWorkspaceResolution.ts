@@ -11,7 +11,7 @@ import { exists } from "@tauri-apps/plugin-fs";
 import Message from "@src/components/Message";
 import i18n from "@src/i18n";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
-import { reposAtom } from "@src/store/repo";
+import { reposAtom, selectedRepoAtom } from "@src/store/repo";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import type { Session } from "@src/store/session/sessionAtom/types";
 import {
@@ -59,6 +59,9 @@ export async function resolveForkWorkspacePath(
   if (!isStoreInitialized()) return null;
   const store = getInstrumentedStore();
   const candidates: string[] = [];
+  const selectedRepo = store.get(selectedRepoAtom);
+  const selectedPath = selectedRepo?.path ?? selectedRepo?.fs_uri;
+  if (selectedPath) candidates.push(selectedPath);
   for (const repo of store.get(reposAtom)) {
     if (repo.path) candidates.push(repo.path);
   }
@@ -85,18 +88,22 @@ export async function resolveForkWorkspacePath(
     }
   }
 
-  // Several local clones can share the same remote. Prefer the source's
-  // checkout when it is already a known, existing local candidate, rather
-  // than letting repo-list order silently move a continuation to a sibling.
-  // It still goes through scope verification below; a foreign path is never
-  // introduced as a new candidate by this preference.
+  // Several local clones can share the same remote. The window's selected
+  // workspace is an explicit local choice; otherwise prefer the source's
+  // exact checkout on a same-machine continuation. Both still pass git-remote
+  // scope verification below.
   const sourcePath = normalizeRepoScopeKey(remoteSession.repoPath ?? "");
   const sourceIndex = existingCandidates.findIndex(
     (candidate) => normalizeRepoScopeKey(candidate) === sourcePath
   );
-  if (sourceIndex > 0) {
+  const selectedIsFirst =
+    selectedPath &&
+    normalizeRepoScopeKey(existingCandidates[0] ?? "") ===
+      normalizeRepoScopeKey(selectedPath);
+  const sourcePriorityIndex = selectedIsFirst ? 1 : 0;
+  if (sourceIndex > sourcePriorityIndex) {
     const [sourceCandidate] = existingCandidates.splice(sourceIndex, 1);
-    existingCandidates.unshift(sourceCandidate);
+    existingCandidates.splice(sourcePriorityIndex, 0, sourceCandidate);
   }
 
   const byScopeKey = await resolveLocalCheckoutForScopeKey(
@@ -105,10 +112,9 @@ export async function resolveForkWorkspacePath(
   );
   if (byScopeKey) return byScopeKey;
 
-  // Same-machine fallback: exact path identity against our known local
-  // paths proves the checkout exists here even when there is no scope key
-  // to match (repo without a git remote) or remote resolution hiccuped.
-  if (remoteSession.repoPath) {
+  // Exact path is enough only for unscoped sessions. If a scope key exists,
+  // a moved/repointed local repo must not bypass the remote identity check.
+  if (!remoteSession.repoScopeKey && remoteSession.repoPath) {
     const normalizedOwnerPath = normalizeRepoScopeKey(remoteSession.repoPath);
     if (
       normalizedOwnerPath &&

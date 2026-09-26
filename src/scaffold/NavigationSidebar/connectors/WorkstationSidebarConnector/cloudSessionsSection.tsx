@@ -17,10 +17,10 @@
  * toggles the fork thread — without the flag the primitive treats a
  * children-bearing row as a group header whose whole body only toggles,
  * which stranded fork sources as unclickable once a fork added a child row.
- * The primitive renders hover rowActions on LEAF rows only, so Replay/Fork
+ * The primitive renders hover rowActions on LEAF rows only, so Replay
  * hover buttons appear on descendants and on single-row threads (rendered
  * as leaves); a multi-row thread's root keeps click-to-replay but has no
- * hover fork button — no self-duplicate child row is injected.
+ * hover action — no self-duplicate child row is injected.
  *
  *
  * This hook is a coordinator: thread derivation, selection, open/click
@@ -196,13 +196,6 @@ export function useCloudSessionsSection({
     });
   }, [downloadStartRequest, findRow, forkSession, orgId, runReplay, store]);
 
-  const runFork = useCallback(
-    (row: RemoteTeammateSessionMetadata) => {
-      void forkSession(row);
-    },
-    [forkSession]
-  );
-
   const { openTeamSessionAtDestination, handleCloudSessionItemClick } =
     useCloudSessionOpenHandlers({
       selfUserId,
@@ -238,7 +231,6 @@ export function useCloudSessionsSection({
     t,
     tCommon,
     openTeamSessionAtDestination,
-    runFork,
     hideRemoteSession,
     findRow,
   });

@@ -2613,6 +2613,10 @@
     "teamChatMode": "Chat tim",
     "promptTooltip": "Kirim ke agen",
     "teamChatTooltip": "Kirim pesan ke rekan tim — tidak memberi prompt ke agen",
+    "workspaceResolving": "Mencari ruang kerja lokal yang cocok. Coba lagi sebentar lagi.",
+    "workspaceRequiredTitle": "Buka ruang kerja yang cocok",
+    "workspaceRequiredBody": "Agar agen dapat melanjutkan percakapan bersama ini, buka salinan lokal repositorinya.",
+    "openWorkspace": "Buka ruang kerja",
     "imagesUnsupported": "Pesan chat tim tidak dapat menyertakan gambar",
     "participantsTooltip": "Peserta percakapan dan pesan diskusi",
     "mentionGroup": "Rekan tim"

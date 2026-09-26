@@ -10,7 +10,7 @@ import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { COLLAB_IDENTITY_KIND } from "@src/store/collaboration/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
-import { reposAtom } from "@src/store/repo";
+import { reposAtom, selectedRepoIdAtom } from "@src/store/repo";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import type {
   Session,
@@ -209,6 +209,7 @@ beforeEach(() => {
   eventStoreMock.getPersistedEvents.mockResolvedValue([]);
   store.set(sessionsAtom, []);
   store.set(reposAtom, []);
+  store.set(selectedRepoIdAtom, "");
   store.set(org2CloudOrgsAtom, []);
   store.set(org2CloudAccessSettingsAtom, {});
   store.set(sessionOrgTagsAtom, {});
@@ -217,6 +218,30 @@ beforeEach(() => {
 });
 
 describe("resolveForkWorkspacePath", () => {
+  it("uses the selected matching workspace before another local clone or the source path", async () => {
+    store.set(reposAtom, [
+      { id: "other", path: "/repo/other-clone" },
+      { id: "selected", path: "/repo/selected-clone" },
+    ] as never);
+    store.set(selectedRepoIdAtom, "selected");
+    store.set(sessionsAtom, [
+      { session_id: "source", repoPath: "/repo/shared" } as Session,
+    ]);
+    resolveCheckoutMock.mockImplementation(
+      async (_scopeKey, candidates) => candidates[0] ?? null
+    );
+
+    await expect(
+      resolveForkWorkspacePath(
+        makeRemote({ repoScopeKey: "github.com/example/repo" })
+      )
+    ).resolves.toBe("/repo/selected-clone");
+    expect(resolveCheckoutMock).toHaveBeenCalledWith(
+      "github.com/example/repo",
+      ["/repo/selected-clone", "/repo/shared", "/repo/other-clone"]
+    );
+  });
+
   it("prefers the known source checkout over another clone of the same repo", async () => {
     store.set(sessionsAtom, [
       { session_id: "other", repoPath: "/repo/other-clone" } as Session,
@@ -256,6 +281,19 @@ describe("resolveForkWorkspacePath", () => {
         makeRemote({ repoScopeKey: "github.com/example/repo" })
       )
     ).resolves.toBe("/repo/other-clone");
+  });
+
+  it("does not use an existing but repo-mismatched owner path as a scoped fallback", async () => {
+    store.set(sessionsAtom, [
+      { session_id: "source", repoPath: "/repo/shared" } as Session,
+    ]);
+    resolveCheckoutMock.mockResolvedValue(null);
+
+    await expect(
+      resolveForkWorkspacePath(
+        makeRemote({ repoScopeKey: "github.com/example/repo" })
+      )
+    ).resolves.toBeNull();
   });
 
   it("ignores stale imported paths and probes only checkouts that exist locally", async () => {

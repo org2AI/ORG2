@@ -207,6 +207,14 @@ export function useConversationTargetBinding(
     nativeCliTargets,
   });
 
+  const importedCloudWorkspace = session?.importedFrom
+    ? cloudSource.workspacePending || !cloudSource.source
+      ? "pending"
+      : cloudSource.source.workspaceRepoPath
+        ? "matched"
+        : "missing"
+    : null;
+
   return useMemo(
     () =>
       source
@@ -222,6 +230,7 @@ export function useConversationTargetBinding(
             selection: marketSelection,
             runtimeSelection,
             target,
+            importedCloudWorkspace,
             readiness,
             nativeCliTargets,
             applyRuntimePick,
@@ -235,6 +244,7 @@ export function useConversationTargetBinding(
       executionTargetHydrationFailed,
       executionTargetHydrationLoading,
       executionTargets,
+      importedCloudWorkspace,
       nativeCliTargets,
       marketSelection,
       readiness,

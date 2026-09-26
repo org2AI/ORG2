@@ -7,6 +7,7 @@ import { resolveForkWorkspacePath } from "@src/features/TeamCollaboration/forkWo
 import { createLogger } from "@src/hooks/logger";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import type { Repo } from "@src/store/repo";
+import { reposHydratedAtom, selectedRepoAtom } from "@src/store/repo";
 import type { Session } from "@src/store/session";
 import { getExternalHistoryCliAgentType } from "@src/util/session/sessionDispatch";
 
@@ -95,6 +96,8 @@ export function useCloudConversationSource({
   repos,
 }: CloudConversationSourceInput): CloudConversationSourceResolution {
   const auth = useAtomValue(org2CloudAuthAtom);
+  const selectedRepo = useAtomValue(selectedRepoAtom);
+  const reposHydrated = useAtomValue(reposHydratedAtom);
   const loadingSource = useCloudSessionLoadingSource(sessionId);
   const importedFrom = session?.importedFrom;
   const remoteEntries = useAtomValue(
@@ -139,6 +142,7 @@ export function useCloudConversationSource({
   const localWorkspaceInventoryKey = useMemo(
     () =>
       [
+        selectedRepo?.path ?? selectedRepo?.fs_uri,
         ...repos.map((repo) => repo.path),
         ...sessions
           // Imported rows may contain another device's absolute path. They
@@ -154,20 +158,33 @@ export function useCloudConversationSource({
         .filter((path): path is string => Boolean(path))
         .sort()
         .join("\n"),
-    [repos, sessions]
+    [repos, selectedRepo?.fs_uri, selectedRepo?.path, sessions]
   );
+  const workspaceResolutionKey = importedWorkspaceKey
+    ? JSON.stringify([
+        importedWorkspaceKey,
+        importedRemoteRow?.repoScopeKey,
+        importedRemoteRow?.repoPath,
+        localWorkspaceInventoryKey,
+      ])
+    : null;
 
   useEffect(() => {
     let cancelled = false;
-    if (!importedRemoteRow || !importedWorkspaceKey) return;
+    if (!importedRemoteRow || !workspaceResolutionKey) return;
     // A scoped Team Session needs the local repo/session inventory before a
     // missing match is authoritative. Keep the prior durable choice pending
     // during cold-start hydration instead of collapsing it to null.
-    if (importedRemoteRow.repoScopeKey && !localWorkspaceInventoryKey) return;
+    if (
+      importedRemoteRow.repoScopeKey &&
+      !localWorkspaceInventoryKey &&
+      !reposHydrated
+    )
+      return;
     void resolveForkWorkspacePath(importedRemoteRow)
       .then((path) => {
         if (!cancelled) {
-          setImportedWorkspaceResolution({ key: importedWorkspaceKey, path });
+          setImportedWorkspaceResolution({ key: workspaceResolutionKey, path });
         }
       })
       .catch((error: unknown) => {
@@ -178,17 +195,26 @@ export function useCloudConversationSource({
     return () => {
       cancelled = true;
     };
-  }, [importedRemoteRow, importedWorkspaceKey, localWorkspaceInventoryKey]);
+  }, [
+    importedRemoteRow,
+    localWorkspaceInventoryKey,
+    reposHydrated,
+    workspaceResolutionKey,
+  ]);
 
-  const workspacePending = Boolean(
-    importedRemoteRow &&
-    importedWorkspaceKey &&
-    importedWorkspaceResolution?.key !== importedWorkspaceKey
-  );
   const importedWorkspacePath =
-    importedWorkspaceResolution?.key === importedWorkspaceKey
+    importedWorkspaceResolution?.key === workspaceResolutionKey
       ? importedWorkspaceResolution.path
       : null;
+  const workspacePending = Boolean(
+    (importedFrom || loadingSource) &&
+    (!importedRemoteRow ||
+      !workspaceResolutionKey ||
+      importedWorkspaceResolution?.key !== workspaceResolutionKey ||
+      // A partial cold-start inventory may prove a match, but cannot yet
+      // prove that no checkout exists. Wait for the completed repo scan.
+      (!reposHydrated && !importedWorkspacePath))
+  );
   const source = useMemo(
     () =>
       !authorityLive

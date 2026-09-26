@@ -53,6 +53,10 @@ export const reposAtom = atom(
 );
 reposAtom.debugLabel = "reposAtom";
 
+/** True after the local repository inventory has loaded, including an empty list. */
+export const reposHydratedAtom = atom(false);
+reposHydratedAtom.debugLabel = "reposHydratedAtom";
+
 /** Valid repo IDs (for validation before API calls) */
 export const validRepoIdsAtom = atom<Set<string>>(new Set<string>());
 validRepoIdsAtom.debugLabel = "validRepoIdsAtom";

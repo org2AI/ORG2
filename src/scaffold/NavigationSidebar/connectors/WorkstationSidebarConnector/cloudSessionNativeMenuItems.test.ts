@@ -8,7 +8,6 @@ describe("buildCloudSessionNativeMenuItems", () => {
     const onOpenInNewWindow = vi.fn();
     const onOpenInMyStation = vi.fn();
     const onCopyUrl = vi.fn();
-    const onFork = vi.fn();
     const onTogglePin = vi.fn();
     const onRemove = vi.fn();
 
@@ -16,7 +15,6 @@ describe("buildCloudSessionNativeMenuItems", () => {
       isPinned: false,
       labels: {
         openIn: "Open in",
-        fork: "Take over",
         openInNewTab: "Open in New Tab",
         openInNewWindow: "Open in New Window",
         openInMyStation: "Open in My Station",
@@ -28,21 +26,13 @@ describe("buildCloudSessionNativeMenuItems", () => {
       onOpenInNewWindow,
       onOpenInMyStation,
       onCopyUrl,
-      onFork,
       onTogglePin,
       onRemove,
     });
 
     expect(
       items.map((item) => ("item" in item ? item.item : item.text))
-    ).toEqual([
-      "Open in",
-      "Take over",
-      "Copy URL",
-      "Pin",
-      "Separator",
-      "Remove",
-    ]);
+    ).toEqual(["Open in", "Copy URL", "Pin", "Separator", "Remove"]);
 
     const submenu = items[0];
     if (!("items" in submenu)) throw new Error("Missing Open in submenu");
@@ -58,7 +48,6 @@ describe("buildCloudSessionNativeMenuItems", () => {
     expect(onOpenInNewWindow).toHaveBeenCalledOnce();
     expect(onOpenInMyStation).toHaveBeenCalledOnce();
     expect(onCopyUrl).toHaveBeenCalledOnce();
-    expect(onFork).toHaveBeenCalledOnce();
     expect(onTogglePin).toHaveBeenCalledOnce();
     expect(onRemove).toHaveBeenCalledOnce();
   });

@@ -78,6 +78,7 @@ export interface PillGroupSegment {
   danger?: boolean;
   /** Disable interaction — useful while a sibling is loading */
   disabled?: boolean;
+  disabledTooltip?: React.ReactNode;
   /** Click handler for the segment */
   onClick?: (event: React.MouseEvent) => void;
   /** Stable selector for rendered UI tests */
@@ -203,6 +204,7 @@ const PillGroupSegmentRow: React.FC<PillGroupSegmentRowProps> = ({
       active={isActive}
       danger={segment.danger}
       disabled={segment.disabled}
+      disabledTooltip={segment.disabledTooltip}
       tooltip={segment.tooltip}
       tooltipFramed={segment.tooltipFramed}
       tooltipFramedWide={segment.tooltipFramedWide}

@@ -169,6 +169,46 @@ async function renderPicker(
 }
 
 describe("MobileModelPicker", () => {
+  it("keeps the empty trigger stable and natively disabled during loading", async () => {
+    const props: React.ComponentProps<typeof MobileModelPicker> = {
+      config: { sessionId: "empty", model: "", modelEditable: true },
+      options: [],
+      open: false,
+      onOpen: vi.fn(),
+      onClose: vi.fn(),
+      onSelect: vi.fn(),
+    };
+    await renderPicker(props);
+    const button = host!.querySelector<HTMLButtonElement>(
+      '[data-testid="mobile-model-picker-pill"]'
+    )!;
+    const draw = async (loading: boolean) =>
+      act(async () =>
+        root!.render(
+          createElement(
+            TestMobileRemotePlatformProvider,
+            { platform: testPlatform },
+            createElement(MobileModelPicker, { ...props, loading })
+          )
+        )
+      );
+    await draw(true);
+    expect(
+      host!.querySelector('[data-testid="mobile-model-picker-pill"]')
+    ).toBe(button);
+    expect(button.textContent).toBe("modelPicker.selectModel");
+    expect(button.disabled).toBe(true);
+    act(() => button.click());
+    expect(props.onOpen).not.toHaveBeenCalled();
+    await draw(false);
+    expect(
+      host!.querySelector('[data-testid="mobile-model-picker-pill"]')
+    ).toBe(button);
+    expect(button.disabled).toBe(false);
+    act(() => button.click());
+    expect(props.onOpen).toHaveBeenCalledOnce();
+  });
+
   it("uses only the remote account after scope replacement and repeated remounts", async () => {
     const select = vi.fn();
     await renderPicker({ onSelect: select });

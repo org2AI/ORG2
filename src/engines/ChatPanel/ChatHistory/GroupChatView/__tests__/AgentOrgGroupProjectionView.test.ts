@@ -335,6 +335,7 @@ describe("AgentOrgGroupProjectionView", () => {
     loading?: boolean;
     error?: string | null;
     runStatus?: "running" | "archived";
+    pinnedHeaderPortalHost?: HTMLDivElement;
   }) => {
     await act(async () => {
       root.render(
@@ -349,6 +350,7 @@ describe("AgentOrgGroupProjectionView", () => {
           actionPendingTurns: new Set<string>(),
           overviewPanel: React.createElement("div", null, "overview"),
           overviewScopeKey: "root-session",
+          pinnedHeaderPortalHost: overrides?.pinnedHeaderPortalHost,
           surfaceBgClass: "bg-chat-pane",
           bottomInset: 0,
           viewportSessionKey: "run:test",
@@ -581,6 +583,81 @@ describe("AgentOrgGroupProjectionView", () => {
     act(() => onScrollNavChange.mock.lastCall?.[0].onScrollToBottom());
     act(flushFrames);
     expect(scroller.scrollTop).toBe(920);
+  });
+
+  it("renders the navigation in the pinned host without moving transcript or overview content", async () => {
+    const host = document.createElement("div");
+    host.setAttribute("data-chat-pinned-header-portal-host", "");
+    host.style.paddingTop = "24px";
+    document.body.appendChild(host);
+    await renderView({ pinnedHeaderPortalHost: host });
+
+    const header = host.querySelector("header");
+    const switcher = host.querySelector(
+      '[data-testid="agent-org-surface-switcher"]'
+    );
+    const scroller = container.querySelector(
+      '[data-testid="agent-org-group-projection-scroll-container"]'
+    );
+    expect(header).not.toBeNull();
+    expect(header?.className).not.toContain("border-b");
+    expect(header?.firstElementChild?.className).toContain("h-10 min-h-10");
+    expect(header?.firstElementChild?.className).toContain(
+      "mx-auto w-full max-w-[800px]"
+    );
+    expect(header?.firstElementChild?.className).not.toContain("max-w-full");
+    expect(switcher?.getAttribute("data-agent-org-surface")).toBe("group-chat");
+    expect(host.querySelector("[data-turn-navigation-toolbar]")).toBeNull();
+    expect(container.querySelector("header")).toBeNull();
+    expect(scroller?.textContent).toContain("root question");
+    expect(host.textContent).not.toContain("root question");
+
+    const trigger = host.querySelector<HTMLButtonElement>(
+      '[data-testid="agent-org-overview-trigger"]'
+    );
+    await act(async () => trigger?.click());
+    expect(trigger?.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      container.querySelector('[data-testid="agent-org-overview-tray"]')
+    ).not.toBeNull();
+    expect(
+      host.querySelector('[data-testid="agent-org-overview-tray"]')
+    ).toBeNull();
+    await act(async () => trigger?.click());
+    expect(trigger?.getAttribute("aria-pressed")).toBe("false");
+    expect(
+      container.querySelector('[data-testid="agent-org-overview-tray"]')
+    ).toBeNull();
+
+    const memberTrigger = host.querySelector<HTMLButtonElement>(
+      '[data-testid="agent-org-member-switcher-trigger"]'
+    );
+    await act(async () => memberTrigger?.click());
+    await act(async () =>
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="agent-org-member-switcher-option-coordinator"]'
+        )
+        ?.click()
+    );
+    expect(onExitGroup).toHaveBeenCalledTimes(1);
+    expect(onMemberSelect).toHaveBeenCalledWith(members[0]);
+
+    await act(async () => root.unmount());
+    expect(host.querySelector("header")).toBeNull();
+    host.remove();
+    root = createRoot(container);
+  });
+
+  it("keeps its 40px navigation in the projection when no host is provided", async () => {
+    await renderView();
+    const header = container.querySelector("header");
+    expect(header).not.toBeNull();
+    expect(header?.className).not.toContain("border-b");
+    expect(header?.firstElementChild?.className).toContain("h-10 min-h-10");
+    expect(
+      container.querySelector('[data-testid="agent-org-surface-switcher"]')
+    ).not.toBeNull();
   });
 
   it("uses the shared compact navigation and overview tray without round controls", async () => {

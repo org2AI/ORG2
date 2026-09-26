@@ -886,7 +886,7 @@ describe("native conversation materialization", () => {
     ).rejects.toThrow("round-trip verification failed");
   });
 
-  it("removes a failed CLI materialization without touching other native history", async () => {
+  it("retains a failed CLI materialization for authoritative retry inspection", async () => {
     mocks.invokeTauri.mockResolvedValueOnce({
       nativeSessionId: "native-1",
       itemCount: 1,
@@ -902,12 +902,82 @@ describe("native conversation materialization", () => {
         timeline: [message("u1", "user", "hello")],
       })
     ).rejects.toThrow("round-trip verification failed");
-    expect(mocks.invokeTauri).toHaveBeenNthCalledWith(
-      2,
-      "discard_native_conversation_materialization",
-      { sessionId: "cliagent-target", nativeSessionId: "native-1" }
-    );
+    expect(mocks.invokeTauri).toHaveBeenCalledTimes(1);
   });
+
+  it("can synchronize a retained materialization after a transient read failure", async () => {
+    const timeline = [message("u1", "user", "hello")];
+    mocks.invokeTauri.mockResolvedValue({
+      nativeSessionId: "native-1",
+      itemCount: 1,
+    });
+    mocks.loadEvents.mockRejectedValueOnce(new Error("read interrupted"));
+    await expect(
+      materializeNativeConversation({ sessionId: "cliagent-target", timeline })
+    ).rejects.toThrow("read interrupted");
+    mocks.loadEvents.mockResolvedValue({
+      events: timeline,
+      source: "native_store",
+    });
+    await expect(
+      synchronizeNativeConversation({ sessionId: "cliagent-target", timeline })
+    ).resolves.toMatchObject({ receipt: { nativeSessionId: "native-1" } });
+    expect(mocks.invokeTauri.mock.calls.map(([command]) => command)).toEqual([
+      "materialize_native_conversation",
+      "synchronize_native_conversation",
+    ]);
+  });
+
+  it.each([
+    ["run_shell", "run_command_line"],
+    ["Bash", "run_command_line"],
+    ["Read", "read_file"],
+    ["Edit", "edit_file_by_replace"],
+    ["CustomTool", "customtool"],
+  ])(
+    "materializes %s using the native reader's %s vocabulary",
+    async (sourceName, storedName) => {
+      const source = {
+        ...tool(),
+        functionName: sourceName,
+        result: { output: "done" },
+      };
+      const replay = { ...source, functionName: storedName };
+      mocks.invokeTauri.mockResolvedValue({
+        nativeSessionId: "native-1",
+        itemCount: 2,
+      });
+      mocks.loadEvents.mockResolvedValue({
+        events: [replay],
+        source: "native_store",
+      });
+      await expect(
+        materializeNativeConversation({
+          sessionId: "cliagent-target",
+          timeline: [source],
+        })
+      ).resolves.toMatchObject({ receipt: { itemCount: 2 } });
+      const items = mocks.invokeTauri.mock.calls[0][1].items;
+      expect(items.map((item: { name: string }) => item.name)).toEqual([
+        storedName,
+        storedName,
+      ]);
+      expect(
+        nativeConversationItemsAreProviderPortablePrefix(
+          projectNativeConversationItems([source]),
+          projectNativeConversationItems([replay])
+        )
+      ).toBe(true);
+      expect(
+        nativeConversationItemsEqual(
+          projectNativeConversationItems([source]),
+          projectNativeConversationItems([
+            { ...replay, result: { output: "changed" } },
+          ])
+        )
+      ).toBe(false);
+    }
+  );
 });
 
 describe("structured tool names and arguments", () => {

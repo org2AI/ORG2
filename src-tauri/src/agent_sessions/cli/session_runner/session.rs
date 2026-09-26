@@ -18,7 +18,7 @@ use tokio::sync::Mutex;
 
 use crate::api::websocket_handler;
 use agent_core::session::{AgentExecMode, IdeContext};
-use key_vault::key_store::{KeyService, ModelType, KEY_SERVICE};
+use key_vault::key_store::{KeyService, ModelKey, ModelType, KEY_SERVICE};
 
 use super::super::launch_profile_store::resolve_cli_launch_profile;
 use super::super::persistence;
@@ -46,6 +46,24 @@ const MAX_OVERLOAD_RETRIES: u32 = 3;
 const OVERLOAD_RETRY_BASE_DELAY_SECS: u64 = 2;
 
 const MAX_STDERR_LINES: usize = 20;
+
+fn initial_cli_key(
+    key_service: &KeyService,
+    agent: &ModelType,
+    key_source: KeySource,
+    account_id: Option<&str>,
+) -> Option<ModelKey> {
+    if let Some(account_id) = account_id {
+        return key_service.get_key_by_id(account_id);
+    }
+    // Claude Code's Default model means the native CLI login, not an
+    // arbitrary saved account. Picking the oldest credential here can select
+    // a disabled account and make every retry fail before the CLI starts.
+    if key_source == KeySource::OwnKey && !matches!(agent, ModelType::ClaudeCode) {
+        return key_service.get_key(agent, None);
+    }
+    None
+}
 
 /// Routing/auth variables owned by an explicit Claude account selection.
 /// `tokio::process::Command` inherits the desktop process environment, so a
@@ -539,14 +557,13 @@ pub(crate) async fn run_session_with_ide_context(
     // handles the routing.
     // Keep dynamic-source ownership alive through spawn, retries and finalization.
     let managed_execution = crate::cli_managed_proxy::prepare_execution_profile(&session).await?;
-    let mut selected_key = session
-        .account_id
-        .as_deref()
-        .and_then(|id| key_vault::key_store::KEY_SERVICE.get_key_by_id(id));
+    let mut selected_key = initial_cli_key(
+        &KEY_SERVICE,
+        &agent,
+        session.key_source,
+        session.account_id.as_deref(),
+    );
     if session.key_source == KeySource::OwnKey {
-        if session.account_id.is_none() {
-            selected_key = KEY_SERVICE.get_key(&agent, None);
-        }
         if let Some(account_id) = session.account_id.as_deref() {
             selected_key = match agent {
                 ModelType::Codex => {

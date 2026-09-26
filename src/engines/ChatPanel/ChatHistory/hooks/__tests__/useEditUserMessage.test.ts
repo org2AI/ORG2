@@ -37,10 +37,12 @@ const {
   evictSessionSpy,
   invokeTauriSpy,
   flushMessageQueueSpy,
+  getEventsSpy,
   hydrateMessageQueueSpy,
   messageQueueHydrated,
   queuedDeliveries,
   realQueueStore,
+  reconcileOrphanSpy,
   removeByIdPrefixSpy,
   updateByIdSpy,
   upsertSpy,
@@ -57,10 +59,12 @@ const {
   evictSessionSpy: vi.fn(async () => undefined),
   invokeTauriSpy: vi.fn(async () => 0),
   flushMessageQueueSpy: vi.fn(async () => undefined),
+  getEventsSpy: vi.fn(async () => [] as SessionEvent[]),
   hydrateMessageQueueSpy: vi.fn(async () => undefined),
   messageQueueHydrated: { current: true },
   queuedDeliveries: { current: [] as Array<Record<string, unknown>> },
   realQueueStore: { current: null as Store | null },
+  reconcileOrphanSpy: vi.fn(async () => false),
   removeByIdPrefixSpy: vi.fn(async () => 1),
   updateByIdSpy: vi.fn(async () => true),
   upsertSpy: vi.fn(async (..._args: unknown[]) => undefined),
@@ -140,6 +144,7 @@ vi.mock("@src/engines/SessionCore/core/atoms", () => ({
 
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
+    getEvents: getEventsSpy,
     removeByIdPrefix: removeByIdPrefixSpy,
     updateById: updateByIdSpy,
     upsert: upsertSpy,
@@ -153,6 +158,7 @@ vi.mock(
   () => ({
     flushMessageQueuePersistence: flushMessageQueueSpy,
     hydrateMessageQueue: hydrateMessageQueueSpy,
+    reconcileOrphanedOptimisticQueueProjections: reconcileOrphanSpy,
     refreshMessageDeliveries: refreshMessageDeliveriesSpy,
   })
 );
@@ -260,7 +266,11 @@ describe("useEditUserMessage resend projection", () => {
     evictSessionSpy.mockClear();
     invokeTauriSpy.mockClear();
     flushMessageQueueSpy.mockClear();
+    getEventsSpy.mockReset();
+    getEventsSpy.mockResolvedValue([]);
     hydrateMessageQueueSpy.mockClear();
+    reconcileOrphanSpy.mockReset();
+    reconcileOrphanSpy.mockResolvedValue(false);
     hydrateMessageQueueSpy.mockImplementation(async () => {
       queuedDeliveries.current = [...durableHydrationRows.current];
       messageQueueHydrated.current = true;
@@ -488,6 +498,54 @@ describe("useEditUserMessage resend projection", () => {
     expect(storeSetSpy).not.toHaveBeenCalledWith(
       expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
       expect.anything()
+    );
+  });
+
+  it("repairs a missing durable owner on Retry before resubmitting the failed turn", async () => {
+    storeSessionId.current = "sdeagent-root";
+    const failed = {
+      event: {
+        id: "queued-user:queue-orphan:",
+        sessionId: "cliagent-child",
+        source: "user",
+        displayText: "continue the conversation",
+        displayStatus: "failed",
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          queueMessageId: "queue-orphan",
+          turnIntentId: "intent-orphan",
+          deliveryError: "native transcript mismatch",
+        },
+      },
+      chunk_id: "queued-user:queue-orphan:",
+    } as unknown as OptimizedChatItem;
+    reconcileOrphanSpy.mockResolvedValueOnce(true);
+    const failedEvent = failed.event as SessionEvent;
+    getEventsSpy.mockResolvedValueOnce([
+      {
+        ...failedEvent,
+        result: {
+          ...failedEvent.result,
+          queueMessageId: undefined,
+        },
+      } as SessionEvent,
+    ]);
+
+    await act(async () => {
+      await editUserMessage?.(failed, "continue the conversation");
+    });
+
+    expect(reconcileOrphanSpy).toHaveBeenCalledWith("cliagent-child");
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "sdeagent-root",
+        turnIntentId: "intent-orphan",
+      })
+    );
+    expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
+      "queued-user:queue-orphan:",
+      "cliagent-child"
     );
   });
 

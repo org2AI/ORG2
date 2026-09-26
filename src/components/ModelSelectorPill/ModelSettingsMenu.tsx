@@ -49,6 +49,7 @@ export interface HarnessSwitchAction {
 }
 
 export interface ModelSettingsMenuProps {
+  disabled?: boolean;
   anchorRef: React.RefObject<HTMLButtonElement | null>;
   modelLabel: string;
   value?: string;
@@ -73,6 +74,7 @@ export interface ModelSettingsMenuProps {
 
 /** One menu for the combined model pill; callers still own every saved value. */
 export default function ModelSettingsMenu({
+  disabled = false,
   anchorRef,
   modelLabel,
   value = "",
@@ -108,6 +110,10 @@ export default function ModelSettingsMenu({
   useEffect(() => {
     onOpenChange?.(isOpen);
   }, [isOpen, onOpenChange]);
+  useEffect(() => {
+    if (!disabled) return;
+    closeDropdown();
+  }, [disabled, closeDropdown]);
   const selection = variantOptions.parseSelection(value);
   const levels = variantOptions.availableLevels;
   const effortLabel = selection.level
@@ -217,15 +223,21 @@ export default function ModelSettingsMenu({
   return (
     <>
       {renderTrigger({
-        open: isOpen,
-        previewLevel: isOpen ? previewLevel : undefined,
+        open: isOpen && !disabled,
+        previewLevel: isOpen && !disabled ? previewLevel : undefined,
         onClick: (event) => {
           event.preventDefault();
           event.stopPropagation();
+          if (disabled) return;
+          if (!isOpen) {
+            setAdvanced(defaultAdvanced);
+            setPreviewLevel(undefined);
+          }
           toggle();
         },
       })}
       {isOpen &&
+        !disabled &&
         createPortal(
           <div
             ref={panelRef}

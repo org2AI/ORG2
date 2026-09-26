@@ -94,6 +94,7 @@ vi.mock("@src/components/ModelSelectorPill", async () => {
       {
         onClick: () => void;
         dataTestId: string;
+        defaultLabel: string;
         disabled?: boolean;
         harnessSwitch?: {
           label: string;
@@ -101,16 +102,20 @@ vi.mock("@src/components/ModelSelectorPill", async () => {
           disabled?: boolean;
         };
       }
-    >(({ onClick, dataTestId, disabled, harnessSwitch }, ref) =>
+    >(({ onClick, dataTestId, defaultLabel, disabled, harnessSwitch }, ref) =>
       createElement(
         "div",
         null,
-        createElement("button", {
-          ref,
-          "data-testid": dataTestId,
-          disabled,
-          onClick,
-        }),
+        createElement(
+          "button",
+          {
+            ref,
+            "data-testid": dataTestId,
+            disabled,
+            onClick,
+          },
+          defaultLabel
+        ),
         harnessSwitch &&
           createElement(
             "button",
@@ -267,6 +272,48 @@ describe("ModelPill disclosure ownership", () => {
       model: undefined,
     });
   }
+
+  it("keeps Select model text while empty conversations hydrate, without allowing premature picks", () => {
+    const selection = fixture.binding.selection;
+    const target = fixture.binding.target;
+    const runtime = fixture.binding.runtimeSelection;
+    try {
+      Reflect.set(fixture.binding, "selection", null);
+      Reflect.set(fixture.binding, "target", null);
+      Reflect.set(fixture.binding, "runtimeSelection", null);
+      for (const id of ["empty-a", "empty-b", "empty-a"]) {
+        fixture.sessionId = id;
+        for (const readiness of ["loading", "ready"]) {
+          fixture.binding.readiness = readiness;
+          act(() => {
+            // The production session/binding context notifies the memoized
+            // consumer; this mocked context uses its subscribed selector atom.
+            store.set(modelSelectorAtom, { isOpen: false });
+            renderCurrentSession();
+          });
+          const button = container.querySelector<HTMLButtonElement>(
+            '[data-testid="chat-model-pill-model"]'
+          )!;
+          expect(button.textContent).toBe("sessions:creator.selectModel");
+          expect(button.disabled).toBe(readiness === "loading");
+          if (readiness === "loading") {
+            act(() => button.click());
+            expect(
+              container.querySelector('[data-testid="model-palette"]')
+            ).toBeNull();
+            expect(
+              container.querySelector('[data-testid="runtime-palette"]')
+            ).toBeNull();
+          }
+        }
+      }
+    } finally {
+      fixture.binding.selection = selection;
+      fixture.binding.target = target;
+      fixture.binding.runtimeSelection = runtime;
+      fixture.binding.readiness = "ready";
+    }
+  });
 
   it("opens the original agent's model picker before a complete target exists", () => {
     const target = fixture.binding.target;

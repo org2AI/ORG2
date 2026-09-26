@@ -275,6 +275,8 @@ interface SelectorPillProps {
   labelStyle?: React.CSSProperties;
   dataTestId?: string;
   disabled?: boolean;
+  /** Keep configured in both states to preserve the focusable explanation host. */
+  disabledTooltip?: React.ReactNode;
   /** Drop left padding so the icon lines up with composer editor text. */
   leadingFlush?: boolean;
 }
@@ -313,6 +315,7 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
       labelStyle,
       dataTestId,
       disabled,
+      disabledTooltip,
       leadingFlush = false,
     },
     ref
@@ -345,7 +348,9 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
     // We track hover/focus intent only; the effective visibility is gated on
     // `active` so no effect is needed to re-hide when the pill activates.
     const [hoverIntent, setHoverIntent] = useState(false);
-    const tooltipOpen = hoverIntent && !active;
+    const tooltipContent =
+      disabled && disabledTooltip ? disabledTooltip : tooltip;
+    const tooltipOpen = hoverIntent && !active && Boolean(tooltipContent);
     const handleTooltipOpenChange = useCallback((next: boolean) => {
       setHoverIntent(next);
     }, []);
@@ -368,7 +373,7 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
         aria-label={ariaLabel}
         aria-expanded={ariaExpanded}
         data-testid={dataTestId}
-        title={tooltip ? undefined : (title ?? label)}
+        title={tooltipContent ? undefined : (title ?? label)}
         className={`group/pill flex min-w-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${buttonSizeClass} ${labelClassName ? "font-normal" : "font-medium"} ${appearanceClasses} ${className}`}
       >
         <SelectorPillContent
@@ -391,23 +396,41 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
       </Button>
     );
 
-    if (tooltip) {
-      return (
-        <Tooltip
-          content={tooltip}
-          position={tooltipPosition}
-          kind="button"
-          open={tooltipOpen}
-          onOpenChange={handleTooltipOpenChange}
-          framedPanel={tooltipFramed}
-          framedPanelWide={tooltipFramedWide}
-        >
-          {button}
-        </Tooltip>
-      );
-    }
-
-    return button;
+    // The Tooltip owner remains mounted even when its content disappears.
+    // Conditional wrapping here used to replace every caller's button DOM.
+    return (
+      <Tooltip
+        content={tooltipContent}
+        disabled={!tooltipContent}
+        position={tooltipPosition}
+        kind={disabled && disabledTooltip ? "info" : "button"}
+        open={tooltipOpen}
+        onOpenChange={handleTooltipOpenChange}
+        framedPanel={tooltipFramed}
+        framedPanelWide={tooltipFramedWide}
+      >
+        {disabledTooltip !== undefined ? (
+          <span
+            tabIndex={disabled && disabledTooltip ? 0 : undefined}
+            onFocus={() => {
+              if (disabled) setHoverIntent(true);
+            }}
+            onBlur={() => setHoverIntent(false)}
+            aria-disabled={disabled || undefined}
+            aria-label={
+              disabled && typeof disabledTooltip === "string"
+                ? `${ariaLabel ?? label}: ${disabledTooltip}`
+                : undefined
+            }
+            className="inline-flex max-w-full min-w-0"
+          >
+            {button}
+          </span>
+        ) : (
+          button
+        )}
+      </Tooltip>
+    );
   }
 );
 

@@ -2624,6 +2624,10 @@
     "teamChatMode": "Trò chuyện nhóm",
     "promptTooltip": "Gửi cho agent",
     "teamChatTooltip": "Nhắn cho đồng đội — không kích hoạt agent",
+    "workspaceResolving": "Đang tìm không gian làm việc cục bộ phù hợp. Hãy thử lại sau giây lát.",
+    "workspaceRequiredTitle": "Mở không gian làm việc phù hợp",
+    "workspaceRequiredBody": "Để agent tiếp tục cuộc trò chuyện chung này, hãy mở bản sao cục bộ của kho mã.",
+    "openWorkspace": "Mở không gian làm việc",
     "imagesUnsupported": "Tin nhắn trò chuyện nhóm không thể chứa hình ảnh",
     "participantsTooltip": "Người tham gia cuộc trò chuyện và tin nhắn thảo luận",
     "mentionGroup": "Đồng đội"

@@ -2624,6 +2624,10 @@
     "teamChatMode": "팀 채팅",
     "promptTooltip": "Agent에게 보내기",
     "teamChatTooltip": "팀원에게 메시지 보내기 — Agent에게 프롬프트를 보내지 않습니다",
+    "workspaceResolving": "일치하는 로컬 작업 공간을 찾는 중입니다. 잠시 후 다시 시도하세요.",
+    "workspaceRequiredTitle": "일치하는 작업 공간 열기",
+    "workspaceRequiredBody": "에이전트가 이 공유 대화를 계속하려면 저장소의 로컬 체크아웃을 여세요.",
+    "openWorkspace": "작업 공간 열기",
     "imagesUnsupported": "팀 채팅 메시지에는 이미지를 포함할 수 없습니다",
     "participantsTooltip": "대화 참여자 및 토론 메시지",
     "mentionGroup": "팀원"

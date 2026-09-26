@@ -49,6 +49,7 @@ export { REPO_KIND } from "./types";
 export {
   // Repo atoms
   reposAtom,
+  reposHydratedAtom,
   validRepoIdsAtom,
   // Persisted atoms (window-scoped)
   selectedRepoIdAtom,

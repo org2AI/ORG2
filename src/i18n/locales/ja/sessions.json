@@ -2624,6 +2624,10 @@
     "teamChatMode": "チームチャット",
     "promptTooltip": "Agent に送信",
     "teamChatTooltip": "チームメイトにメッセージ — Agent には送られません",
+    "workspaceResolving": "一致するローカルワークスペースを確認中です。少し待ってから再試行してください。",
+    "workspaceRequiredTitle": "一致するワークスペースを開く",
+    "workspaceRequiredBody": "この共有会話をエージェントが続けるには、リポジトリのローカルチェックアウトを開いてください。",
+    "openWorkspace": "ワークスペースを開く",
     "imagesUnsupported": "チームチャットのメッセージには画像を含められません",
     "participantsTooltip": "会話の参加者とディスカッションメッセージ",
     "mentionGroup": "チームメイト"

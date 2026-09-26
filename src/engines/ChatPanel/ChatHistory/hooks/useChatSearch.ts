@@ -26,6 +26,10 @@ import { agentOrgExecutionNavigationAtom } from "../agentOrgExecutionNavigation"
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import type { ChatHistoryListHandle } from "../components/ChatHistoryList";
 import {
+  type BeginTranscriptNavigation,
+  chatNavigationScopeKey,
+} from "../viewport/transcriptNavigation";
+import {
   EMPTY_CHAT_SEARCH_SYNC,
   buildChatSearchSyncState,
   useChatSearchPanePresentation,
@@ -41,11 +45,7 @@ import {
   searchChatHistoryLocally,
   wrapNextSearchResultIndex,
 } from "./chatSearchHelpers";
-import {
-  buildEventIdProjectionIndex,
-  resolvePageIndexForFlatIndex,
-  toDisplayFlatIndex,
-} from "./chatSearchProjection";
+import { buildEventIdProjectionIndex } from "./chatSearchProjection";
 import type { ChatGroupMeta } from "./useChatGroups";
 import { useChatSearchShortcut } from "./useChatSearchShortcut";
 import type { ChatTurnPage } from "./useChatTurnPagination";
@@ -61,6 +61,9 @@ export interface UseChatSearchOptions {
   sessionId: string | null;
   chatHistory: MappedSearchResult["item"][];
   flatItems: OptimizedChatItem[];
+  sourceItems?: OptimizedChatItem[];
+  originalToFlatIndex?: ReadonlyMap<number, number>;
+  groupHeaders?: (OptimizedChatItem | null)[];
   groupCounts: number[];
   groupMeta: ChatGroupMeta[];
   pages: ChatTurnPage[];
@@ -69,7 +72,7 @@ export interface UseChatSearchOptions {
   setTurnPageSelection: Dispatch<SetStateAction<TurnPageSelection>>;
   virtualListRef: RefObject<ChatHistoryListHandle | null>;
   chatContainerRef: RefObject<HTMLDivElement | null>;
-  onExplicitNavigation: () => void;
+  onExplicitNavigation: BeginTranscriptNavigation;
   debounceMs?: number;
   maxResults?: number;
 }
@@ -149,6 +152,9 @@ export function useChatSearch(
     sessionId,
     chatHistory,
     flatItems,
+    sourceItems,
+    originalToFlatIndex,
+    groupHeaders,
     groupCounts,
     groupMeta,
     pages,
@@ -186,8 +192,10 @@ export function useChatSearch(
   const modesRef = useRef(modes);
   modesRef.current = modes;
   const suppressScrollSyncRef = useRef(false);
-  const pendingScrollResultRef = useRef<SearchResult | null>(null);
-  const pendingScrollNeedsLayoutRef = useRef(false);
+  const groupMetaRef = useRef(groupMeta);
+  groupMetaRef.current = groupMeta;
+  const chatHistoryRef = useRef(chatHistory);
+  chatHistoryRef.current = chatHistory;
 
   const [executionNavigation, setExecutionNavigation] = useAtom(
     agentOrgExecutionNavigationAtom
@@ -201,8 +209,23 @@ export function useChatSearch(
   const setCollapseState = useSetAtom(setCollapseStateAtom);
 
   const projectionIndex = useMemo(
-    () => buildEventIdProjectionIndex(flatItems, groupCounts, groupMeta),
-    [flatItems, groupCounts, groupMeta]
+    () =>
+      buildEventIdProjectionIndex(
+        flatItems,
+        groupCounts,
+        groupMeta,
+        sourceItems,
+        originalToFlatIndex,
+        groupHeaders
+      ),
+    [
+      flatItems,
+      groupCounts,
+      groupMeta,
+      sourceItems,
+      originalToFlatIndex,
+      groupHeaders,
+    ]
   );
   const projectionIndexRef = useRef(projectionIndex);
   projectionIndexRef.current = projectionIndex;
@@ -223,64 +246,59 @@ export function useChatSearch(
     searchGenerationRef.current += 1;
   }, [setChatSearchSync]);
 
-  const finishPendingScroll = useCallback(
-    (result: SearchResult) => {
-      const eventId = result.item.id || result.item.chunk_id || "";
-      const projection = eventId
-        ? projectionIndexRef.current.get(eventId)
-        : undefined;
-
-      let targetPageIndex = currentPageIndexRef.current;
-      if (turnPaginationEnabled && projection) {
-        const resolvedPage = resolvePageIndexForFlatIndex(
-          projection.globalFlatIndex,
-          pagesRef.current
-        );
-        if (resolvedPage !== null) {
-          targetPageIndex = resolvedPage;
-        }
-      }
-
-      // Non-paginated view renders the full flat list; passing a turn page
-      // slice here would clip indices outside the first page to null.
-      const targetPage = turnPaginationEnabled
-        ? pagesRef.current[targetPageIndex]
-        : undefined;
-      const displayFlatIndex = projection
-        ? toDisplayFlatIndex(projection.globalFlatIndex, targetPage)
-        : null;
-
-      virtualListRef.current?.scrollToChatTarget({
-        eventId,
-        itemId: projection?.itemChunkId,
-        flatIndex: displayFlatIndex ?? undefined,
-        behavior: "auto",
-      });
-
-      window.setTimeout(() => {
-        suppressScrollSyncRef.current = false;
-      }, 80);
-    },
-    [turnPaginationEnabled, virtualListRef]
-  );
-
   const scrollToSearchResult = useCallback(
     (result: SearchResult) => {
-      onExplicitNavigation();
       const eventId = result.item.id || result.item.chunk_id || "";
       const projection = eventId
         ? projectionIndexRef.current.get(eventId)
         : undefined;
-      const resolvedPage =
+      const pageIndex =
         turnPaginationEnabled && projection
-          ? resolvePageIndexForFlatIndex(
-              projection.globalFlatIndex,
-              pagesRef.current
+          ? pagesRef.current.findIndex(
+              (page) =>
+                projection.groupIndex >= page.startGroupIndex &&
+                projection.groupIndex <= page.endGroupIndex
             )
-          : null;
-      const needsFlatItemsLayout =
-        Boolean(projection?.turnId) ||
-        (resolvedPage !== null && resolvedPage !== currentPageIndexRef.current);
+          : -1;
+      const resolvedPage = pageIndex >= 0 ? pageIndex : null;
+      const targetPageIndex = resolvedPage ?? currentPageIndexRef.current;
+      onExplicitNavigation({
+        id: eventId,
+        scopeKey: chatNavigationScopeKey(
+          sessionId,
+          turnPaginationEnabled ? targetPageIndex : null
+        ),
+        readGeometry: () => {
+          const current = projectionIndexRef.current.get(eventId);
+          if (!current) {
+            return {
+              status: chatHistoryRef.current.some(
+                (item) => item.id === eventId || item.chunk_id === eventId
+              )
+                ? "pending"
+                : "missing",
+            };
+          }
+          const page = turnPaginationEnabled
+            ? pagesRef.current[targetPageIndex]
+            : undefined;
+          const anchorId = virtualListRef.current?.getGroupAnchorId(
+            current.groupIndex - (page?.startGroupIndex ?? 0)
+          );
+          if (!anchorId) return { status: "pending" };
+          return (
+            virtualListRef.current?.readNavigationGeometry({
+              anchorId,
+              eventId,
+              itemId: current.itemChunkId,
+            }) ?? { status: "pending" }
+          );
+        },
+        onEnd: () => {
+          suppressScrollSyncRef.current = false;
+        },
+      });
+      suppressScrollSyncRef.current = true;
 
       if (projection?.turnId) {
         setTurnCollapseOverride({
@@ -298,21 +316,8 @@ export function useChatSearch(
           sessionId,
         });
       }
-
-      suppressScrollSyncRef.current = true;
-
-      if (needsFlatItemsLayout) {
-        pendingScrollResultRef.current = result;
-        pendingScrollNeedsLayoutRef.current = true;
-        return;
-      }
-
-      window.requestAnimationFrame(() => {
-        finishPendingScroll(result);
-      });
     },
     [
-      finishPendingScroll,
       navigateToEvent,
       onExplicitNavigation,
       sessionId,
@@ -320,21 +325,9 @@ export function useChatSearch(
       setTurnCollapseOverride,
       setTurnPageSelection,
       turnPaginationEnabled,
+      virtualListRef,
     ]
   );
-
-  useEffect(() => {
-    if (!pendingScrollNeedsLayoutRef.current) return;
-    const result = pendingScrollResultRef.current;
-    if (!result) return;
-
-    pendingScrollNeedsLayoutRef.current = false;
-    pendingScrollResultRef.current = null;
-
-    window.requestAnimationFrame(() => {
-      finishPendingScroll(result);
-    });
-  }, [currentPageIndex, finishPendingScroll, flatItems, groupCounts]);
 
   useEffect(() => {
     if (!executionNavigation || executionNavigation.sessionId !== sessionId) {
@@ -351,39 +344,42 @@ export function useChatSearch(
         page.startGroupIndex <= groupIndex && page.endGroupIndex >= groupIndex
     );
     if (turnPaginationEnabled && targetPage < 0) return;
-    if (
-      turnPaginationEnabled &&
-      targetPage >= 0 &&
-      targetPage !== currentPageIndex
-    ) {
-      setTurnPageSelection({ sessionId, pageIndex: targetPage });
-      return;
-    }
-    if (preparedExecutionNavigationRef.current !== executionNavigation) {
-      preparedExecutionNavigationRef.current = executionNavigation;
-      setTurnCollapseOverride({
-        turnId: `agent-org-execution-${executionNavigation.turnIntentId}`,
-        collapsed: false,
-      });
-    }
-    // Execution anchors belong to group headers, not searchable body items.
-    // Wait for the expanded page layout, then use the same group navigation
-    // as the minimap, including executions with no inbox or body event.
-    const frame = window.requestAnimationFrame(() => {
-      if (!virtualListRef.current) return;
-      // Detach in the same frame as the actual movement. Detaching during
-      // preparation lets the viewport capture the old position first, then
-      // restore it when the expanded content reports its new size.
-      onExplicitNavigation();
-      virtualListRef.current.scrollToGroup({
-        groupIndex: turnPaginationEnabled
-          ? groupIndex - pages[currentPageIndex].startGroupIndex
-          : groupIndex,
-        behavior: "auto",
-      });
-      setExecutionNavigation(null);
+    if (preparedExecutionNavigationRef.current === executionNavigation) return;
+    preparedExecutionNavigationRef.current = executionNavigation;
+    onExplicitNavigation({
+      id: executionNavigation.turnIntentId,
+      scopeKey: chatNavigationScopeKey(
+        sessionId,
+        turnPaginationEnabled ? targetPage : null
+      ),
+      readGeometry: () => {
+        const index = groupMetaRef.current.findIndex(
+          (meta) =>
+            meta.execution?.turnIntentId === executionNavigation.turnIntentId
+        );
+        if (index < 0) return { status: "missing" };
+        const page = turnPaginationEnabled
+          ? pagesRef.current[targetPage]
+          : undefined;
+        const anchorId = virtualListRef.current?.getGroupAnchorId(
+          index - (page?.startGroupIndex ?? 0)
+        );
+        return anchorId
+          ? virtualListRef.current!.readNavigationGeometry({ anchorId })
+          : { status: "pending" };
+      },
+      onEnd: () =>
+        setExecutionNavigation((current) =>
+          current === executionNavigation ? null : current
+        ),
     });
-    return () => window.cancelAnimationFrame(frame);
+    if (turnPaginationEnabled && targetPage !== currentPageIndex) {
+      setTurnPageSelection({ sessionId, pageIndex: targetPage });
+    }
+    setTurnCollapseOverride({
+      turnId: `agent-org-execution-${executionNavigation.turnIntentId}`,
+      collapsed: false,
+    });
   }, [
     executionNavigation,
     sessionId,

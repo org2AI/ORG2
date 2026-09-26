@@ -7,6 +7,20 @@ import {
   useState,
 } from "react";
 
+import type {
+  BeginTranscriptNavigation,
+  TranscriptNavigationEnd,
+  TranscriptNavigationTarget,
+  TranscriptViewportAnchor,
+} from "./transcriptNavigation";
+import {
+  KEYBOARD_LINE_DELTA_PX,
+  KEYBOARD_PAGE_DELTA_RATIO,
+  KEYBOARD_SCROLL_KEYS,
+  descendantOwnsWheel,
+  isInteractiveKeyboardTarget,
+  isScrollbarPointerDown,
+} from "./transcriptViewportInput";
 import {
   INITIAL_TRANSCRIPT_VIEWPORT_POLICY_STATE,
   type TranscriptFollowMode,
@@ -18,25 +32,12 @@ export const TRANSCRIPT_ANCHOR_ATTRIBUTE = "data-transcript-anchor-id";
 
 const AT_TAIL_EPSILON_PX = 4;
 const MAX_ANCHOR_REVEAL_ATTEMPTS = 2;
-const KEYBOARD_SCROLL_KEYS = new Set([
-  "ArrowUp",
-  "ArrowDown",
-  "PageUp",
-  "PageDown",
-  "Home",
-  " ",
-  "Spacebar",
-]);
-const KEYBOARD_LINE_DELTA_PX = 40;
-const KEYBOARD_PAGE_DELTA_RATIO = 0.9;
 
-export interface TranscriptViewportAnchor {
-  itemId: string;
-  offsetFromViewportTop: number;
-}
+export type { TranscriptViewportAnchor } from "./transcriptNavigation";
 
 export interface UseTranscriptViewportOptions {
   sessionKey: string | null;
+  navigationScopeKey?: string;
   contentKey: string;
   itemCount: number;
   /** Distance intentionally retained between the content tail and scroll bottom. */
@@ -57,63 +58,17 @@ export interface UseTranscriptViewportReturn {
   handleScroll: (reportedAtTail?: boolean) => void;
   followTail: () => void;
   detachForNavigation: () => void;
+  beginNavigation: BeginTranscriptNavigation;
+  isNavigating: () => boolean;
   preserveForLayoutMutation: () => void;
   /**
    * Apply the follow/anchor policy to the layout that is about to paint.
    * For content owners that commit geometry outside the observed elements
    * (a virtualizer flushing re-measured rows from its own ResizeObserver).
    */
-  reconcileLayout: () => void;
+  reconcileLayout: (duringReactCommit?: boolean) => void;
   showScrollToBottom: boolean;
   mode: TranscriptFollowMode;
-}
-
-// Descendant controls own activation and navigation keys before transcript scrolling.
-function isInteractiveKeyboardTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element &&
-    target.closest(
-      "input, textarea, select, button, a[href], summary, [contenteditable='true'], [role='textbox'], [role='button'], [role='slider'], [role='tab'], [role='menuitem']"
-    ) !== null
-  );
-}
-
-/** A descendant owns wheel intent while it can scroll in that direction. */
-function descendantOwnsWheel(event: WheelEvent, root: HTMLElement): boolean {
-  let element = event.target instanceof Element ? event.target : null;
-  while (element && element !== root) {
-    if (element.scrollHeight > element.clientHeight) {
-      const style = getComputedStyle(element);
-      if (style.overflowY === "auto" || style.overflowY === "scroll") {
-        const canScroll =
-          event.deltaY < 0
-            ? element.scrollTop > 0
-            : element.scrollTop + element.clientHeight < element.scrollHeight;
-        if (
-          canScroll ||
-          style.overscrollBehaviorY === "contain" ||
-          style.overscrollBehaviorY === "none"
-        ) {
-          return true;
-        }
-      }
-    }
-    element = element.parentElement;
-  }
-  return false;
-}
-
-function isScrollbarPointerDown(
-  event: PointerEvent,
-  element: HTMLElement
-): boolean {
-  if (event.button !== 0) return false;
-  const rect = element.getBoundingClientRect();
-  const nativeScrollbarWidth = Math.max(
-    0,
-    element.offsetWidth - element.clientWidth
-  );
-  return event.clientX >= rect.right - Math.max(12, nativeScrollbarWidth);
 }
 
 function isElementVisible(element: HTMLElement): boolean {
@@ -209,6 +164,7 @@ export function restoreTranscriptAnchor(
  */
 export function useTranscriptViewport({
   sessionKey,
+  navigationScopeKey = sessionKey ?? "",
   contentKey,
   itemCount,
   tailGapPx = 0,
@@ -234,6 +190,11 @@ export function useTranscriptViewport({
   const anchorRef = useRef<TranscriptViewportAnchor | null>(null);
   const sessionKeyRef = useRef(sessionKey);
   const generationRef = useRef(0);
+  const navigationRef = useRef<{
+    generation: number;
+    target: TranscriptNavigationTarget;
+  } | null>(null);
+  const navigationScopeRef = useRef(navigationScopeKey);
   const pendingFrameRef = useRef<number | null>(null);
   const anchorRevealAttemptsRef = useRef(0);
   const lastAtTailRef = useRef(true);
@@ -288,6 +249,19 @@ export function useTranscriptViewport({
     pendingFrameRef.current = null;
   }, []);
 
+  const endNavigation = useCallback(
+    (reason: TranscriptNavigationEnd) => {
+      const navigation = navigationRef.current;
+      navigationRef.current = null;
+      if (!navigation) return;
+      generationRef.current += 1;
+      cancelPendingFrame();
+      navigation.target.onEnd?.(reason);
+    },
+    [cancelPendingFrame]
+  );
+  const isNavigating = useCallback(() => navigationRef.current !== null, []);
+
   const reconcileRef = useRef<() => void>(() => undefined);
   const scheduleReconcile = useCallback(() => {
     if (pendingFrameRef.current !== null) return;
@@ -295,8 +269,8 @@ export function useTranscriptViewport({
     if (!element || !isElementVisible(element)) return;
     const scheduledGeneration = generationRef.current;
     pendingFrameRef.current = requestAnimationFrame(() => {
-      pendingFrameRef.current = null;
       if (scheduledGeneration !== generationRef.current) return;
+      pendingFrameRef.current = null;
       reconcileRef.current();
     });
   }, []);
@@ -305,6 +279,40 @@ export function useTranscriptViewport({
     const element = scrollRootRef.current;
     if (!element || !isElementVisible(element)) return;
     const currentOptions = optionsRef.current;
+    const navigation = navigationRef.current;
+    if (navigation) {
+      if (navigation.target.scopeKey !== navigationScopeRef.current) return;
+      const geometry = navigation.target.readGeometry();
+      if (
+        navigationRef.current !== navigation ||
+        navigation.generation !== generationRef.current
+      )
+        return;
+      if (geometry.status === "missing") {
+        endNavigation("missing");
+        return;
+      }
+      if (geometry.scrollTop === undefined) return;
+      const top = Math.max(
+        0,
+        Math.min(
+          element.scrollHeight - element.clientHeight,
+          geometry.scrollTop
+        )
+      );
+      if (Math.abs(element.scrollTop - top) > 1) {
+        const previousTop = element.scrollTop;
+        element.scrollTo({ top, behavior: "auto" });
+        // A refused/no-op scroll waits for layout; it must not start a frame loop.
+        if (element.scrollTop !== previousTop) scheduleReconcile();
+      } else if (geometry.status === "measured") {
+        anchorRef.current = geometry.anchor;
+        anchorRevealAttemptsRef.current = 0;
+        endNavigation("settled");
+        publishAtTail(isTranscriptAtTail(element, currentOptions.tailGapPx));
+      }
+      return;
+    }
     const shouldFollow =
       currentOptions.followPolicy === "always" ||
       modeRef.current === "following_tail";
@@ -321,6 +329,7 @@ export function useTranscriptViewport({
 
     const anchor = anchorRef.current;
     if (!anchor) {
+      if (userScrollPendingRef.current) return;
       anchorRef.current = captureTranscriptAnchor(element);
       return;
     }
@@ -338,15 +347,22 @@ export function useTranscriptViewport({
       anchorRevealAttemptsRef.current += 1;
       scheduleReconcile();
     }
-  }, [publishAtTail, scheduleReconcile]);
+  }, [endNavigation, publishAtTail, scheduleReconcile]);
   useLayoutEffect(() => {
     reconcileRef.current = reconcile;
   }, [reconcile]);
 
-  const reconcileLayout = useCallback(() => {
-    cancelPendingFrame();
-    reconcileRef.current();
-  }, [cancelPendingFrame]);
+  const reconcileLayout = useCallback(
+    (duringReactCommit = false) => {
+      if (duringReactCommit) {
+        scheduleReconcile();
+        return;
+      }
+      cancelPendingFrame();
+      reconcileRef.current();
+    },
+    [cancelPendingFrame, scheduleReconcile]
+  );
 
   const handleScroll = useCallback(
     (reportedAtTail?: boolean) => {
@@ -361,6 +377,10 @@ export function useTranscriptViewport({
         userScrollPendingRef.current ||
         scrollbarPointerActiveRef.current ||
         touchScrollActiveRef.current;
+      if (navigationRef.current && !userInitiated) {
+        scheduleReconcile();
+        return;
+      }
       if (userInitiated && optionsRef.current.followPolicy !== "always") {
         transition({ type: "user_scroll", atTail });
       }
@@ -371,24 +391,45 @@ export function useTranscriptViewport({
         userScrollPendingRef.current = false;
       }
     },
-    [publishAtTail, transition]
+    [publishAtTail, scheduleReconcile, transition]
   );
 
   const followTail = useCallback(() => {
+    endNavigation("follow");
     anchorRef.current = null;
     optionsRef.current.onExplicitFollow?.();
     transition({ type: "explicit_follow" });
     scheduleReconcile();
-  }, [scheduleReconcile, transition]);
+  }, [endNavigation, scheduleReconcile, transition]);
 
   const detachForNavigation = useCallback(() => {
+    endNavigation("scope");
     if (optionsRef.current.followPolicy === "always") return;
     transition({ type: "explicit_navigation" });
     anchorRef.current = null;
     scheduleReconcile();
-  }, [scheduleReconcile, transition]);
+  }, [endNavigation, scheduleReconcile, transition]);
+
+  const beginNavigation = useCallback<BeginTranscriptNavigation>(
+    (target) => {
+      endNavigation("superseded");
+      cancelPendingFrame();
+      const generation = ++generationRef.current;
+      navigationRef.current = { generation, target };
+      anchorRef.current = null;
+      userScrollPendingRef.current = false;
+      transition({ type: "explicit_navigation" });
+      scheduleReconcile();
+      return generation;
+    },
+    [cancelPendingFrame, endNavigation, scheduleReconcile, transition]
+  );
 
   const preserveForLayoutMutation = useCallback(() => {
+    if (navigationRef.current) {
+      scheduleReconcile();
+      return;
+    }
     if (optionsRef.current.followPolicy === "always") return;
     const element = scrollRootRef.current;
     anchorRef.current = element ? captureTranscriptAnchor(element) : null;
@@ -398,6 +439,7 @@ export function useTranscriptViewport({
 
   useLayoutEffect(() => {
     if (sessionKeyRef.current === sessionKey) return;
+    endNavigation("scope");
     sessionKeyRef.current = sessionKey;
     generationRef.current += 1;
     cancelPendingFrame();
@@ -414,11 +456,23 @@ export function useTranscriptViewport({
     scheduleReconcile();
   }, [
     cancelPendingFrame,
+    endNavigation,
     localSubmitKey,
     scheduleReconcile,
     sessionKey,
     transition,
   ]);
+
+  useLayoutEffect(() => {
+    if (navigationScopeRef.current !== navigationScopeKey) {
+      navigationScopeRef.current = navigationScopeKey;
+      if (navigationRef.current?.target.scopeKey !== navigationScopeKey) {
+        endNavigation("scope");
+        anchorRef.current = null;
+      }
+    }
+    scheduleReconcile();
+  }, [endNavigation, navigationScopeKey, scheduleReconcile]);
 
   useLayoutEffect(() => {
     if (itemCount <= 0) return;
@@ -438,6 +492,11 @@ export function useTranscriptViewport({
     if (!scrollRoot) return;
 
     const markUserScroll = () => {
+      if (navigationRef.current) {
+        endNavigation("user");
+        anchorRef.current = null;
+        transition({ type: "user_scroll", atTail: false });
+      }
       userScrollPendingRef.current = true;
     };
     const handleWheel = (event: WheelEvent) => {
@@ -564,7 +623,7 @@ export function useTranscriptViewport({
     window.addEventListener("pointercancel", handlePointerUp);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    const resizeObserver = new ResizeObserver(reconcileLayout);
+    const resizeObserver = new ResizeObserver(() => reconcileLayout());
     resizeObserver.observe(scrollRoot);
     if (scrollRoot.firstElementChild) {
       resizeObserver.observe(scrollRoot.firstElementChild);
@@ -586,6 +645,7 @@ export function useTranscriptViewport({
     };
   }, [
     cancelPendingFrame,
+    endNavigation,
     followTail,
     handleScroll,
     reconcileLayout,
@@ -596,10 +656,11 @@ export function useTranscriptViewport({
 
   useEffect(
     () => () => {
+      endNavigation("unmount");
       generationRef.current += 1;
       cancelPendingFrame();
     },
-    [cancelPendingFrame]
+    [cancelPendingFrame, endNavigation]
   );
 
   return {
@@ -607,6 +668,8 @@ export function useTranscriptViewport({
     handleScroll,
     followTail,
     detachForNavigation,
+    beginNavigation,
+    isNavigating,
     preserveForLayoutMutation,
     reconcileLayout,
     showScrollToBottom:

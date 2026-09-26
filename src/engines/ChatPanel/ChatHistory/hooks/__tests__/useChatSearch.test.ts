@@ -13,6 +13,7 @@ import {
 
 import { agentOrgExecutionNavigationAtom } from "../../agentOrgExecutionNavigation";
 import { useTranscriptViewport } from "../../viewport/useTranscriptViewport";
+import { getSearchTargetScrollTop } from "../chatSearch/chatSearchTargetDom";
 import {
   type UseChatSearchOptions,
   type UseChatSearchReturn,
@@ -286,7 +287,7 @@ describe("chat search highlight scheduling", () => {
 });
 
 it("selects the exact execution page before scrolling to its formal group", async () => {
-  const scrollToGroup = vi.fn();
+  const getGroupAnchorId = vi.fn(() => "target-anchor");
   const event = {
     ...options.chatHistory[0],
     args: {
@@ -302,8 +303,8 @@ it("selects the exact execution page before scrolling to its formal group", asyn
     ...options,
     virtualListRef: {
       current: {
-        scrollToGroup,
-        scrollToChatTarget: vi.fn(),
+        getGroupAnchorId,
+        readNavigationGeometry: vi.fn(() => ({ status: "pending" as const })),
         revealTranscriptAnchor: vi.fn(),
       },
     },
@@ -371,10 +372,12 @@ it("selects the exact execution page before scrolling to its formal group", asyn
     root.render(createElement(Provider, { store }, createElement(Harness)))
   );
   await advance(32);
-  expect(scrollToGroup).toHaveBeenCalledWith({
-    groupIndex: 0,
-    behavior: "auto",
-  });
+  const target = vi.mocked(options.onExplicitNavigation).mock.calls.at(-1)![0];
+  expect(target.scopeKey).toBe(JSON.stringify(["session-1", 0]));
+  target.readGeometry();
+  expect(getGroupAnchorId).toHaveBeenCalledWith(0);
+  expect(store.get(agentOrgExecutionNavigationAtom)).not.toBeNull();
+  act(() => target.onEnd?.("settled"));
   expect(mocks.navigate).not.toHaveBeenCalled();
   expect(store.get(agentOrgExecutionNavigationAtom)).toBeNull();
 });
@@ -382,7 +385,7 @@ it("selects the exact execution page before scrolling to its formal group", asyn
 it.each([false, true])(
   "locates an execution without a rendered input event (pagination: %s)",
   async (paginated) => {
-    const scrollToGroup = vi.fn();
+    const getGroupAnchorId = vi.fn(() => "target-anchor");
     const execution = {
       turnIntentId: "report",
       participantId: "coordinator",
@@ -422,8 +425,8 @@ it.each([false, true])(
       currentPageIndex: 1,
       virtualListRef: {
         current: {
-          scrollToGroup,
-          scrollToChatTarget: vi.fn(),
+          getGroupAnchorId,
+          readNavigationGeometry: vi.fn(() => ({ status: "pending" as const })),
           revealTranscriptAnchor: vi.fn(),
         },
       },
@@ -442,18 +445,21 @@ it.each([false, true])(
     );
     expect(mocks.expandTurn).toHaveBeenCalledTimes(1);
     await advance(32);
-    expect(scrollToGroup).toHaveBeenCalledWith({
-      groupIndex: paginated ? 0 : 1,
-      behavior: "auto",
-    });
+    const target = vi
+      .mocked(options.onExplicitNavigation)
+      .mock.calls.at(-1)![0];
+    target.readGeometry();
+    expect(getGroupAnchorId).toHaveBeenCalledWith(paginated ? 0 : 1);
     expect(
-      options.virtualListRef.current?.scrollToChatTarget
-    ).not.toHaveBeenCalled();
+      options.virtualListRef.current?.readNavigationGeometry
+    ).toHaveBeenCalledWith({ anchorId: "target-anchor" });
+    expect(store.get(agentOrgExecutionNavigationAtom)).not.toBeNull();
+    act(() => target.onEnd?.("settled"));
     expect(store.get(agentOrgExecutionNavigationAtom)).toBeNull();
   }
 );
 
-it("keeps a distant execution visible when expansion resizes before the scroll event", async () => {
+it("keeps an already mounted execution visible after navigation completes", async () => {
   const scroller = document.createElement("div");
   Object.defineProperties(scroller, {
     clientHeight: { value: 400 },
@@ -513,18 +519,20 @@ it("keeps a distant execution visible when expansion resizes before the scroll e
     virtualListRef: {
       current: {
         revealTranscriptAnchor: () => true,
-        scrollToChatTarget: vi.fn(),
-        scrollToGroup: () => {
-          scroller.scrollTo({ top: 1600 });
-          // WebKit observes the expanded content before delivering its scroll event.
-          resize();
-        },
+        getGroupAnchorId: () => "report",
+        readNavigationGeometry: () => ({
+          status: "measured",
+          revision: 1,
+          scrollTop: 1600,
+          anchor: { itemId: "report", offsetFromViewportTop: 0 },
+        }),
       },
     },
   };
   function ViewportHarness() {
     const viewport = useTranscriptViewport({
       sessionKey: options.sessionId,
+      navigationScopeKey: JSON.stringify([options.sessionId, null]),
       contentKey: "expanded-report",
       itemCount: 2,
     });
@@ -534,7 +542,7 @@ it("keeps a distant execution visible when expansion resizes before the scroll e
     }, [setScrollRoot]);
     useChatSearch({
       ...options,
-      onExplicitNavigation: viewport.detachForNavigation,
+      onExplicitNavigation: viewport.beginNavigation,
     });
     return null;
   }
@@ -561,4 +569,121 @@ it("keeps a distant execution visible when expansion resizes before the scroll e
     act(() => root.render(null));
     vi.unstubAllGlobals();
   }
+});
+
+it("keeps an oversized search result aligned at its start across repeated geometry reads", () => {
+  const scroller = document.createElement("div");
+  const target = document.createElement("div");
+  Object.defineProperty(scroller, "clientHeight", { value: 400 });
+  scroller.getBoundingClientRect = () => ({ top: 0, bottom: 400 }) as DOMRect;
+  target.getBoundingClientRect = () =>
+    ({
+      top: 800 - scroller.scrollTop,
+      bottom: 1800 - scroller.scrollTop,
+      height: 1000,
+    }) as DOMRect;
+  scroller.scrollTop = getSearchTargetScrollTop(scroller, target, true);
+  expect(scroller.scrollTop).toBe(752);
+  expect(getSearchTargetScrollTop(scroller, target, true)).toBe(752);
+});
+
+it("expands a collapsed search event on its destination page and resolves its latest projection", async () => {
+  const event = { ...options.chatHistory[0], displayText: "needle" };
+  const hidden = { chunk_id: "chunk-1", type: "activity" as const, event };
+  const summary = {
+    ...hidden,
+    chunk_id: "summary",
+    event: {
+      ...event,
+      id: "summary",
+      chunk_id: "summary",
+      displayText: "answer",
+    },
+  };
+  const getGroupAnchorId = vi.fn(() => "turn-anchor");
+  const readNavigationGeometry = vi.fn(() => ({ status: "pending" as const }));
+  options = {
+    ...options,
+    chatHistory: [event],
+    flatItems: [summary],
+    sourceItems: [hidden, summary],
+    originalToFlatIndex: new Map([
+      [0, 0],
+      [1, 0],
+    ]),
+    groupCounts: [1],
+    groupMeta: [
+      {
+        turnId: "turn-1",
+        durationMs: 0,
+        itemCount: 1,
+        bodyEventCount: 1,
+        hasBody: true,
+        previewText: "needle",
+        startMs: null,
+        endMs: null,
+        unloadedTurn: null,
+      },
+    ],
+    pages: [
+      {
+        startGroupIndex: 0,
+        endGroupIndex: 0,
+        flatStartIndex: 0,
+        flatEndIndex: 1,
+        cursorIdeSummary: null,
+      },
+    ],
+    turnPaginationEnabled: true,
+    currentPageIndex: 1,
+    virtualListRef: {
+      current: {
+        getGroupAnchorId,
+        readNavigationGeometry,
+        revealTranscriptAnchor: vi.fn(),
+      },
+    },
+  };
+  act(() =>
+    root.render(createElement(Provider, { store }, createElement(Harness)))
+  );
+  query("needle");
+  await advance(1000);
+  const target = vi.mocked(options.onExplicitNavigation).mock.calls.at(-1)![0];
+  expect(target.id).toBe("event-1");
+  expect(target.scopeKey).toBe(JSON.stringify(["session-1", 0]));
+  expect(options.setTurnPageSelection).toHaveBeenCalledWith({
+    sessionId: "session-1",
+    pageIndex: 0,
+  });
+  expect(mocks.expandTurn).toHaveBeenCalledWith({
+    turnId: "turn-1",
+    collapsed: false,
+  });
+  options = {
+    ...options,
+    currentPageIndex: 0,
+    flatItems: [{ ...hidden, chunk_id: "expanded-chunk" }],
+    sourceItems: [{ ...hidden, chunk_id: "expanded-chunk" }],
+  };
+  act(() =>
+    root.render(createElement(Provider, { store }, createElement(Harness)))
+  );
+  target.readGeometry();
+  expect(readNavigationGeometry).toHaveBeenCalledWith({
+    anchorId: "turn-anchor",
+    eventId: "event-1",
+    itemId: "expanded-chunk",
+  });
+  options = {
+    ...options,
+    chatHistory: [],
+    flatItems: [],
+    sourceItems: [],
+    groupCounts: [],
+  };
+  act(() =>
+    root.render(createElement(Provider, { store }, createElement(Harness)))
+  );
+  expect(target.readGeometry()).toEqual({ status: "missing" });
 });

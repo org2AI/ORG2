@@ -23,6 +23,7 @@ import type { Session } from "@src/store/session";
 
 import { isImportedSessionSubmitBlocked } from "../importedSessionSubmitReadiness";
 import {
+  SubmitHandledByDialogError,
   type SubmitOverrideInput,
   SubmitValidationError,
 } from "../useInputArea/types";
@@ -153,7 +154,7 @@ export function useConversationSubmitRouter({
         }
         if (importedCloudWorkspace === "missing") {
           store.set(cloudWorkspaceRequiredDialogAtom, true);
-          throw new SubmitValidationError(
+          throw new SubmitHandledByDialogError(
             i18n.t("sessions:conversation.workspaceRequiredBody")
           );
         }

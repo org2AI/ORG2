@@ -20,7 +20,10 @@ import type {
 import { cloudWorkspaceRequiredDialogAtom } from "@src/features/Org2Cloud/SessionConversation/cloudWorkspaceRequiredDialogAtom";
 import type { Session } from "@src/store/session";
 
-import { SubmitValidationError } from "../useInputArea/types";
+import {
+  SubmitHandledByDialogError,
+  SubmitValidationError,
+} from "../useInputArea/types";
 import {
   buildCanonicalConversationDispatch,
   canonicalConversationTargetOrThrow,
@@ -246,7 +249,7 @@ describe("useConversationSubmitRouter", () => {
 
     await expect(
       router.submit({ displayText: "continue" })
-    ).rejects.toBeInstanceOf(SubmitValidationError);
+    ).rejects.toBeInstanceOf(SubmitHandledByDialogError);
     expect(mocks.submitUserIntent).not.toHaveBeenCalled();
     expect(latestStore.get(cloudWorkspaceRequiredDialogAtom)).toBe(true);
   });

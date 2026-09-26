@@ -202,15 +202,19 @@ export function useCloudConversationSource({
     workspaceResolutionKey,
   ]);
 
-  const workspacePending = Boolean(
-    importedRemoteRow &&
-    workspaceResolutionKey &&
-    importedWorkspaceResolution?.key !== workspaceResolutionKey
-  );
   const importedWorkspacePath =
     importedWorkspaceResolution?.key === workspaceResolutionKey
       ? importedWorkspaceResolution.path
       : null;
+  const workspacePending = Boolean(
+    (importedFrom || loadingSource) &&
+    (!importedRemoteRow ||
+      !workspaceResolutionKey ||
+      importedWorkspaceResolution?.key !== workspaceResolutionKey ||
+      // A partial cold-start inventory may prove a match, but cannot yet
+      // prove that no checkout exists. Wait for the completed repo scan.
+      (!reposHydrated && !importedWorkspacePath))
+  );
   const source = useMemo(
     () =>
       !authorityLive

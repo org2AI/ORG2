@@ -175,9 +175,9 @@ describe("compact tool activity projection", () => {
 });
 
 it.each([true, false])(
-  "keeps an end gallery with compact activity %s",
+  "keeps a tool gallery before the subsequent reply with compact activity %s",
   (collapseToolActivity) => {
-    const image = tool("image", "mcp__generate", {
+    const image = tool("image", "mcp__claude_browser__browser_batch", {
       result: { images: ["data:image/png;base64,AAAA"] },
     });
     const events = [
@@ -190,8 +190,10 @@ it.each([true, false])(
       collapseToolActivity,
       groups: { tailTurnPhase: "complete", allTurnsCollapsed: true },
     });
-    expect(groups?.flatItems.at(-1)?.outputImages).toEqual([
+    expect(groups?.flatItems[0]?.outputImages).toEqual([
       "data:image/png;base64,AAAA",
     ]);
+    expect(groups?.flatItems[1]?.event?.id).toBe("answer");
+    expect(groups?.flatItems[1]?.outputImages).toBeUndefined();
   }
 );

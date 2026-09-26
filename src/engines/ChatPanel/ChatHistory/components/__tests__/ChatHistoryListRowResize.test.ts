@@ -177,8 +177,9 @@ describe("ChatHistoryList row resize", () => {
 
   it("commits re-wrapped row offsets inside the observer callback, then reconciles the viewport", () => {
     const committedOffsetsAtReconcile: string[] = [];
-    const onRowLayoutCommit = vi.fn(() => {
-      committedOffsetsAtReconcile.push(row(1).style.transform);
+    const onRowLayoutCommit = vi.fn((duringReactCommit?: boolean) => {
+      if (!duringReactCommit)
+        committedOffsetsAtReconcile.push(row(1).style.transform);
     });
     act(() =>
       root.render(createElement(ChatHistoryList, listProps(onRowLayoutCommit)))
@@ -191,16 +192,20 @@ describe("ChatHistoryList row resize", () => {
       // can already show the new offset here.
       expect(row(1).style.transform).toBe("translateY(520px)");
     });
-    expect(onRowLayoutCommit).toHaveBeenCalledOnce();
+    expect(onRowLayoutCommit).toHaveBeenCalledWith();
     expect(committedOffsetsAtReconcile).toEqual(["translateY(520px)"]);
   });
 
-  it("ignores observer notifications that match the committed row sizes", () => {
+  it("reports the first measurement even at the estimated height, then ignores repeats", () => {
     const onRowLayoutCommit = vi.fn();
     act(() =>
       root.render(createElement(ChatHistoryList, listProps(onRowLayoutCommit)))
     );
 
+    onRowLayoutCommit.mockClear();
+    act(() => resize(0, ESTIMATED_ROW_SIZE + 0.4));
+    expect(onRowLayoutCommit).toHaveBeenCalledExactlyOnceWith();
+    onRowLayoutCommit.mockClear();
     act(() => resize(0, ESTIMATED_ROW_SIZE + 0.4));
 
     expect(onRowLayoutCommit).not.toHaveBeenCalled();

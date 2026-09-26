@@ -1,4 +1,4 @@
-/* global describe, before, afterEach, it, browser */
+/* global describe, before, afterEach, it, browser, process */
 import {
   captureTerminalFailure,
   runFormalTerminalScenario,
@@ -50,6 +50,41 @@ async function openExactExecutionDetails(
   marker,
   { requireDistantTarget = false } = {}
 ) {
+  // Reopening loads only the newest Group page. Reach the reply through the
+  // rendered paging control before asserting its execution navigation.
+  for (let page = 0; page < 10; page++) {
+    let ready;
+    await browser.waitUntil(
+      async () => {
+        ready = await execJS(`
+          const rows = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"]'));
+          const found = rows.some(row => row.getAttribute('data-item-kind') === 'assistant_reply' &&
+            (row.textContent || '').includes(${JSON.stringify(marker)}));
+          const older = document.querySelector('[data-testid="agent-org-group-projection-load-older"]');
+          return { found, count: rows.length, canLoad: Boolean(older && !older.disabled) };
+        `);
+        return ready.found || ready.canLoad;
+      },
+      {
+        timeout: REPLY_TIMEOUT_MS,
+        timeoutMsg: `Group reply ${marker} is unavailable`,
+      }
+    );
+    if (ready.found) break;
+    await (
+      await browser.$('[data-testid="agent-org-group-projection-load-older"]')
+    ).click();
+    await browser.waitUntil(
+      async () =>
+        (await execJS(
+          `return document.querySelectorAll('[data-testid="agent-org-group-projection-item"]').length;`
+        )) > ready.count,
+      {
+        timeout: REPLY_TIMEOUT_MS,
+        timeoutMsg: `Older Group page did not load for ${marker}`,
+      }
+    );
+  }
   const targetLookup = await execJS(`
     const row = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"]'))
       .find(row => row.getAttribute('data-item-kind') === 'assistant_reply' && (row.textContent || '').includes(${JSON.stringify(marker)}));
@@ -134,36 +169,101 @@ async function openExactExecutionDetails(
       return Array.from(document.querySelectorAll('[data-testid="turn-collapse-toggle"][aria-expanded="false"]')).length;
     `);
     if (collapsedRounds < 1) {
-      throw new Error("Dense private history did not exercise a collapsed round");
+      throw new Error(
+        "Dense private history did not exercise a collapsed round"
+      );
     }
+    const oldestMounted = await execJS(`return Boolean(document.querySelector(
+      '[data-testid="chat-history-scroll-container"] [data-chat-group-index="0"]'));`);
+    if (oldestMounted)
+      throw new Error("Oldest turn was mounted before distant navigation");
     await (await browser.$('[aria-label^="Go to turn 1 of "]')).click();
-    let oldestVisibleSince = null;
+    await waitForPrivateTurn(0);
+    const toggle = await browser.$(
+      '[data-chat-group-index="0"] [data-testid="turn-collapse-toggle"]'
+    );
+    if (!(await toggle.isExisting()))
+      throw new Error("Oldest turn has no rendered collapse control");
+    await toggle.click();
+    await waitForPrivateTurn(0);
+    const originalSize = await browser.getWindowSize();
+    try {
+      await browser.setWindowSize(900, 760);
+      await waitForPrivateTurn(0);
+      // Two real clicks exercise supersession without an intervening settle wait.
+      const markers = await browser.$$('[aria-label^="Go to turn "]');
+      const last = markers[markers.length - 1];
+      await last.click();
+      await (await browser.$('[aria-label^="Go to turn 1 of "]')).click();
+      await waitForPrivateTurn(0);
+    } finally {
+      await browser.setWindowSize(originalSize.width, originalSize.height);
+    }
+    // Search must expand a message omitted by the collapsed row projection.
+    await (
+      await browser.$('[data-testid="chat-panel-header-more-button"]')
+    ).click();
+    await (
+      await browser.$('//*[@role="menuitem" and contains(., "Find in chat")]')
+    ).click();
+    const searchInput = await browser.$("[data-find-card] input");
+    await searchInput.waitForExist();
+    await searchInput.click();
+    // This WebDriver sets el.value directly, which React's value tracker ignores.
+    // Enter text through the rendered input's native setter and input event.
+    await execJS(`
+      const input = document.querySelector('[data-find-card] input');
+      if (!(input instanceof HTMLInputElement)) throw new Error('Search input missing');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'history 32 short');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    `);
     await browser.waitUntil(
-      async () => {
-        const visible = await execJS(`
+      async () => (await searchInput.getValue()) === "history 32 short",
+      { timeout: 10_000, timeoutMsg: "Search input did not accept typed text" }
+    );
+    await waitForPrivateTurn(
+      36,
+      `E2E Idle Root follow-up ${RUN_ID} history 32 short`
+    );
+    const expanded = await browser.$(
+      '[data-chat-group-index="36"] [data-testid="turn-collapse-toggle"]'
+    );
+    if ((await expanded.getAttribute("aria-expanded")) !== "true")
+      throw new Error("Search did not expand its exact hidden message turn");
+    await browser.keys("Escape");
+  }
+  await openRenderedGroupChatView();
+  await waitForRenderedGroupChatActive("return from exact execution details");
+}
+
+async function waitForPrivateTurn(groupIndex, searchText = null) {
+  let oldestVisibleSince = null;
+  await browser.waitUntil(
+    async () => {
+      const visible = await execJS(`
           const scroller = document.querySelector('[data-testid="chat-history-scroll-container"]');
-          const oldest = scroller?.querySelector('[data-chat-group-index="0"]');
+          const group = scroller?.querySelector('[data-chat-group-index="${groupIndex}"]');
+          const searchText = ${JSON.stringify(searchText)};
+          const oldest = searchText
+            ? Array.from(group?.querySelectorAll('[data-chat-event-ids]') ?? []).find(node => node.textContent.includes(searchText))
+            : group;
           if (!scroller || !oldest) return false;
           const root = scroller.getBoundingClientRect();
           const target = oldest.getBoundingClientRect();
           return target.height > 0 && target.top >= root.top - 2 && target.top < root.bottom;
         `);
-        if (!visible) oldestVisibleSince = null;
-        else oldestVisibleSince ??= Date.now();
-        return (
-          oldestVisibleSince !== null && Date.now() - oldestVisibleSince >= 500
-        );
-      },
-      {
-        timeout: REPLY_TIMEOUT_MS,
-        interval: 100,
-        timeoutMsg:
-          "Oldest private turn did not remain visible after minimap navigation",
-      }
-    );
-  }
-  await openRenderedGroupChatView();
-  await waitForRenderedGroupChatActive("return from exact execution details");
+      if (!visible) oldestVisibleSince = null;
+      else oldestVisibleSince ??= Date.now();
+      return (
+        oldestVisibleSince !== null && Date.now() - oldestVisibleSince >= 500
+      );
+    },
+    {
+      timeout: REPLY_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `Private turn ${groupIndex} did not remain visible after navigation`,
+    }
+  );
 }
 
 describe("Agent Org Root Group follow-up rendered UI", () => {

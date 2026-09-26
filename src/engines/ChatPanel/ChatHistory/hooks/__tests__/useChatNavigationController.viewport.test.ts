@@ -6,7 +6,7 @@ import { expect, it, vi } from "vitest";
 import { useTranscriptViewport } from "../../viewport/useTranscriptViewport";
 import { useChatNavigationController } from "../useChatNavigationController";
 
-it("reaches an older turn when row measurement precedes the native scroll event", () => {
+it("aligns an already mounted turn and preserves it through resize", () => {
   Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
   const frames = new Map<number, FrameRequestCallback>();
   let frameId = 0;
@@ -64,6 +64,7 @@ it("reaches an older turn when row measurement precedes the native scroll event"
   function Harness() {
     const viewport = useTranscriptViewport({
       sessionKey: "private-history",
+      navigationScopeKey: JSON.stringify(["private-history", null]),
       contentKey: "two-turns",
       itemCount: 2,
     });
@@ -85,13 +86,17 @@ it("reaches an older turn when row measurement precedes the native scroll event"
       turnPaginationEnabled: false,
       virtualListRef: {
         current: {
-          scrollToGroup: ({ behavior }) =>
-            scroller.scrollTo({ top: 0, behavior }),
-          scrollToChatTarget: vi.fn(),
+          getGroupAnchorId: () => "older",
+          readNavigationGeometry: () => ({
+            status: "measured",
+            revision: 1,
+            scrollTop: 0,
+            anchor: { itemId: "older", offsetFromViewportTop: 0 },
+          }),
           revealTranscriptAnchor: () => true,
         },
       },
-      onExplicitNavigation: viewport.detachForNavigation,
+      onExplicitNavigation: viewport.beginNavigation,
     });
     useLayoutEffect(() => {
       navigate = navigation.handleConversationMinimapNavigate;

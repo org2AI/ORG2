@@ -987,7 +987,7 @@ describe("projectChatGroups — grouped tool rows carry their event weight", () 
 });
 
 it.each([true, false])(
-  "places the complete image gallery after all text, collapsed=%s",
+  "keeps each image gallery on its producing item, collapsed=%s",
   (collapsed) => {
     const user = userItem("make images");
     user.event!.result = { images: ["/input.png"] };
@@ -1011,14 +1011,52 @@ it.each([true, false])(
     );
     const firstTurn = projected.flatItems.slice(0, projected.groupCounts[0]);
     expect(firstTurn.at(-1)?.event?.id).toBe(answer.event!.id);
-    expect(firstTurn.at(-1)?.outputImages).toEqual([
-      "/first.png",
-      "/second.png",
+    expect(firstTurn.at(-1)?.outputImages).toBeUndefined();
+    const galleries = firstTurn.filter((item) => item.outputImages);
+    expect(galleries.map((item) => item.event?.id)).toEqual([
+      first.event!.id,
+      second.event!.id,
     ]);
-    expect(firstTurn.filter((item) => item.outputImages)).toHaveLength(1);
+    expect(galleries.map((item) => item.outputImages)).toEqual([
+      ["/first.png"],
+      ["/second.png", "/first.png"],
+    ]);
+    expect(
+      galleries.every((item) => Boolean(item.structuralOnly) === collapsed)
+    ).toBe(true);
+    expect(firstTurn.map((item) => item.event?.id)).toEqual(
+      collapsed
+        ? [first.event!.id, second.event!.id, answer.event!.id]
+        : [
+            first.event!.id,
+            expect.any(String),
+            second.event!.id,
+            answer.event!.id,
+          ]
+    );
     expect(projected.flatItems.at(-1)?.outputImages).toBeUndefined();
+    expect(first.outputImages).toBeUndefined();
+    expect(second.outputImages).toBeUndefined();
   }
 );
+
+it("keeps a screenshot after the answer when that is the source order", () => {
+  const answer = assistantItem("Checking the page now");
+  const screenshot = toolItem();
+  screenshot.event!.result = { images: ["/screenshot.png"] };
+  const projected = projectChatGroups([userItem("check"), answer, screenshot], {
+    allTurnsCollapsed: true,
+    tailTurnPhase: "complete",
+  });
+  expect(projected.flatItems.map((item) => item.event?.id)).toEqual([
+    answer.event!.id,
+    screenshot.event!.id,
+  ]);
+  expect(projected.flatItems[1]).toMatchObject({
+    structuralOnly: true,
+    outputImages: ["/screenshot.png"],
+  });
+});
 
 it("keeps an image-only turn visible after collapse", () => {
   const image = toolItem();

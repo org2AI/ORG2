@@ -150,7 +150,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
     const turnContext = useMemo<AgentTurnContextValue>(
       () => ({
         sessionId: event?.sessionId,
-        outputImagesAtEnd: true,
+        outputImagesOwnedByProjection: true,
         turnId,
         isLastGroup,
         isLastItemInGroup,

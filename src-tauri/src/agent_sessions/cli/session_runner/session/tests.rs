@@ -42,6 +42,32 @@ fn codex_turns_always_use_the_desktop_visible_native_transport() {
 }
 
 #[test]
+fn ambient_claude_launch_does_not_inherit_a_saved_account() {
+    let home = tempfile::tempdir().expect("temporary credential home");
+    let service = KeyService::new(Some(home.path().to_path_buf()));
+    let mut stale = ModelKey::new(ModelType::ClaudeCode);
+    stale.enabled = false;
+    stale.name = Some("old disabled Claude login".to_string());
+    let stale = service.save_key(stale).expect("save stale account");
+
+    assert!(
+        initial_cli_key(&service, &ModelType::ClaudeCode, KeySource::OwnKey, None).is_none(),
+        "the Default Claude CLI model must use ambient auth, even when saved accounts exist"
+    );
+    assert_eq!(
+        initial_cli_key(
+            &service,
+            &ModelType::ClaudeCode,
+            KeySource::OwnKey,
+            Some(&stale.id),
+        )
+        .map(|key| key.id),
+        Some(stale.id),
+        "an explicitly selected account must retain its identity for launch validation"
+    );
+}
+
+#[test]
 fn command_logging_redacts_mcp_config_values() {
     let raw = vec![
         "codex".to_string(),

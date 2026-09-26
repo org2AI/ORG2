@@ -42,6 +42,7 @@ async fn live_luna_reserve_app_server() {
                 user_input: "Reply exactly ORG2_APP_SERVER_RESERVE_OK. Do not use tools, read files or run commands.".into(),
                 developer_instructions: None, working_dir: workspace.path().to_string_lossy().into_owned(),
                 project_id: None, resume_thread_id: None, model: wire,
+                turn_intent_id: None,
                 permission_mode: CliPermissionMode::Plan, config: None, image_paths: vec![], allow_native_context_recovery: false,
             }, tx
         )).await;

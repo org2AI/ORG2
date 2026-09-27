@@ -172,7 +172,13 @@ pub async fn skills_toggle(
     let _ = workspace_path; // catalog scope is irrelevant for ownership
     match agent_id.as_deref().filter(|id| !id.trim().is_empty()) {
         Some(owner) => {
-            toggle_disabled_skill_for(&store, owner, &name, enabled)?;
+            let definitions = store.inner().clone();
+            let owner_id = owner.to_string();
+            tokio::task::spawn_blocking(move || {
+                toggle_disabled_skill_for(&definitions, &owner_id, &name, enabled)
+            })
+            .await
+            .map_err(|err| format!("Skill toggle worker failed: {err}"))??;
             app_state
                 .invalidate_prompt_caches_for_agent_definition(
                     owner,

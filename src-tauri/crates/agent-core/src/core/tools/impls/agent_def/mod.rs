@@ -37,18 +37,6 @@ impl AgentDefinitionTool {
     pub fn new(app_handle: tauri::AppHandle) -> Self {
         Self { app_handle }
     }
-
-    fn store(&self) -> &AgentDefinitionsStore {
-        self.app_handle
-            .state::<std::sync::Arc<AgentDefinitionsStore>>()
-            .inner()
-    }
-
-    fn org_store(&self) -> &AgentOrgsStore {
-        self.app_handle
-            .state::<std::sync::Arc<AgentOrgsStore>>()
-            .inner()
-    }
 }
 
 #[async_trait]
@@ -77,24 +65,33 @@ impl Tool for AgentDefinitionTool {
         ctx.require_tool_authority(self.name())?;
         let action = required_string(&params, "action")?;
 
-        match action.as_str() {
-            "list" => agent_actions::list_agents(self.store()),
-            "get" => agent_actions::get_agent(self.store(), &params),
-            "create" => agent_actions::create_agent(self.store(), &params),
-            "update" => agent_actions::update_agent(self.store(), &params),
-            "remove" => agent_actions::remove_agent(self.store(), &params),
+        let app = self.app_handle.clone();
+        tokio::task::spawn_blocking(move || {
+            let store = app.state::<std::sync::Arc<AgentDefinitionsStore>>();
+            let org_store = app.state::<std::sync::Arc<AgentOrgsStore>>();
+            match action.as_str() {
+                "list" => agent_actions::list_agents(&store),
+                "get" => agent_actions::get_agent(&store, &params),
+                "create" => agent_actions::create_agent(&store, &params),
+                "update" => agent_actions::update_agent(&store, &params),
+                "remove" => agent_actions::remove_agent(&store, &params),
 
-            "list_orgs" => org_actions::list_orgs(self.org_store()),
-            "get_org" => org_actions::get_org(self.org_store(), &params),
-            "create_org" => org_actions::create_org(self.org_store(), &params),
-            "update_org" => org_actions::update_org(self.org_store(), &params),
-            "remove_org" => org_actions::remove_org(self.org_store(), &params),
+                "list_orgs" => org_actions::list_orgs(&org_store),
+                "get_org" => org_actions::get_org(&org_store, &params),
+                "create_org" => org_actions::create_org(&org_store, &params),
+                "update_org" => org_actions::update_org(&org_store, &params),
+                "remove_org" => org_actions::remove_org(&org_store, &params),
 
-            _ => Err(ToolError::InvalidParams(format!(
-                "Unknown action: '{}'. Valid: list, get, create, update, remove, \
+                _ => Err(ToolError::InvalidParams(format!(
+                    "Unknown action: '{}'. Valid: list, get, create, update, remove, \
                  list_orgs, get_org, create_org, update_org, remove_org",
-                action
-            ))),
-        }
+                    action
+                ))),
+            }
+        })
+        .await
+        .map_err(|error| {
+            ToolError::ExecutionFailed(format!("Agent definition worker failed: {error}"))
+        })?
     }
 }

@@ -31,7 +31,9 @@
 //! manual polling. Mutating definitions outside the store's methods is
 //! a bug.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 #[cfg(not(test))]
 use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
@@ -70,10 +72,13 @@ pub fn definitions_store() -> Arc<AgentDefinitionsStore> {
 
 /// Store for user-created agent definitions and builtin overrides.
 pub struct AgentDefinitionsStore {
-    pub(crate) agents: Mutex<Vec<AgentDefinition>>,
+    mutation_lock: Mutex<()>,
+    agents: Mutex<Vec<AgentDefinition>>,
+    storage_path: PathBuf,
+    overrides_path: PathBuf,
     /// Effective (compiled + delta) definitions for overridden builtins.
     /// Persistence reduces these back to top-level field deltas.
-    pub(crate) builtin_overrides: Mutex<BTreeMap<String, AgentDefinition>>,
+    builtin_overrides: Mutex<BTreeMap<String, AgentDefinition>>,
 }
 
 type ChangeHook = Box<dyn Fn(&str) + Send + Sync>;
@@ -101,8 +106,12 @@ impl Default for AgentDefinitionsStore {
 
 impl AgentDefinitionsStore {
     pub fn new() -> Self {
-        let mut agents = load_from_disk(&storage_path());
-        let mut builtin_overrides = load_overrides_from_disk(&overrides_path());
+        Self::from_paths(storage_path(), overrides_path())
+    }
+
+    fn from_paths(storage_path: PathBuf, overrides_path: PathBuf) -> Self {
+        let mut agents = load_from_disk(&storage_path);
+        let mut builtin_overrides = load_overrides_from_disk(&overrides_path);
 
         // One-shot migration: pre-existing on-disk overlays / user defs may
         // list `builtin:explore` / `builtin:general` (and other internal
@@ -122,7 +131,7 @@ impl AgentDefinitionsStore {
             }
         }
         if overlays_changed {
-            if let Err(err) = save_overrides_to_disk(&overrides_path(), &builtin_overrides) {
+            if let Err(err) = save_overrides_to_disk(&overrides_path, &builtin_overrides) {
                 error!("[agent-definitions] migration: failed to persist overrides: {err}");
             } else {
                 info!(
@@ -133,7 +142,7 @@ impl AgentDefinitionsStore {
             }
         }
         if agents_changed {
-            if let Err(err) = save_to_disk(&storage_path(), &agents) {
+            if let Err(err) = save_to_disk(&storage_path, &agents) {
                 error!("[agent-definitions] migration: failed to persist agents: {err}");
             } else {
                 info!(
@@ -144,23 +153,86 @@ impl AgentDefinitionsStore {
         }
 
         Self {
+            mutation_lock: Mutex::new(()),
+            storage_path,
+            overrides_path,
             agents: Mutex::new(agents),
             builtin_overrides: Mutex::new(builtin_overrides),
         }
     }
 
-    pub(crate) fn persist(&self, agents: &[AgentDefinition]) {
-        let path = storage_path();
-        if let Err(err) = save_to_disk(&path, agents) {
-            error!("[agent-definitions] Failed to persist: {}", err);
-        }
+    /// Commit one complete candidate while retaining its owner lock. Readers and
+    /// later writers cannot observe it until the atomic file replacement succeeds.
+    /// Snapshot locks stay short: readers keep seeing the last committed value during I/O.
+    fn commit_users<R>(
+        &self,
+        mutate: impl FnOnce(&mut Vec<AgentDefinition>) -> Result<R, String>,
+    ) -> Result<R, String> {
+        self.commit_users_if_changed(|candidate| mutate(candidate).map(|result| (result, true)))
     }
 
-    pub(crate) fn persist_overrides(&self, overrides: &BTreeMap<String, AgentDefinition>) {
-        let path = overrides_path();
-        if let Err(err) = save_overrides_to_disk(&path, overrides) {
-            error!("[agent-definitions] Failed to persist overrides: {}", err);
+    fn commit_users_if_changed<R>(
+        &self,
+        mutate: impl FnOnce(&mut Vec<AgentDefinition>) -> Result<(R, bool), String>,
+    ) -> Result<R, String> {
+        let _writer = self
+            .mutation_lock
+            .lock()
+            .map_err(|err| format!("Lock error: {err}"))?;
+        let mut candidate = self.snapshot();
+        let (result, changed) = mutate(&mut candidate)?;
+        if !changed {
+            return Ok(result);
         }
+        let mut ids = HashSet::new();
+        for agent in &mut candidate {
+            if agent.id.trim().is_empty()
+                || super::builtin::is_builtin_agent(&agent.id)
+                || agent.built_in
+                || !ids.insert(agent.id.clone())
+            {
+                return Err(format!(
+                    "Invalid or duplicate custom agent identity: {:?}",
+                    agent.id
+                ));
+            }
+            super::builtin::strip_forbidden_sub_agents(agent);
+        }
+        save_to_disk(&self.storage_path, &candidate)?;
+        *self
+            .agents
+            .lock()
+            .map_err(|err| format!("Lock error: {err}"))? = candidate;
+        Ok(result)
+    }
+
+    fn commit_overrides<R>(
+        &self,
+        mutate: impl FnOnce(&mut BTreeMap<String, AgentDefinition>) -> Result<R, String>,
+    ) -> Result<R, String> {
+        let _writer = self
+            .mutation_lock
+            .lock()
+            .map_err(|err| format!("Lock error: {err}"))?;
+        let mut candidate = self
+            .builtin_overrides
+            .lock()
+            .map_err(|err| format!("Lock error: {err}"))?
+            .clone();
+        let result = mutate(&mut candidate)?;
+        for (id, agent) in &mut candidate {
+            if agent.id != *id || !agent.built_in || super::builtin::get_builtin_agent(id).is_none()
+            {
+                return Err(format!("Invalid builtin override identity: {id:?}"));
+            }
+            super::builtin::strip_forbidden_sub_agents(agent);
+        }
+        save_overrides_to_disk(&self.overrides_path, &candidate)?;
+        *self
+            .builtin_overrides
+            .lock()
+            .map_err(|err| format!("Lock error: {err}"))? = candidate;
+        Ok(result)
     }
 
     /// Look up an agent by id. For `builtin:*`, the compiled-in definition
@@ -197,168 +269,114 @@ impl AgentDefinitionsStore {
             .clone()
     }
 
-    /// Atomically mutate a **user-created** agent definition by id.
-    ///
-    /// Use `update_with_overlay` for `builtin:*` ids.
+    /// Atomically mutate a custom definition; errors leave memory and disk unchanged.
     pub fn update<F>(&self, id: &str, patch: F) -> Result<AgentDefinition, String>
     where
         F: FnOnce(&mut AgentDefinition),
     {
         if super::builtin::is_builtin_agent(id) {
             return Err(format!(
-                "update() rejects builtin id '{}'; use update_with_overlay()",
-                id
+                "update() rejects builtin id '{id}'; use update_with_overlay()"
             ));
         }
-        let (updated, snapshot) = {
-            let mut guard = self
-                .agents
-                .lock()
-                .expect("agent-definitions mutex poisoned");
-            let agent = guard
+        let updated = self.commit_users(|candidate| {
+            let agent = candidate
                 .iter_mut()
-                .find(|a| a.id == id)
-                .ok_or_else(|| format!("agent '{}' not found", id))?;
+                .find(|agent| agent.id == id)
+                .ok_or_else(|| format!("agent '{id}' not found"))?;
             patch(agent);
+            if agent.id != id {
+                return Err("Agent identity cannot be changed by a patch".into());
+            }
             super::builtin::strip_forbidden_sub_agents(agent);
-            (agent.clone(), guard.clone())
-        };
-        self.persist(&snapshot);
+            Ok(agent.clone())
+        })?;
         notify_change(id);
         Ok(updated)
     }
 
-    /// Update a `builtin:*` agent by writing an overlay to
-    /// `~/.orgii/builtin-overrides.json`. If no overlay exists yet, the
-    /// compiled-in builtin is cloned as the starting point and then
-    /// patched; subsequent updates edit the existing overlay.
-    ///
-    /// Non-builtin ids are rejected — call `update()` for those.
+    /// Update a builtin's effective definition and commit its field delta.
     pub fn update_with_overlay<F>(&self, id: &str, patch: F) -> Result<AgentDefinition, String>
     where
         F: FnOnce(&mut AgentDefinition),
     {
         if !super::builtin::is_builtin_agent(id) {
             return Err(format!(
-                "update_with_overlay() requires a builtin id; got '{}'",
-                id
+                "update_with_overlay() requires a builtin id; got '{id}'"
             ));
         }
-        let (updated, snapshot) = {
-            let mut guard = self
-                .builtin_overrides
-                .lock()
-                .expect("builtin-overrides mutex poisoned");
-            // Start from existing overlay, or compiled-in builtin.
-            let base = match guard.get(id) {
-                Some(existing) => existing.clone(),
-                None => super::builtin::get_builtin_agent(id)
-                    .ok_or_else(|| format!("builtin '{}' does not exist", id))?,
-            };
-            let mut agent = base;
+        let updated = self.commit_overrides(|candidate| {
+            let mut agent = candidate
+                .get(id)
+                .cloned()
+                .or_else(|| super::builtin::get_builtin_agent(id))
+                .ok_or_else(|| format!("builtin '{id}' does not exist"))?;
             patch(&mut agent);
             super::builtin::strip_forbidden_sub_agents(&mut agent);
-            guard.insert(id.to_string(), agent.clone());
-            (agent, guard.clone())
-        };
-        self.persist_overrides(&snapshot);
+            candidate.insert(id.to_string(), agent.clone());
+            Ok(agent)
+        })?;
         notify_change(id);
         Ok(updated)
     }
 
-    /// Remove a builtin overlay, reverting to the compiled-in definition.
-    /// Returns `Ok(())` whether or not an overlay existed.
+    /// Remove an overlay, reverting to the compiled-in definition after commit.
     pub fn reset_builtin(&self, id: &str) -> Result<(), String> {
         if !super::builtin::is_builtin_agent(id) {
-            return Err(format!("reset_builtin requires a builtin id; got '{}'", id));
+            return Err(format!("reset_builtin requires a builtin id; got '{id}'"));
         }
-        let snapshot = {
-            let mut guard = self
-                .builtin_overrides
-                .lock()
-                .expect("builtin-overrides mutex poisoned");
-            guard.remove(id);
-            guard.clone()
-        };
-        self.persist_overrides(&snapshot);
+        self.commit_overrides(|candidate| {
+            candidate.remove(id);
+            Ok(())
+        })?;
         notify_change(id);
         Ok(())
     }
 
-    /// Insert a new user-created agent definition. Rejects duplicate ids
-    /// and builtin ids. The single creation chokepoint — strips forbidden
-    /// sub-agents, persists, and fires the change hook.
-    pub fn insert(&self, mut agent: AgentDefinition) -> Result<String, String> {
-        if super::builtin::is_builtin_agent(&agent.id) {
-            return Err(format!("insert() rejects builtin id '{}'", agent.id));
-        }
-        super::builtin::strip_forbidden_sub_agents(&mut agent);
+    /// Insert a custom agent. The candidate commit validates identity and subagents.
+    pub fn insert(&self, agent: AgentDefinition) -> Result<String, String> {
         let id = agent.id.clone();
-        let snapshot = {
-            let mut guard = self
-                .agents
-                .lock()
-                .expect("agent-definitions mutex poisoned");
-            if guard.iter().any(|existing| existing.id == id) {
-                return Err(format!("Agent with id '{}' already exists", id));
+        self.commit_users(|candidate| {
+            if candidate.iter().any(|existing| existing.id == id) {
+                return Err(format!("Agent with id '{id}' already exists"));
             }
-            guard.push(agent);
-            guard.clone()
-        };
-        self.persist(&snapshot);
+            candidate.push(agent);
+            Ok(())
+        })?;
         notify_change(&id);
         Ok(id)
     }
 
-    /// Insert-or-replace a user-created agent definition by id. Used by
-    /// import flows that legitimately overwrite. Same invariants as
-    /// `insert` otherwise.
-    pub fn upsert(&self, mut agent: AgentDefinition) -> Result<(), String> {
-        if super::builtin::is_builtin_agent(&agent.id) {
-            return Err(format!("upsert() rejects builtin id '{}'", agent.id));
-        }
-        super::builtin::strip_forbidden_sub_agents(&mut agent);
+    /// Explicit import replacement, sharing the same commit and notification boundary.
+    pub fn upsert(&self, agent: AgentDefinition) -> Result<(), String> {
         let id = agent.id.clone();
-        let snapshot = {
-            let mut guard = self
-                .agents
-                .lock()
-                .expect("agent-definitions mutex poisoned");
-            if let Some(existing) = guard.iter_mut().find(|a| a.id == id) {
+        self.commit_users(|candidate| {
+            if let Some(existing) = candidate.iter_mut().find(|entry| entry.id == id) {
                 *existing = agent;
             } else {
-                guard.push(agent);
+                candidate.push(agent);
             }
-            guard.clone()
-        };
-        self.persist(&snapshot);
+            Ok(())
+        })?;
         notify_change(&id);
         Ok(())
     }
 
-    /// Remove a user-created agent definition by id. Returns `true` when a
-    /// definition was removed. Refuses when any agent org still references
-    /// the agent (dangling org members previously only failed at launch).
     pub fn remove(&self, id: &str) -> Result<bool, String> {
         let referencing = super::orgs::orgs_store().org_names_referencing_agent(id);
         if !referencing.is_empty() {
             return Err(format!(
-                "Agent '{}' is still referenced by org(s): {}. Remove it from those orgs first.",
-                id,
+                "Agent '{id}' is still referenced by org(s): {}. Remove it from those orgs first.",
                 referencing.join(", ")
             ));
         }
-        let (removed, snapshot) = {
-            let mut guard = self
-                .agents
-                .lock()
-                .expect("agent-definitions mutex poisoned");
-            let len_before = guard.len();
-            guard.retain(|agent| agent.id != id);
-            (guard.len() < len_before, guard.clone())
-        };
+        let removed = self.commit_users_if_changed(|candidate| {
+            let before = candidate.len();
+            candidate.retain(|agent| agent.id != id);
+            let removed = before != candidate.len();
+            Ok((removed, removed))
+        })?;
         if removed {
-            self.persist(&snapshot);
             notify_change(id);
         }
         Ok(removed)
@@ -474,7 +492,7 @@ fn save_to_disk(path: &std::path::Path, agents: &[AgentDefinition]) -> Result<()
     }
     let content = serde_json::to_string_pretty(agents)
         .map_err(|err| format!("Failed to serialize agents: {}", err))?;
-    std::fs::write(path, content).map_err(|err| format!("Failed to write agents: {}", err))?;
+    atomic_write(path, content.as_bytes())?;
     info!(
         "[agent-definitions] Saved {} agents to {}",
         agents.len(),
@@ -619,7 +637,7 @@ fn save_overrides_to_disk(
         .collect();
     let content = serde_json::to_string_pretty(&deltas)
         .map_err(|err| format!("Failed to serialize overrides: {}", err))?;
-    std::fs::write(path, content).map_err(|err| format!("Failed to write overrides: {}", err))?;
+    atomic_write(path, content.as_bytes())?;
     info!(
         "[builtin-overrides] Saved {} override delta(s) to {}",
         deltas.len(),
@@ -627,6 +645,34 @@ fn save_overrides_to_disk(
     );
     Ok(())
 }
+
+/// Write beside the destination so installation is one same-filesystem rename.
+/// No failure before installation can truncate or remove the previous definition file.
+fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(parent)
+        .map_err(|error| format!("Failed to create definition directory: {error}"))?;
+    let mut temp = tempfile::Builder::new()
+        .prefix(".agent-definitions-")
+        .suffix(".tmp")
+        .tempfile_in(parent)
+        .map_err(|error| format!("Failed to prepare definition write: {error}"))?;
+    temp.write_all(content)
+        .and_then(|()| temp.as_file().sync_all())
+        .map_err(|error| format!("Failed to sync definition write: {error}"))?;
+    temp.persist(path)
+        .map_err(|error| format!("Failed to install definition file: {}", error.error))?;
+    // Some platforms do not permit syncing directories; the file itself was synced
+    // before rename. Match the sibling Org store's best-effort directory durability.
+    if let Ok(directory) = std::fs::File::open(parent) {
+        let _ = directory.sync_all();
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "store_tests.rs"]
+mod store_tests;
 
 #[cfg(test)]
 mod overlay_tests {

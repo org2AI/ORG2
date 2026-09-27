@@ -3,63 +3,35 @@
 //! This adapter is deliberately host-side: it resolves filesystem aliases and
 //! Git worktree roots, then returns only normalized metadata to Orgtrack.
 
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
 
 use orgtrack_core::repo_sync::paths::record_id;
 
-/// Per-cwd cache of the git resolution (workspace root + repository id).
-///
-/// Resolution shells out to `git rev-parse` twice, and callers like the
-/// historical backfill resolve EVERY file interaction of a session — all of
-/// which share the same cwd. Without this cache a 500-interaction session
-/// spawned ~1000 git subprocesses that all returned the same answer, which
-/// dominated the backfill's CPU cost. Worktree roots don't move while the
-/// process runs, so a process-lifetime cache is safe.
-const RESOLUTION_CACHE_MAX_ENTRIES: usize = 1024;
-
-#[derive(Clone)]
-struct CachedRepoResolution {
+// Repository identity is persisted on each provenance record. Resolve the
+// current filesystem at that boundary: git init, a nested repository, removal,
+// and linked-worktree pointer changes can all happen while ORGII is running.
+// Discovery only probes ancestor .git paths (no directory scan or subprocess),
+// so a process-lifetime cache no longer justifies returning a stale identity.
+struct RepoResolution {
     workspace: PathBuf,
-    /// `record_id` derived from the git common dir; `None` when cwd is not
-    /// inside a git repository.
     repository_record_id: Option<String>,
 }
 
-static RESOLUTION_CACHE: OnceLock<Mutex<HashMap<PathBuf, CachedRepoResolution>>> = OnceLock::new();
-
-fn resolve_repo_for_cwd(cwd_path: &Path) -> CachedRepoResolution {
-    let cache = RESOLUTION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Ok(guard) = cache.lock() {
-        if let Some(hit) = guard.get(cwd_path) {
-            return hit.clone();
-        }
-    }
-
-    let discovered = discover_git_repo(cwd_path);
-    let resolution = match discovered {
-        Some(repo) => CachedRepoResolution {
+fn resolve_repo_for_cwd(cwd_path: &Path) -> RepoResolution {
+    match discover_git_repo(cwd_path) {
+        Some(repo) => RepoResolution {
             workspace: repo.worktree_root,
             repository_record_id: Some(record_id(&[
                 "git_repository",
                 &repo.common_dir.to_string_lossy(),
             ])),
         },
-        None => CachedRepoResolution {
+        None => RepoResolution {
             workspace: cwd_path.to_path_buf(),
             repository_record_id: None,
         },
-    };
-
-    if let Ok(mut guard) = cache.lock() {
-        if guard.len() >= RESOLUTION_CACHE_MAX_ENTRIES {
-            guard.clear();
-        }
-        guard.insert(cwd_path.to_path_buf(), resolution.clone());
     }
-    resolution
 }
 
 struct DiscoveredGitRepo {
@@ -139,10 +111,12 @@ pub(crate) fn resolve_file_resource(cwd: &str, file_path: &str) -> ResolvedFileR
         Path::new(file_path),
         Some(&cwd_path),
     ));
-    let resolution = resolve_repo_for_cwd(&cwd_path);
-    let workspace = resolution.workspace;
+    let RepoResolution {
+        workspace,
+        repository_record_id,
+    } = resolve_repo_for_cwd(&cwd_path);
     let within_workspace = file_path.strip_prefix(&workspace).ok();
-    let repository_id = within_workspace.and_then(|_| resolution.repository_record_id.clone());
+    let repository_id = within_workspace.and(repository_record_id);
     let relative = within_workspace
         .unwrap_or(&file_path)
         .to_string_lossy()
@@ -200,5 +174,130 @@ pub(crate) fn canonicalize_existing_prefix(path: &Path) -> PathBuf {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn observes_git_creation_and_removal_without_a_restart() {
+        let temp = tempfile::tempdir().unwrap();
+        let cwd = temp.path().to_str().unwrap();
+        assert!(resolve_file_resource(cwd, "file.txt")
+            .repository_id
+            .is_none());
+        fs::create_dir(temp.path().join(".git")).unwrap();
+        let first = resolve_file_resource(cwd, "file.txt");
+        assert!(first.repository_id.is_some());
+        assert_eq!(first, resolve_file_resource(cwd, "file.txt"));
+        fs::remove_dir(temp.path().join(".git")).unwrap();
+        assert!(resolve_file_resource(cwd, "file.txt")
+            .repository_id
+            .is_none());
+    }
+
+    #[test]
+    fn a_new_nested_repository_replaces_the_parent_identity() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::create_dir(temp.path().join(".git")).unwrap();
+        let child = temp.path().join("nested");
+        fs::create_dir(&child).unwrap();
+        let before = resolve_file_resource(child.to_str().unwrap(), "file.txt");
+        assert_eq!(before.repo_relative_path, "nested/file.txt");
+        fs::create_dir(child.join(".git")).unwrap();
+        let after = resolve_file_resource(child.to_str().unwrap(), "file.txt");
+        assert_ne!(before.repository_id, after.repository_id);
+        assert_eq!(after.repo_relative_path, "file.txt");
+    }
+
+    #[test]
+    fn observes_worktree_pointer_and_common_directory_changes() {
+        let temp = tempfile::tempdir().unwrap();
+        let worktree = temp.path().join("worktree");
+        for dir in [
+            "worktree",
+            "metadata-a",
+            "metadata-b",
+            "common-a",
+            "common-b",
+        ] {
+            fs::create_dir(temp.path().join(dir)).unwrap();
+        }
+        fs::write(worktree.join(".git"), "gitdir: ../metadata-a\n").unwrap();
+        fs::write(temp.path().join("metadata-a/commondir"), "../common-a\n").unwrap();
+        let first = resolve_file_resource(worktree.to_str().unwrap(), "file.txt");
+        fs::write(temp.path().join("metadata-a/commondir"), "../common-b\n").unwrap();
+        let second = resolve_file_resource(worktree.to_str().unwrap(), "file.txt");
+        assert_ne!(first.repository_id, second.repository_id);
+        fs::write(worktree.join(".git"), "gitdir: ../metadata-b\n").unwrap();
+        fs::write(temp.path().join("metadata-b/commondir"), "../common-a\n").unwrap();
+        let third = resolve_file_resource(worktree.to_str().unwrap(), "file.txt");
+        assert_eq!(first.repository_id, third.repository_id);
+        assert_ne!(second.repository_id, third.repository_id);
+    }
+
+    #[test]
+    fn outside_workspace_paths_do_not_inherit_a_repository() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::create_dir(temp.path().join(".git")).unwrap();
+        let other = tempfile::tempdir().unwrap();
+        let result = resolve_file_resource(
+            temp.path().to_str().unwrap(),
+            other.path().join("file.txt").to_str().unwrap(),
+        );
+        assert!(result.repository_id.is_none());
+    }
+    #[test]
+    fn persistence_records_current_repository_without_rewriting_prior_observations() {
+        use orgtrack_core::canonical::{
+            AttributionPrecision, ResourceAction, ResourceInteractionCaptureMethod,
+            ResourceInteractionOutcome,
+        };
+        use orgtrack_core::store::sqlite::SqliteRecordStore;
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        SqliteRecordStore::init_tables(&conn).unwrap();
+        let store = SqliteRecordStore::new(&conn);
+        let temp = tempfile::tempdir().unwrap();
+        let persist = |event: &str| {
+            super::super::interaction_store::persist_file_interaction(
+                &store,
+                "claude_code",
+                None,
+                "session",
+                Some(event),
+                None,
+                None,
+                temp.path().to_str().unwrap(),
+                "file.txt",
+                ResourceAction::Read,
+                ResourceInteractionOutcome::Succeeded,
+                "2026-09-14T00:00:00Z",
+                ResourceInteractionCaptureMethod::Hook,
+                AttributionPrecision::Exact,
+            )
+            .unwrap();
+        };
+        let repository_for = |event: &str| -> Option<String> {
+            conn.query_row(
+                "SELECT r.repository_id FROM orgtrack_core_file_resources r
+                 JOIN orgtrack_core_resource_interactions i ON i.resource_id = r.resource_id
+                 WHERE i.source_event_id = ?1",
+                [event],
+                |row| row.get(0),
+            )
+            .unwrap()
+        };
+        persist("before-init");
+        assert_eq!(repository_for("before-init"), None);
+        fs::create_dir(temp.path().join(".git")).unwrap();
+        persist("after-init");
+        assert!(repository_for("after-init").is_some());
+        assert_eq!(repository_for("before-init"), None);
+        fs::remove_dir(temp.path().join(".git")).unwrap();
+        persist("after-remove");
+        assert_eq!(repository_for("after-remove"), None);
+        assert!(repository_for("after-init").is_some());
     }
 }

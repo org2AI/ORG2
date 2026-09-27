@@ -20,7 +20,6 @@ import React, {
   lazy,
   memo,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -30,15 +29,8 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import ExpandOverlay from "@src/components/ExpandOverlay";
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import PageNotice from "@src/components/PageNotice";
 import type { PayloadRef } from "@src/engines/SessionCore/core/types";
-import {
-  getLoadedPayload,
-  getPayloadRegistryKey,
-  getPendingPayloadLoad,
-  trackPendingPayloadLoad,
-  unloadPayload,
-} from "@src/engines/SessionCore/payloads";
 import {
   hasTuiSequences,
   processAnsiContent,
@@ -53,6 +45,7 @@ import {
   EVENT_BLOCK_FADE_FROM,
   EVENT_SNIPPET_INNER_PADDING_CLASS,
 } from "./config";
+import { useBlockOutputPayload } from "./useBlockOutputPayload";
 
 // Lazy: pulls @xterm/xterm plus its addons, and only the rare TUI-sequence
 // branch below renders it. Xterm paints asynchronously after mount anyway,
@@ -145,21 +138,26 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
   }) => {
     const { t } = useTranslation();
     const [isOutputExpanded, setIsOutputExpanded] = useState(false);
-    const [fullPayload, setFullPayload] = useState<string | null>(null);
-    const [isLoadingPayload, setIsLoadingPayload] = useState(false);
-
-    const payloadKey =
-      payloadRef && sessionId && eventId
-        ? getPayloadRegistryKey(sessionId, eventId, payloadRef.fieldPath)
-        : null;
-
-    useEffect(() => {
-      if (!payloadKey) {
-        setFullPayload(null);
-        return;
-      }
-      setFullPayload(getLoadedPayload(payloadKey));
-    }, [payloadKey]);
+    const onPayloadLoaded = useCallback(
+      (body: string) => {
+        setIsOutputExpanded(true);
+        onFullPayloadLoaded?.(body);
+      },
+      [onFullPayloadLoaded]
+    );
+    const {
+      key: payloadKey,
+      body: fullPayload,
+      loading: isLoadingPayload,
+      error: payloadError,
+      load: handleLoadFullPayload,
+      unload: unloadFullPayload,
+    } = useBlockOutputPayload(
+      sessionId,
+      eventId,
+      payloadRef?.fieldPath,
+      onPayloadLoaded
+    );
 
     const shouldRenderFullPayload =
       fullPayload !== null &&
@@ -257,35 +255,6 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
     const canLoadFullPayload = Boolean(
       payloadRef && sessionId && eventId && fullPayload === null
     );
-    const handleLoadFullPayload = useCallback(async () => {
-      if (!payloadRef || !sessionId || !eventId || !payloadKey) return;
-      const loaded = getLoadedPayload(payloadKey);
-      if (loaded !== null) {
-        setFullPayload(loaded);
-        onFullPayloadLoaded?.(loaded);
-        setIsOutputExpanded(true);
-        return;
-      }
-      setIsLoadingPayload(true);
-      try {
-        const pending = getPendingPayloadLoad(payloadKey);
-        const body = pending
-          ? await pending
-          : await trackPendingPayloadLoad(
-              payloadKey,
-              eventStoreProxy
-                .loadEventPayload(sessionId, eventId, payloadRef.fieldPath)
-                .then((payload) => payload?.body ?? null)
-            );
-        if (body !== null) {
-          setFullPayload(body);
-          onFullPayloadLoaded?.(body);
-          setIsOutputExpanded(true);
-        }
-      } finally {
-        setIsLoadingPayload(false);
-      }
-    }, [eventId, onFullPayloadLoaded, payloadKey, payloadRef, sessionId]);
 
     const preClassesShared = `block-output__pre m-0 whitespace-pre ${EVENT_SNIPPET_INNER_PADDING_CLASS} leading-normal`;
     const useTopCollapsedOverlay = defaultScrollToBottom && !isOutputExpanded;
@@ -369,8 +338,7 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
               size="mini"
               className="hover:bg-fill-2"
               onClick={() => {
-                unloadPayload(payloadKey);
-                setFullPayload(null);
+                unloadFullPayload();
                 setIsOutputExpanded(false);
               }}
             >
@@ -395,6 +363,11 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
                 : t("common:showMore")}
             </Button>
           </div>
+        )}
+        {payloadError && (
+          <PageNotice role="alert" type="danger" compact>
+            {payloadError}
+          </PageNotice>
         )}
 
         {!useTopCollapsedOverlay ? expandOverlay : null}

@@ -1,20 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { clearLoadedTurnRegistry } from "./loadedTurnRegistry";
 import { nativeCliTurnLoader } from "./nativeCliTurnLoader";
 
 const mocks = vi.hoisted(() => ({
   history: vi.fn(),
   merge: vi.fn(),
-  generation: 0,
 }));
 vi.mock("@src/api/tauri/rpc", () => ({
   rpc: { cli: { history: mocks.history } },
 }));
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: { mergeRoundWindowEvents: mocks.merge },
-}));
-vi.mock("./loadedTurnRegistry", () => ({
-  captureLoadedTurnRegistryGeneration: () => mocks.generation,
 }));
 vi.mock("@tauri-apps/api/core", () => ({
   convertFileSrc: (path: string) => `asset:${path}`,
@@ -24,7 +21,7 @@ const request = { sessionId: "cliagent-test", turnId: "old-turn" };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.generation = 0;
+  clearLoadedTurnRegistry(request.sessionId);
 });
 describe("native CLI turn loading", () => {
   it("loads the requested body and converts native image references", async () => {
@@ -53,7 +50,7 @@ describe("native CLI turn loading", () => {
   });
   it("does not merge a body read before the transcript was replaced", async () => {
     mocks.history.mockImplementation(async () => {
-      mocks.generation++;
+      clearLoadedTurnRegistry(request.sessionId);
       return [{ id: "stale" }];
     });
     expect(await nativeCliTurnLoader.loadTurnBodyIntoStore(request)).toBe(

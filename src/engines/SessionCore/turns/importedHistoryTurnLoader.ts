@@ -1,5 +1,4 @@
 import { importedHistoryTurnWindows } from "@src/api/tauri/externalHistory";
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
 import {
   isCodexAppSession,
@@ -7,9 +6,11 @@ import {
   isExternalHistorySession,
 } from "@src/util/session/sessionDispatch";
 
+import { createTurnBodyCommit } from "./turnBodyCommit";
 import type { SessionTurnLoader } from "./types";
 
 interface PendingImportedTurnBatch {
+  owner: ReturnType<typeof createTurnBodyCommit>;
   turnIds: Set<string>;
   waiters: Array<{
     turnId: string;
@@ -21,15 +22,21 @@ interface PendingImportedTurnBatch {
 
 const pendingBatches = new Map<string, PendingImportedTurnBatch>();
 
-async function flushPendingBatch(sessionId: string): Promise<void> {
-  const batch = pendingBatches.get(sessionId);
-  if (!batch || batch.flushing) return;
+async function flushPendingBatch(
+  sessionId: string,
+  batch: PendingImportedTurnBatch
+): Promise<void> {
+  if (batch.flushing) return;
   batch.flushing = true;
 
   while (batch.turnIds.size > 0) {
     const turnIds = [...batch.turnIds];
     const waiters = batch.waiters.splice(0);
     batch.turnIds.clear();
+    if (!batch.owner.isCurrent()) {
+      for (const waiter of waiters) waiter.resolve(false);
+      continue;
+    }
 
     try {
       const windows = await importedHistoryTurnWindows({
@@ -38,12 +45,9 @@ async function flushPendingBatch(sessionId: string): Promise<void> {
       });
       const chunks = windows.flatMap((window) => window.chunks);
       let merged = false;
-      if (chunks.length > 0) {
+      if (batch.owner.isCurrent() && chunks.length > 0) {
         const events = await processChunksRust(chunks, sessionId);
-        if (events.length > 0) {
-          await eventStoreProxy.mergeRoundWindowEvents(events, sessionId);
-          merged = true;
-        }
+        merged = await batch.owner.commit(events);
       }
       // Per-turn resolution: the wire names each window's turn, so a turn
       // whose window came back empty must NOT be marked loaded by its
@@ -62,7 +66,7 @@ async function flushPendingBatch(sessionId: string): Promise<void> {
     }
   }
 
-  pendingBatches.delete(sessionId);
+  if (pendingBatches.get(sessionId) === batch) pendingBatches.delete(sessionId);
 }
 
 function enqueueImportedTurnLoad(
@@ -71,19 +75,25 @@ function enqueueImportedTurnLoad(
 ): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const existing = pendingBatches.get(sessionId);
-    if (existing) {
+    if (existing?.owner.isCurrent()) {
       existing.turnIds.add(turnId);
       existing.waiters.push({ turnId, resolve, reject });
       return;
     }
 
-    pendingBatches.set(sessionId, {
+    const batch: PendingImportedTurnBatch = {
+      owner: createTurnBodyCommit(sessionId),
       turnIds: new Set([turnId]),
       waiters: [{ turnId, resolve, reject }],
       flushing: false,
-    });
+    };
+    pendingBatches.set(sessionId, batch);
     queueMicrotask(() => {
-      void flushPendingBatch(sessionId);
+      void flushPendingBatch(sessionId, batch).catch((error: unknown) => {
+        for (const waiter of batch.waiters.splice(0)) waiter.reject(error);
+        if (pendingBatches.get(sessionId) === batch)
+          pendingBatches.delete(sessionId);
+      });
     });
   });
 }

@@ -58,6 +58,81 @@ describe("buildCloudScopedMenuItems", () => {
     },
   ];
 
+  it("keeps an expanded subagent beside its pinned parent in cloud scope", () => {
+    const child = {
+      id: "child",
+      key: "child",
+      label: "Explore",
+      parentItemId: "parent",
+    };
+    const items = buildCloudScopedMenuItems({
+      cloudMenuItems: [{ id: "team", key: "team", label: "Team" }],
+      sessionMenuItems: [
+        { id: "parent", key: "parent", label: "Parent", pinned: true },
+        child,
+        { id: "other", key: "other", label: "Other" },
+      ],
+      mySessionsLabel: "My sessions",
+      mySessionsVisibleCount: 1,
+    });
+    expect(items.map((item) => item.id)).toEqual([
+      "separator-cloud-pinned",
+      "parent",
+      "child",
+      "team",
+      "separator-cloud-my-sessions",
+      "other",
+    ]);
+  });
+
+  it("paginates parent sessions without cutting off their expanded children", () => {
+    const child = {
+      id: "child",
+      key: "child",
+      label: "Explore",
+      parentItemId: "parent",
+    };
+    const hiddenChild = {
+      id: "hidden-child",
+      key: "hidden-child",
+      label: "Explore",
+      parentItemId: "other",
+    };
+    const input = {
+      cloudMenuItems: [{ id: "team", key: "team", label: "Team" }],
+      sessionMenuItems: [
+        { id: "parent", key: "parent", label: "Parent" },
+        child,
+        { id: "other", key: "other", label: "Other" },
+        hiddenChild,
+      ],
+      mySessionsLabel: "My sessions",
+    };
+    const first = buildCloudScopedMenuItems({
+      ...input,
+      mySessionsVisibleCount: 1,
+    });
+    expect(first.map((item) => item.id)).toEqual([
+      "team",
+      "separator-cloud-my-sessions",
+      "parent",
+      "child",
+      CLOUD_MY_SESSIONS_LOAD_MORE_ID,
+    ]);
+    const all = buildCloudScopedMenuItems({
+      ...input,
+      mySessionsVisibleCount: 2,
+    });
+    expect(all.map((item) => item.id)).toEqual([
+      "team",
+      "separator-cloud-my-sessions",
+      "parent",
+      "child",
+      "other",
+      "hidden-child",
+    ]);
+  });
+
   it("keeps regular grouping unchanged outside cloud scope", () => {
     expect(
       buildCloudScopedMenuItems({

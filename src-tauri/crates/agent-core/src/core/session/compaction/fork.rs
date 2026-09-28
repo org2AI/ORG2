@@ -230,8 +230,7 @@ pub async fn attempt_fork(inputs: ForkInputs<'_>) -> ForkOutcome {
     }
 
     // 5. Persist compacted transcript under new session id. This must retain
-    // the compact summary `system` row; `save_subagent_transcript` intentionally
-    // skips system prompts and would lose the durable compact boundary.
+    // the compact summary `system` row, which is the durable compact boundary.
     // `seed_session_with_messages` refuses non-empty targets, so a fork can
     // never clobber an existing transcript.
     let persist_messages = compacted_messages.to_vec();

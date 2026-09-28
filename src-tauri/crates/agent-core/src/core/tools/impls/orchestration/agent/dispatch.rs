@@ -227,6 +227,12 @@ impl AgentTool {
             &plan.model,
             inheritance,
         );
+        tokio::task::block_in_place(|| {
+            handler.persist_launch_input(&plan.messages, request.resume_session_id.is_some())
+        })
+        .map_err(|error| {
+            ToolError::ExecutionFailed(format!("Failed to persist worker input: {error}"))
+        })?;
         self.write_linked_session(
             &subagent_session_id,
             &parent_session_id,

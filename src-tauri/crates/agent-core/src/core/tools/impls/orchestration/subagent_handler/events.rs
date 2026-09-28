@@ -148,35 +148,30 @@ impl UnifiedSubagentHandler {
     /// its own live preview.
     pub(super) fn flush_streaming(&self) {
         let sid = &self.config.subagent_session_id;
-        let Some(ref handle) = self.app_handle else {
-            // No app_handle → no EventStore to swap into. Still drain the
-            // buffer so timing/state stays consistent.
-            let _ = self.streaming_buffer.complete_message(sid);
-            let _ = self.streaming_buffer.complete_thinking(sid);
-            return;
-        };
         if let Some(event) = self.streaming_buffer.complete_message(sid) {
-            let placeholder_id = format!("stream-msg-ts-{}", sid);
-            let event_for_persist = event.clone();
-            event_pipeline_bridge::replace_streaming_event(handle, sid, &placeholder_id, event);
-            event_pipeline_bridge::persist_events_async(
-                "subagent-flush-msg",
-                sid.to_string(),
-                vec![event_for_persist],
-                3,
-            );
+            self.publish_completed_segment("subagent-flush-msg", "stream-msg-ts", event);
         }
         if let Some(event) = self.streaming_buffer.complete_thinking(sid) {
-            let placeholder_id = format!("stream-think-ts-{}", sid);
-            let event_for_persist = event.clone();
-            event_pipeline_bridge::replace_streaming_event(handle, sid, &placeholder_id, event);
-            event_pipeline_bridge::persist_events_async(
-                "subagent-flush-think",
-                sid.to_string(),
-                vec![event_for_persist],
-                3,
-            );
+            self.publish_completed_segment("subagent-flush-think", "stream-think-ts", event);
         }
+    }
+
+    fn publish_completed_segment(
+        &self,
+        label: &'static str,
+        placeholder_prefix: &str,
+        event: SessionEvent,
+    ) {
+        #[cfg(test)]
+        self.completed_events.lock().unwrap().push(event.clone());
+        let Some(handle) = self.app_handle.as_ref() else {
+            return;
+        };
+        let sid = &self.config.subagent_session_id;
+        let placeholder_id = format!("{placeholder_prefix}-{sid}");
+        let event_for_persist = event.clone();
+        event_pipeline_bridge::replace_streaming_event(handle, sid, &placeholder_id, event);
+        event_pipeline_bridge::persist_events_async(label, sid.clone(), vec![event_for_persist], 3);
     }
 
     /// Build a `SessionEvent` for a tool_result (merged into tool_call via call_id).

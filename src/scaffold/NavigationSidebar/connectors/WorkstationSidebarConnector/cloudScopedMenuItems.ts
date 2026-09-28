@@ -84,10 +84,19 @@ export function buildCloudScopedMenuItems({
   // identity rather than by which separator happens to precede a row — and
   // the same rule then works for a teammate's row, which lives in a
   // different section entirely.
+  const childRowsByParent = new Map<string, NavigationMenuItem[]>();
   const pinnedItems: NavigationMenuItem[] = [];
   const localRows: NavigationMenuItem[] = [];
   const backendPaginationItems: SessionPaginationMenuItem[] = [];
   for (const item of sessionMenuItems) {
+    // Expanded children follow their parent through pinning and paging. They
+    // are not independent sessions and must not consume a root's page slot.
+    if (item.parentItemId) {
+      const children = childRowsByParent.get(item.parentItemId);
+      if (children) children.push(item);
+      else childRowsByParent.set(item.parentItemId, [item]);
+      continue;
+    }
     if (item.id.startsWith("separator-")) continue;
     if (isBackendSessionPaginationId(item.id)) {
       if (hasSessionPaginationPlan(item)) {
@@ -171,5 +180,5 @@ export function buildCloudScopedMenuItems({
     ...teamItems,
     separator(CLOUD_MY_SESSIONS_SECTION_ID, mySessionsLabel),
     ...mySessionsItems,
-  ];
+  ].flatMap((item) => [item, ...(childRowsByParent.get(item.id) ?? [])]);
 }

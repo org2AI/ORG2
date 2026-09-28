@@ -72,6 +72,8 @@ pub struct UnifiedSubagentHandler {
     /// the child EventStore live and gets persisted as one assistant
     /// segment per say-then-do boundary.
     streaming_buffer: StreamingBuffer,
+    #[cfg(test)]
+    completed_events: std::sync::Mutex<Vec<core_types::session_event::SessionEvent>>,
 }
 
 impl UnifiedSubagentHandler {
@@ -84,7 +86,14 @@ impl UnifiedSubagentHandler {
             tool_call_count: AtomicU32::new(0),
             app_handle: None,
             streaming_buffer: StreamingBuffer::with_default_timeout(),
+            #[cfg(test)]
+            completed_events: std::sync::Mutex::new(Vec::new()),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn take_completed_events(&self) -> Vec<core_types::session_event::SessionEvent> {
+        std::mem::take(&mut *self.completed_events.lock().unwrap())
     }
 
     /// Convenience constructor for simple subagents (no agent name or instance number).

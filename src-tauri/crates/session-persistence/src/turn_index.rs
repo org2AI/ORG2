@@ -36,7 +36,8 @@ const TURN_STATUS_FAILED: &str = "failed";
 /// can arrive through Team Session, personal Cloud sync, or runtime migration.
 /// v14: exclude internal lifecycle rows from `body_event_count`, so an
 /// imported round aborted before any output no longer advertises a body.
-const TURN_INDEX_VERSION: i64 = 14;
+/// v15: recover legacy late worker input from the exact parent launch fact.
+const TURN_INDEX_VERSION: i64 = 15;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -581,6 +582,7 @@ fn stream_turn_drafts(
     session_id: &str,
     stale_intent_ids: &StaleIntentIds,
 ) -> SqliteResult<Vec<TurnDraft>> {
+    let legacy_input = super::legacy_subagent_input::load(conn, session_id)?;
     let mut stmt = conn.prepare_cached(
         "SELECT id, function_name, args_json, result_json, content, created_at,
                 history_sequence AS order_sequence, event_type
@@ -590,8 +592,22 @@ fn stream_turn_drafts(
     )?;
     let rows = stmt.query_map([session_id], index_event_row)?;
     let mut builder = TurnDraftBuilder::new(stale_intent_ids);
+    if let Some(input) = legacy_input.as_ref() {
+        let mut row = conn.query_row(
+            "SELECT id, function_name, args_json, result_json, content, created_at,
+                    history_sequence AS order_sequence, event_type
+             FROM events WHERE session_id = ?1 AND id = ?2",
+            params![session_id, input.event_id], index_event_row,
+        )?;
+        row.created_at = input.started_at.clone();
+        row.order_sequence = -1;
+        builder.push(&row);
+    }
     for row in rows {
         let row = row?;
+        if legacy_input.as_ref().is_some_and(|input| input.event_id == row.id) {
+            continue;
+        }
         builder.push(&row);
     }
     Ok(builder.finish())

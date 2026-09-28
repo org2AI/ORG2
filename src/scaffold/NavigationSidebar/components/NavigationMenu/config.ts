@@ -62,6 +62,8 @@ export interface NavigationMenuItem {
   showDrillDownIndicator?: boolean;
   /** Indents the row and draws a vertical guide line for inline child rows. */
   showIndentGuide?: boolean;
+  /** Flat child row ownership; grouping and pagination keep it beside this parent. */
+  parentItemId?: string;
   visualTone?: "default" | "secondary";
   /**
    * The viewer pinned this row. Set by the row builders (local and cloud) so

@@ -113,9 +113,18 @@ impl TurnEventHandler for UnifiedSubagentHandler {
         _has_tool_calls: bool,
         model: &str,
     ) {
-        // Flush any still-buffered streaming text into the child EventStore
-        // so the authoritative `stream-msg-{sid}-N` segment replaces the
-        // TS placeholder before the iteration ends.
+        // Completed responses and executor-generated terminal notices may have
+        // no streaming deltas. Route that text through the same durable segment
+        // path; an existing stream already owns its event and must not duplicate.
+        let sid = &self.config.subagent_session_id;
+        if let Some(text) = content.filter(|text| !text.is_empty()) {
+            if !self
+                .streaming_buffer
+                .has_stream(crate::foundation::streaming::StreamType::Message, sid)
+            {
+                self.streaming_buffer.append_message_delta(sid, text);
+            }
+        }
         self.flush_streaming();
 
         let Some(text) = content else { return };

@@ -2613,6 +2613,10 @@
     "teamChatMode": "团队讨论",
     "promptTooltip": "发给 agent 执行",
     "teamChatTooltip": "发给队友的讨论，不触发 agent",
+    "workspaceResolving": "正在查找匹配的本地工作区，请稍后重试",
+    "workspaceRequiredTitle": "打开匹配的工作区",
+    "workspaceRequiredBody": "要让 Agent 继续这个共享对话，请先打开该仓库的本地工作区",
+    "openWorkspace": "打开工作区",
     "imagesUnsupported": "团队讨论暂不支持图片",
     "participantsTooltip": "对话参与者与讨论消息数",
     "mentionGroup": "队友"

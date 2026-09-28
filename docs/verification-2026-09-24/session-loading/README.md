@@ -1,26 +1,26 @@
-# 会话加载反馈实机验证
+# Session Loading Feedback Verification on a Real Device
 
-点击侧栏会话后，正文尚不可用时，`ChatLoadingBlock` 原先只画静态灰条；更直接的问题是空状态分支没有复用正文的标题栏留白，加载提示实际位于不透明浮动标题栏下面。空历史确认有既有的 5 秒等待，因此会出现明显空白。
+After a sidebar session was clicked, while the transcript was still unavailable, `ChatLoadingBlock` originally rendered only static gray bars. A more immediate issue was that the empty-state branch did not reuse the transcript's header spacing, so the loading indicator was hidden beneath the opaque floating header. The empty-history check already had a five-second wait, which left a conspicuous blank area.
 
-修复让空状态与懒加载 fallback 复用 `resolveTranscriptTopPaddingPx` 的布局约定；共享加载提示增加本地化文字、转圈、status/busy 语义和减少动态效果支持。没有修改正文数据、加载请求、配额或这段等待时长，没有历史数据修复操作。
+The fix makes the empty state and lazy-loading fallback reuse the layout convention in `resolveTranscriptTopPaddingPx`. The shared loading indicator now includes localized text, a spinner, status/busy semantics, and support for reduced motion. Transcript data, loading requests, quotas, and the wait duration were not changed, and no historical data was repaired.
 
-## 实机证据
+## Real-Device Evidence
 
-截图来自独立数据目录的 macOS Tauri 测试窗口，裁剪到会话栏；只有专用 fixture 数据。
+The screenshots come from a macOS Tauri test window using an isolated data directory, cropped to the session pane; they contain only dedicated fixture data.
 
-| 修复前                          | 修复后                       | 等待结束                 |
+| Before the fix                  | After the fix                | After the wait            |
 | ------------------------------- | ---------------------------- | ------------------------ |
-| ![标题栏下方为空白](before.png) | ![可见的加载提示](after.png) | ![正常空状态](empty.png) |
+| ![Blank space below the header](before.png) | ![Visible loading indicator](after.png) | ![Normal empty state](empty.png) |
 
-同一侧栏点击回归先在旧实现失败：提示没有文字和状态语义。只补文字时仍失败：文字矩形 y=24–44，`elementFromPoint` 命中标题栏，证明 DOM 存在不等于可见。布局修复后文字 y=112–132，命中提示本身；提示在确认空状态后消失，截图显示原有 Reload 操作。
+The same sidebar-click regression first failed against the old implementation because the indicator had no text or status semantics. Adding text alone still failed: its rectangle was at y=24–44, and `elementFromPoint` hit the header, showing that DOM presence did not mean the text was visible. After the layout fix, the text was at y=112–132 and hit testing reached the indicator itself. The indicator disappeared after the empty state was confirmed, and the screenshot shows the existing Reload action.
 
-## 执行结果
+## Results
 
-- `pnpm exec vitest run --config config/vitest.config.ts src/engines/ChatPanel/blocks/primitives/ChatLoadingBlock.test.ts src/engines/ChatPanel/header/chatPanelHeaderLayout.test.ts`：2 个文件、22 条通过，含中英文与现有标题栏布局约定。
-- `E2E_CHAT_RENDERING_SCENARIOS=session-loading pnpm test -- --spec ./specs/core/chat-rendering-ui.spec.mjs --mochaOpts.grep "shows visible loading feedback"`（`tests/e2e`）：1 passing。只 seed 空会话；生产侧栏点击、历史加载与空状态确认负责状态变化，未注入 loading 状态。断言文字、status/busy、真实命中检测与最后消失。
-- `pnpm typecheck:fast`；对四个变更 TS/TSX 文件运行 `pnpm exec eslint ... --max-warnings 0`：通过。
-- `node --check tests/e2e/specs/core/chat-rendering-ui.spec.mjs`、`git diff --check`、变更文件长度检查：通过。
+- `pnpm exec vitest run --config config/vitest.config.ts src/engines/ChatPanel/blocks/primitives/ChatLoadingBlock.test.ts src/engines/ChatPanel/header/chatPanelHeaderLayout.test.ts`: 2 files, 22 tests passed, including Chinese and English and the existing header layout convention.
+- `E2E_CHAT_RENDERING_SCENARIOS=session-loading pnpm test -- --spec ./specs/core/chat-rendering-ui.spec.mjs --mochaOpts.grep "shows visible loading feedback"` (`tests/e2e`): 1 passing. It seeds only an empty session; the production sidebar click, history loading, and empty-state confirmation drive the state changes, with no injected loading state. Assertions cover text, status/busy, real hit testing, and eventual disappearance.
+- `pnpm typecheck:fast`; ran `pnpm exec eslint ... --max-warnings 0` on the four changed TS/TSX files: passed.
+- `node --check tests/e2e/specs/core/chat-rendering-ui.spec.mjs`, `git diff --check`, and changed-file length check: passed.
 
-运行使用隔离端口和 mock provider；加载修复没有 Rust 变更，复用本任务先前构建的 webdriver 二进制，前端来自当前分支。webpack-dev-server 5 的 proxy 配置兼容问题用本地临时适配启动，测试结束后已恢复，没有纳入本 PR。
+The run used an isolated port and a mock provider. The loading fix made no Rust changes; it reused the webdriver binary built earlier for this task, and the frontend came from the current branch. A temporary local adapter was used to work around a webpack-dev-server 5 proxy configuration compatibility issue, then restored after the test; it is not part of this PR.
 
-本次覆盖深色窄分栏、等待和空状态；浅色、最大化、网络错误及云端慢正文下载没有新增实机覆盖。共享加载组件也用于嵌套内容和面板，提示高度从 16px 增加为带文字的紧凑行，极短等待可能短暂显示。没有新增定时器、轮询或 retained state；不提出运行性能提升结论。
+This check covered a narrow dark sidebar, loading, and the empty state. It added no real-device coverage for light mode, maximized windows, network errors, or slow cloud transcript downloads. The shared loading component is also used in nested content and panels; its height increased from 16px to a compact row with text, so it may briefly appear during very short waits. No timers, polling, or retained state were added, and no runtime performance improvement is claimed.

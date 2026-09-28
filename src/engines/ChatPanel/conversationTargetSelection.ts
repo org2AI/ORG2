@@ -32,6 +32,8 @@ export interface ConversationTargetBinding {
   selection: LastModelSelection | null;
   runtimeSelection: AgentSelection | null;
   target: LocalConversationTarget | null;
+  /** Only imported Cloud replays need a local checkout before first dispatch. */
+  importedCloudWorkspace: "pending" | "matched" | "missing" | null;
   readiness: ConversationTargetReadiness;
   nativeCliTargets: readonly CliAgentType[];
   applyRuntimePick: (selection: AgentSelection) => boolean;

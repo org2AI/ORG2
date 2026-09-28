@@ -1,18 +1,18 @@
 # Cloud session sharing and fork reliability architecture audit
 
-> **执行状态注记（2026-07-17 修复批次）**：本审计的 5 个 must-fix 与 2 个 should-fix 已全部落地，见对应提交：
+> **Implementation status (2026-07-17 fix batch):** All 5 must-fix and 2 should-fix items from this audit have been implemented; see the corresponding commits:
 >
-> - selected-agent 转发 → `fix(chat): forward selected agent into external-history continuation`（含非默认定义的 payload 断言）
-> - explicit-share double-pass → `fix(cloud): run one serialized pass for explicit share and level changes`（`resumeOrgAndWait` + `startedPassCount` 计数测试；CloudSyncLevelDialog 的两处 pair 一并迁移）
-> - endpoint reset 漏 `org2CloudPushedMetadataAtom` → `fix(cloud): wipe pushed-metadata marker on endpoint switch`（含 wipe-set ⊇ prune-set 对齐测试）
-> - scope-only + floor 隐式上传 → `fix(cloud): apply sharing floor only to admitted sessions`（floor 仅作用于 owned/tagged/fork/显式 intent 的会话）
-> - guest capability 不可重启 → `fix(cloud): durable guest share capability registry`（zod 校验的 durable registry；`loadSessions` 全量替换后重物化 guest 行）
-> - segment 内容校验 → `feat(collab): verify segment count and content hash before assembly`（typed `SegmentIntegrityError` + tamper 测试）
-> - 全链路取消 → `feat(cloud): abortable share resolve, fetch, decode, and import`
-> - 证据缺口 → `test(cloud): p_after_seq contract probe and rendered fork/guest evidence`（cloud-org 场景 M 契约探针；dual-instance C 非默认 agent 持久化断言、E guest 强制刷新存活断言）。凭据门控的 rendered E2E 仍需在配好 `E2E_CLOUD_*` 的环境实际执行。
-> - 正交改动拆分 → logger、Rust prompt fixture、Brick 子树已各自独立提交。
+> - selected-agent forwarding → `fix(chat): forward selected agent into external-history continuation` (including a payload assertion for a non-default definition)
+> - explicit-share double pass → `fix(cloud): run one serialized pass for explicit share and level changes` (counting test for `resumeOrgAndWait` + `startedPassCount`; both CloudSyncLevelDialog call-site pairs were migrated as well)
+> - endpoint reset omitted `org2CloudPushedMetadataAtom` → `fix(cloud): wipe pushed-metadata marker on endpoint switch` (including a test that aligns the wipe set with the prune set)
+> - scope-only + floor implicit upload → `fix(cloud): apply sharing floor only to admitted sessions` (the floor applies only to owned/tagged/forked sessions or sessions with explicit intent)
+> - guest capability did not survive restart → `fix(cloud): durable guest share capability registry` (a zod-validated durable registry; guest rows are rematerialized after `loadSessions` replaces the full list)
+> - segment content verification → `feat(collab): verify segment count and content hash before assembly` (typed `SegmentIntegrityError` + tampering test)
+> - end-to-end cancellation → `feat(cloud): abortable share resolve, fetch, decode, and import`
+> - evidence gap → `test(cloud): p_after_seq contract probe and rendered fork/guest evidence` (contract probe for cloud-org scenario M; dual-instance C asserts persistence of a non-default agent, and E asserts guest survival after forced refresh). Credential-gated rendered E2E still needs to run in an environment configured with `E2E_CLOUD_*`.
+> - split orthogonal changes → logger, Rust prompt fixture, and Brick subtree changes were each committed separately.
 >
-> should-fix 中的 entitlement 双协调器（roster bootstrap 与 Realtime 各持一套 TTL/single-flight）仍未合并为单一 coordinator，保留为后续项。
+> The should-fix for the two entitlement coordinators (roster bootstrap and Realtime each maintain their own TTL/single-flight) has not yet been consolidated into one coordinator and remains a follow-up item.
 
 Scope: the complete managed-cloud session-sharing change cluster on `fix/session-sharing-reliability`, including sync-level and org-floor policy, scope matching, endpoint/share-token provenance, cloud replay import, fork and parent navigation, local external-history continuation, comments/`@agent`/Address Comments, Realtime ownership, fork snapshot integrity, and the rendered cloud E2E evidence. Existing focused audits remain authoritative for the adjacent subsystems:
 

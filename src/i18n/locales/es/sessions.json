@@ -2624,6 +2624,10 @@
     "teamChatMode": "Chat de equipo",
     "promptTooltip": "Enviar al agent",
     "teamChatTooltip": "Escribe a tus compañeros — no envía un prompt al agent",
+    "workspaceResolving": "Buscando un espacio de trabajo local que coincida. Inténtalo de nuevo en un momento.",
+    "workspaceRequiredTitle": "Abrir un espacio de trabajo que coincida",
+    "workspaceRequiredBody": "Para que un agente continúe esta conversación compartida, abre una copia local del repositorio.",
+    "openWorkspace": "Abrir espacio de trabajo",
     "imagesUnsupported": "Los mensajes del chat de equipo no pueden incluir imágenes",
     "participantsTooltip": "Participantes de la conversación y mensajes de discusión",
     "mentionGroup": "Compañeros"

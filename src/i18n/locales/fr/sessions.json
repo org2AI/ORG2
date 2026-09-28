@@ -2624,6 +2624,10 @@
     "teamChatMode": "Chat d’équipe",
     "promptTooltip": "Envoyer à l’agent",
     "teamChatTooltip": "Écrire aux coéquipiers — ne sollicite pas l’agent",
+    "workspaceResolving": "Recherche d’un espace de travail local correspondant. Réessayez dans un instant.",
+    "workspaceRequiredTitle": "Ouvrir un espace de travail correspondant",
+    "workspaceRequiredBody": "Pour qu’un agent poursuive cette conversation partagée, ouvrez une copie locale du dépôt.",
+    "openWorkspace": "Ouvrir un espace de travail",
     "imagesUnsupported": "Les messages du chat d’équipe ne peuvent pas contenir d’images",
     "participantsTooltip": "Participants à la conversation et messages de discussion",
     "mentionGroup": "Coéquipiers"

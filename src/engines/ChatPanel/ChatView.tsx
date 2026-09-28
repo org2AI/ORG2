@@ -349,6 +349,9 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       currentSession,
       root: conversationTargetBinding?.root ?? null,
       selectedTarget: conversationTargetBinding?.target ?? null,
+      importedCloudWorkspace:
+        conversationTargetBinding?.importedCloudWorkspace ??
+        (currentSession?.importedFrom ? "pending" : null),
       onSurfaceSubmit: handleMainComposerSubmitOverride,
     });
     const handleConversationSubmitWithTailFollow = useCallback(

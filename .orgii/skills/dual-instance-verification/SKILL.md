@@ -1,9 +1,9 @@
 ---
 name: dual-instance-verification
-description: Dual-instance (双机) real-machine verification protocol for ORG2 cloud sync and session sharing. Use before declaring any sharing/sync/collab feature or fix "verified": share/unshare, push/retract, fork/import, comments, member-floor, replay, continuation, or anything touching Org2CloudSyncEngine, collab engines, or the session channel pipeline. Also use when a sharing bug escaped earlier testing, to check which discipline below was skipped.
+description: Two-device verification protocol for ORG2 cloud sync and session sharing. Use before declaring any sharing/sync/collab feature or fix "verified": share/unshare, push/retract, fork/import, comments, member-floor, replay, continuation, or anything touching Org2CloudSyncEngine, collab engines, or the session channel pipeline. Also use when a sharing bug escaped earlier testing, to check which discipline below was skipped.
 ---
 
-# Dual-Instance Verification (双机实测)
+# Dual-Instance Verification
 
 Real-machine verification of session sharing across ORG2 (primary, Neonforge) and
 ORG2 Instance 2 (VantaNode). Born from a four-bug escape on 2026-07-24 where every

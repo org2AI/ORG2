@@ -2613,6 +2613,10 @@
     "teamChatMode": "Team chat",
     "promptTooltip": "Send to the agent",
     "teamChatTooltip": "Message teammates — does not prompt the agent",
+    "workspaceResolving": "Checking for a matching local workspace. Try again in a moment.",
+    "workspaceRequiredTitle": "Open a matching workspace",
+    "workspaceRequiredBody": "This shared conversation needs a local checkout of its repository before an agent can continue it.",
+    "openWorkspace": "Open workspace",
     "imagesUnsupported": "Team chat messages cannot include images",
     "participantsTooltip": "Conversation participants and discussion messages",
     "mentionGroup": "Teammates"

@@ -1,91 +1,91 @@
-# 原生会话一致性：工具结果边界修复与验收
+# Native conversation consistency: tool-result boundary fix and acceptance
 
-## 问题和验收范围
+## Problem and acceptance scope
 
-用户报告同一 `read_file` 结果在原生历史与标准会话中长度不同（164 项中的第 94 项，11890 对 11899）。本机已只读检查已知实例的持久消息、事件、原生记录和本任务测试实例，尚未定位该次调用。不能把下面的复现自动等同于该事件的根因，也不能宣称用户旧会话已恢复。报错补充 session ID，便于以后定位实际来源；不记录正文。
+The user reported that the same `read_file` result had different lengths in native history and the standard conversation (item 94 of 164, 11890 versus 11899). Read-only inspection of the known instance’s persisted messages, events, native records, and this task’s test instance has not yet located that call. The reproduction below must not automatically be treated as the root cause of that incident, and we cannot claim that the user’s old session has been restored. The error now includes the session ID to help locate the actual source later; the body is not logged.
 
-本 PR 的主题是：ORG2 写入 Codex 的工具结果必须逐字往返，明确状态必须保持；原生程序补充非业务标识不能让幂等重试失败。验收包括：
+This PR ensures that tool results written by ORG2 to Codex round-trip verbatim and explicit status is preserved; non-business identifiers added by the native program must not cause idempotent retries to fail. Acceptance includes:
 
-- 生产写入器到生产读取器往返后，工具名称、参数、配对、输出和错误状态一致
-- JSON、空正文、Unicode、CRLF、首尾空白、看似执行器消息的正文都不触发二次解释
-- 原生 Codex 接受实际写入格式，真实请求中内容一致，关闭重开后仍一致
-- 真正正文分叉、错误配对、重复结果、格式损坏仍拒绝
-- 不覆盖旧文件，不引入轮询、重试循环或新持久缓存
+- tool name, arguments, pairing, output, and error status match after round-tripping through the production writer and reader
+- JSON, empty bodies, Unicode, CRLF, leading/trailing whitespace, and bodies that resemble executor messages do not trigger a second interpretation
+- native Codex accepts the actual written format; content matches in real requests and remains consistent after closing and reopening
+- genuine body divergence, incorrect pairing, duplicate results, and malformed formats are still rejected
+- no overwriting old files and no new polling, retry loop, or persistent cache
 
-本机历史日志另确认多次同类拦截，差异包括工具调用/结果顺序、参数与压缩后的历史长度；这些日志不证明当前代码仍有相同生产缺陷，也不能归因于本 PR 的两个复现。当前 ORG2 界面处于新会话页，没有显示本次报告；未修改该实例数据。
+Local history logs also confirm multiple similar interceptions, with differences in tool call/result ordering, arguments, and compressed history length. These logs do not prove that the current code still has the same production defect, nor can they be attributed to the two reproductions in this PR. The current ORG2 UI is on the new-session page and does not display this report; that instance’s data was not modified.
 
-## 已确认的生产边界问题
+## Confirmed production-boundary issue
 
-权威输入是标准会话传入 `codex_response_items` 的 `NativeConversationItem::ToolResult`。旧写入器将成功输出直接写成字符串，错误输出包装成执行器 JSON；读取器又对所有这些字符串执行 JSON、脚本失败和后台任务识别。由此同一份文件内容可能被当成控制信息：`{"output":"literal","session_id":1}` 被拆解，正文中的 `Script failed` 可以把成功结果改成失败。
+The authoritative input is `NativeConversationItem::ToolResult` passed into `codex_response_items` by the standard conversation. The old writer wrote successful output directly as a string and wrapped error output in executor JSON; the reader then applied JSON, script-failure, and background-task recognition to all such strings. As a result, file content could be treated as control information: `{"output":"literal","session_id":1}` was unpacked, and `Script failed` in the body could turn a successful result into a failure.
 
-这是编码与解码约定不对称，不是应放宽语义前缀校验的问题。新增回归在旧读取路径上已因成功状态变为失败而失败。
+This is an asymmetry between the encoding and decoding contracts, not a reason to loosen semantic prefix validation. The new regression failed on the old read path because a successful status became a failure.
 
-另一个实测问题：Codex 0.154.0 会给注入的工具结果补 `fco_*` ID。原有后缀检查逐字段比较整个 JSON，因而可能在注入成功但响应丢失后的重试中误报冲突。允许的差异仅限原请求未提供、原生端补充的结果 ID；调用 ID、正文和其余字段仍严格比较。
+Another observed issue: Codex 0.154.0 adds an `fco_*` ID to injected tool results. The existing suffix check compared the entire JSON field by field, so a retry after successful injection but lost response could report a false conflict. The only allowed difference is the result ID, which the native side adds when the original request did not provide one; call ID, body, and all other fields are still compared strictly.
 
-## 设计
+## Design
 
-1. 原生 function item ID 使用明确的 `fc_orgii_v1_` 前缀标记 ORG2 的输出协议版本。它属于 provider 支持的 ID 字段，不把私有参数塞进工具 arguments。
-2. 所有结果统一编码为现有 exec 风格的字符串 JSON `{exit_code, output}`：0 成功、1 失败、130 中断。编码与解码定义在同一 Rust 模块。
-3. 读取器只从原生 response-item ID 取得版本标识，放入现有有界 pending-call 记录；业务 arguments 中的同名字段不能选择协议。新增伪装参数反例。解码只做一层。输出正文是不可再解释的字符串；不再经过 shell 状态、后台 cell 或工具重命名推断。版本化数据损坏时明确报错，不默默退回猜测。
-4. 没有版本标识的原生/旧数据继续走原读取路径。不会为一次升级重写用户历史，也不会从长度差猜测哪份内容才正确。
-5. 保留严格语义前缀比较。真正分叉仍拦截，错误信息增加 session ID。
+1. Use the explicit `fc_orgii_v1_` prefix in native function item IDs to mark the ORG2 output protocol version. This uses an ID field supported by the provider instead of putting private parameters in tool arguments.
+2. Encode all results as the existing exec-style string JSON `{exit_code, output}`: 0 for success, 1 for failure, and 130 for interruption. Encoding and decoding are defined in the same Rust module.
+3. The reader gets the version marker only from the native response-item ID and places it in the existing bounded pending-call record; a same-named field in business arguments cannot select the protocol. A spoofed-argument counterexample was added. Decoding occurs only once. The output body is an opaque string and is no longer interpreted using shell status, background-cell state, or tool-renaming heuristics. Corrupt versioned data produces an explicit error rather than silently falling back to guesswork.
+4. Native/legacy data without a version marker continues to use the original read path. User history is not rewritten for an upgrade, and a length difference is not used to guess which content is correct.
+5. Keep strict semantic-prefix comparison. Genuine divergence is still blocked, and the error includes the session ID.
 
-## 历史数据与兼容性
+## Historical data and compatibility
 
-没有数据库迁移，没有历史清理或生产数据写入。旧会话若已发生不同投影，需要先拿到原始文件与标准事件的同一调用，比较逐字差异、来源、版本与哈希，再确定是否可以只重建派生视图。若需创建替代执行会话，应保留原生文件和标准正文，验证全量一致后再切换绑定。本文没有授权或执行此类历史修复。
+There was no database migration, history cleanup, or production data write. If an old session has already diverged in projection, first obtain the same call from the original file and standard events, compare exact text differences, source, version, and hash, and then determine whether only the derived view can be rebuilt. If a replacement execution session is needed, preserve the native file and standard body, verify full consistency, and only then switch the binding. This document does not authorize or perform such historical repair.
 
-新格式会增加固定包装与字符串转义开销。工具正文未删改，但旧版本客户端仍有正文推断逻辑，所以同一会话的所有读取端应升级；不保证降级后也能正确处理这些特殊正文。回滚只停止新格式写入，保留已写入记录和兼容读取器；不要用覆盖原生历史的方式回滚。
+The new format adds fixed wrapper and string-escaping overhead. Tool bodies are unchanged, but older clients still infer meaning from the body, so all readers for the same session should be upgraded; correct handling of these special bodies after downgrade is not guaranteed. Rollback should only stop writing the new format while retaining already written records and the compatibility reader; do not roll back by overwriting native history.
 
-## 十层架构核查
+## Ten-layer architecture review
 
-| 层            | 结论       | 证据/边界                                                         |
+| Layer | Verdict | Evidence / boundary                                                         |
 | ------------- | ---------- | ----------------------------------------------------------------- |
-| 编译          | 见验证记录 | 修改 Rust 所属 crate 与原生写入测试                               |
-| 去重          | 修复       | 编解码集中；原写入器状态包装函数删除                              |
-| 命名          | 明确       | 工具 output 与 transport envelope 分开                            |
-| 语义          | 修复       | 正文不再产生 status/background 控制信息                           |
-| 默认分支      | 保守       | v1 严格解码；旧格式不猜测性迁移                                   |
-| 领域边界      | 保留       | Codex 协议放 Codex 模块，标准会话类型不改                         |
-| 可理解性      | 明确       | 版本前缀、单层解码与拒绝条件有注释和反例                          |
-| Wire          | 实测       | Rust 生成 response items，安装版 Codex 的注入与模型请求验证       |
-| 入口对称      | 核查       | materialize/synchronize 共用写入器；完整/流式访问/分页共用 parser |
-| Resolver 对称 | 不涉及     | 未修改账号、工作目录或 provider 优先级链                          |
+| Compilation | See verification record | Modified the owning Rust crate and native-writer tests                               |
+| Deduplication | Fixed | Encoding/decoding are centralized; the old writer status-wrapping function was removed                              |
+| Naming | Clear | Tool output and transport envelope are separate                            |
+| Semantics | Fixed | The body no longer produces status/background control information                           |
+| Default branch | Conservative | v1 is decoded strictly; legacy formats are not migrated by guesswork                                   |
+| Domain boundary | Preserved | The Codex protocol stays in the Codex module; standard conversation types are unchanged                         |
+| Understandability | Clear | Version prefix, single-layer decoding, and rejection conditions have comments and counterexamples                          |
+| Wire | Tested | Rust generates response items; injection and model requests were verified with installed Codex       |
+| Entry-point symmetry | Reviewed | materialize/synchronize share a writer; full/streaming/paginated reads share a parser |
+| Resolver symmetry | Not applicable | Account, working directory, and provider priority chain were not changed                          |
 
-同类入口检查覆盖标准 TS 投影、Rust Agent 持久历史、Claude 原生读写、Codex 原生读写和后缀重试。当前补丁修改 Codex 边界；Claude/Agent 的所有生命周期、所有 provider/所有旧会话不在已证实通过范围，不能据此宣称全局无一致性问题。
+Related entry-point checks cover standard TS projection, Rust Agent persisted history, Claude native reads/writes, Codex native reads/writes, and suffix retries. This patch changes the Codex boundary; all Claude/Agent lifecycles, all providers, and all old sessions are outside the verified scope, so this does not establish global consistency.
 
-## 性能与生命周期
+## Performance and lifecycle
 
 | Area               | Verdict | Evidence                                                         | Change or reason kept                | Verification            |
 | ------------------ | ------- | ---------------------------------------------------------------- | ------------------------------------ | ----------------------- |
-| Background work    | keep    | 同步既有按需读取路径                                             | 不新增 timer/listener/worker/重试    | 源码调用链              |
-| Memory             | keep    | 单条结果解码与原有历史收集器                                     | 不新增全局容器；额外 JSON 字符串包装 | 编解码与读取回归        |
-| Scope/isolation    | keep    | 原生 RPC 测试用临时 profile、HOME、loopback 模型、macOS 网络沙箱 | 不访问真实账号或模型服务             | 冷启动/重开测试         |
-| Rendering/hot path | keep    | 无 React 修改；只在已有 transcript parser 中按 ID 分支           | 新格式绕开重复推断                   | 完整读取与 visitor 比较 |
+| Background work    | keep    | The existing on-demand read path is synchronous                                             | No timer/listener/worker/retry added    | Source call chain              |
+| Memory             | keep    | Single-result decoding and existing history collector                                     | No global container added; extra JSON string wrapping | Encoding/decoding and read regressions        |
+| Scope/isolation    | keep    | Native RPC tests use a temporary profile, HOME, loopback model, and macOS network sandbox | No real account or model service accessed             | Cold-start/reopen tests         |
+| Rendering/hot path | keep    | No React changes; branch by ID only in the existing transcript parser           | New format bypasses repeated inference                   | Full read and visitor comparison |
 
-| Provider      | Raw transition                       | App/UI state            | Topology/boundary                              | Expected invariant                 | Observed evidence    |
+| Provider | Raw transition | App/UI state | Topology / boundary | Expected invariant | Observed evidence |
 | ------------- | ------------------------------------ | ----------------------- | ---------------------------------------------- | ---------------------------------- | -------------------- |
-| Codex         | 创建与重复读取                       | 离线真实 JSONL          | 本地写入→读取→语义检查                         | 正文/状态不变；真实分叉被拒绝      | 生产读写回归         |
-| Claude Code   | 创建与重复读取                       | 离线真实 JSONL          | 本地写入→读取→语义检查                         | 同一组正文/状态一致                | 同组跨 provider 回归 |
-| Codex 0.154.0 | 注入、追加两轮、重启                 | 真实 app-server；无 GUI | 临时 profile→loopback 请求→原生 rollout→读取器 | 注入正文一致、版本 ID 保留、无重复 | 原生 RPC 集成回归    |
-| Codex/Claude  | compact/rotate/delete、旧行打开/固定 | GUI                     | 云上传/另一台下载                              | 全生命周期一致                     | 本 PR 未新增实测     |
+| Codex | Create and reread | Real offline JSONL | Local write → read → semantic check | Body/status unchanged; genuine divergence rejected | Production read/write regression |
+| Claude Code | Create and reread | Real offline JSONL | Local write → read → semantic check | Same body/status consistency | Same-suite cross-provider regression |
+| Codex 0.154.0 | Inject, append twice, restart | Real app-server; no GUI | Temporary profile → loopback request → native rollout → reader | Injected body matches, version ID retained, no duplicates | Native RPC integration regression |
+| Codex/Claude | compact/rotate/delete, open/pin old row | GUI | Cloud upload / download on another device | Full lifecycle consistency | No new measurement in this PR |
 
-本改动没有常驻后台资源；未进行新版本完整桌面可见/隐藏 CPU/RSS 和云端全生命周期验收。**Performance verdict: blocked**（这些实机矩阵单元未覆盖，不代表已发现常驻性能回归）。
+This change adds no persistent background resources. Full desktop visible/hidden CPU/RSS and cloud lifecycle acceptance were not performed for the new version. **Performance verdict: blocked** (these real-device matrix cells are uncovered; this does not mean a persistent performance regression was found).
 
-## 验证记录
+## Verification record
 
-以下命令均在独立工作区运行；根 crate 命令复用本任务已有 Cargo target 缓存，已补齐本地 PM sidecar 软链接，不提交构建产物。
+The following commands were run in an isolated workspace. The root-crate command reused this task’s existing Cargo target cache; the local PM sidecar symlink was added. Build artifacts were not committed.
 
-- `cargo check --manifest-path src-tauri/Cargo.toml -p orgtrack_core --all-targets`：通过，无 warning
-- `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core materialized_tool_results_preserve_opaque_body_and_explicit_status -- --nocapture`：修改读取路径前红、修改后绿；旧路径把成功正文里的 `Script failed` 推断成失败
-- `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core sources::codex -- --test-threads=1`：120 passed，4 ignored（既有真实图片素材/资源验收）
-- `cargo clippy --manifest-path src-tauri/Cargo.toml -p orgtrack_core --all-targets -- -D warnings`：通过
-- `cargo clippy --manifest-path src-tauri/Cargo.toml --lib -- -D warnings`：通过
-- `ORG2_TEST_CODEX_BIN=/opt/homebrew/bin/codex cargo test --manifest-path src-tauri/Cargo.toml --lib agent_sessions::cli::native_materializer::tests -- --include-ignored --test-threads=1`：56 passed；包括显式启用的安装版 Codex 0.154.0 回归，两个隔离进程、两次 loopback 模型请求、五个注入工具结果、原生文件再次读回。Claude 锁子测试由父测试实际启动验证；单独调用它没有独立覆盖含义
-- `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_sessions::cli::parsers::codex_app_server::catalog::tests -- --test-threads=1`：9 passed，2 ignored（既有 provider/project 原生配置测试）；新后缀重试、正文变化、额外字段、重复结果反例通过
-- `pnpm exec vitest run --config config/vitest.config.ts src/engines/SessionCore/conversations/nativeConversationMaterializer.test.ts src/engines/SessionCore/conversations/localConversationContinuation.test.ts`：2 文件、109 passed
-- `python3 -m py_compile src-tauri/src/agent_sessions/cli/native_materializer/opaque_tool_native_probe.py`：通过
-- `git diff --check`：通过
+- `cargo check --manifest-path src-tauri/Cargo.toml -p orgtrack_core --all-targets` — passed, no warnings
+- `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core materialized_tool_results_preserve_opaque_body_and_explicit_status -- --nocapture` — failed before the read-path change and passed afterward; the old path inferred failure from `Script failed` in a successful body
+- `cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core sources::codex -- --test-threads=1` — 120 passed, 4 ignored (existing real image asset/resource acceptance tests)
+- `cargo clippy --manifest-path src-tauri/Cargo.toml -p orgtrack_core --all-targets -- -D warnings` — passed
+- `cargo clippy --manifest-path src-tauri/Cargo.toml --lib -- -D warnings` — passed
+- `ORG2_TEST_CODEX_BIN=/opt/homebrew/bin/codex cargo test --manifest-path src-tauri/Cargo.toml --lib agent_sessions::cli::native_materializer::tests -- --include-ignored --test-threads=1` — 56 passed, including the explicitly enabled installed Codex 0.154.0 regression: two isolated processes, two loopback model requests, five injected tool results, and rereading the native file. The Claude lock-child test was verified when launched by its parent test; running it alone provides no independent coverage
+- `cargo test --manifest-path src-tauri/Cargo.toml --lib agent_sessions::cli::parsers::codex_app_server::catalog::tests -- --test-threads=1` — 9 passed, 2 ignored (existing provider/project native configuration tests); new suffix-retry, body-change, extra-field, and duplicate-result counterexamples passed
+- `pnpm exec vitest run --config config/vitest.config.ts src/engines/SessionCore/conversations/nativeConversationMaterializer.test.ts src/engines/SessionCore/conversations/localConversationContinuation.test.ts` — 2 files, 109 passed
+- `python3 -m py_compile src-tauri/src/agent_sessions/cli/native_materializer/opaque_tool_native_probe.py` — passed
+- `git diff --check` — passed
 
-根 crate 的首次构建因独立工作区缺本地 sidecar 停止，补齐后通过。新跨 provider fixture 首次因测试未使用真实 `orgii_evt_*` 用户 ID 而失败，改成生产 ID 契约后通过。原生 RPC 首次严格比较失败揭示 vendor 补充的 `fco_*` ID；正文逐字相等，最终仅排除该字段并在生产幂等边界补反例测试。
+The first root-crate build stopped because the isolated workspace lacked the local sidecar; it passed after the sidecar was added. The new cross-provider fixture initially failed because the test did not use a real `orgii_evt_*` user ID; it passed after aligning with the production ID contract. The first strict native RPC comparison exposed the vendor-added `fco_*` ID; the body matched exactly, and only that field was ultimately excluded, with a counterexample test added at the production idempotency boundary.
 
-本 PR 未运行收费模型推理、生产云写入或 GUI 验收；没有修改 UI 布局，因此截图不提供额外证据。未新增完整压缩/轮转/云重连/桌面 CPU/RSS 测量；未证明用户报告的旧会话已恢复。
+This PR did not run paid model inference, production cloud writes, or GUI acceptance; UI layout was not changed, so screenshots would provide no additional evidence. No full compact/rotate/cloud-reconnect/desktop CPU/RSS measurements were added; restoration of the old session reported by the user has not been proven.

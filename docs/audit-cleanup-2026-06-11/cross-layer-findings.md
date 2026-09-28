@@ -1,93 +1,93 @@
-# 跨层重复 findings（前后端协同）
+# Cross-Layer Duplication Findings (Frontend and Backend)
 
-> 跨层重复：前端和后端各自实现同一概念、或共享硬编码字面量却没有 canonical 源。
+> Cross-layer duplication: the frontend and backend each implement the same concept, or share hard-coded literals without a canonical source.
 
-## 1. AgentExecMode 字符串：picker 子集 vs wire union
+## 1. AgentExecMode strings: picker subset vs wire union
 
-memory `workspace_agent_exec_mode_display_wire_split.md` 已记录：
+Recorded in memory file `workspace_agent_exec_mode_display_wire_split.md`:
 
-- 前端 picker `AGENT_EXEC_MODES`（build/plan/investigate-as-"Ask"）只有 3 个。
-- 前端 wire union `ALL_AGENT_EXEC_MODES` 仍含 debug / review / wingman 等 legacy。
-- 后端 enum 在 `src-tauri/crates/agent-core/src/core/...`（具体未定位）。
+- The frontend picker `AGENT_EXEC_MODES` (build/plan/investigate-as-"Ask") has only 3 entries.
+- The frontend wire union `ALL_AGENT_EXEC_MODES` still includes legacy modes such as debug / review / wingman.
+- The backend enum is in `src-tauri/crates/agent-core/src/core/...` (exact location not identified).
 
-**风险**：前端 UI 不可达到的 mode 仍可能在 wire 上漂浮 —— 字符串比较散落。
+**Risk**: Modes unavailable in the frontend UI may still appear on the wire, with string comparisons scattered throughout the code.
 
-**Action**：Phase 6 时做单一 canonical 源：
+**Action**: Establish a single canonical source in Phase 6:
 
-- 后端 enum `AgentExecMode` + `as_str()` 是 single source of truth。
-- 前端 `ALL_AGENT_EXEC_MODES` 由 codegen 或手动同步声明，**禁止**在 UI 文件里硬编码 `mode === "wingman"` 之类的字符串字面量。
+- The backend enum `AgentExecMode` + `as_str()` is the single source of truth.
+- Generate the frontend `ALL_AGENT_EXEC_MODES` or keep it explicitly synchronized. **Do not** hard-code string literals such as `mode === "wingman"` in UI files.
 
-未完成的子任务：grep 前端 `mode === "<具体字符串>"` 出现次数，找硬编码。
+Unfinished subtask: grep for frontend occurrences of `mode === "<specific string>"` to find hard-coded values.
 
-## 2. Tauri command 字符串：~915 处硬编码
+## 2. Tauri command strings: ~915 hard-coded occurrences
 
-`src-tauri/src/commands/handler_list.inc` 列出 ~915 条 `module::path::fn_name`。前端用 `invoke("<command_name>", ...)` 调，**字符串硬编码**。
+`src-tauri/src/commands/handler_list.inc` lists ~915 `module::path::fn_name` entries. The frontend calls them with `invoke("<command_name>", ...)`, using **hard-coded strings**.
 
-**当前状态**：未发现 canonical 类型化包装层；每个 `invoke()` 调用都用裸字符串。
+**Current state**: No canonical typed wrapper layer was found; every `invoke()` call uses a bare string.
 
-**ROI**：低（每个命令前端使用频率有限，且 TypeScript 没有等价 type-check 工具）。
-**Action**：列入 follow-up，不进 Phase 2-8。
+**ROI**: Low (frontend usage of each command is limited, and TypeScript has no equivalent type-checking tool).
+**Action**: Add to follow-up work; exclude from Phases 2–8.
 
-## 3. mode / tab key / model 字符串散落
+## 3. Scattered mode / tab key / model strings
 
-未完成深扫。Phase 6 之前需 grep：
+Deep scan incomplete. Before Phase 6, grep for:
 
 - `mode: "<...>"` / `mode === "<...>"`
 - `tab: "<...>"` / `tabKey === "<...>"`
-- `model: "<...>"`（含 OpenAI/Anthropic/Google 模型 ID）
+- `model: "<...>"` (including OpenAI / Anthropic / Google model IDs)
 
-预期会发现散落硬编码，每处都该有 canonical const 源。
+Scattered hard-coded values are expected; each should have a canonical const source.
 
-## 4. Chat 输入 surface maxHeight 重复
+## 4. Duplicate maxHeight values across chat input surfaces
 
-memory `workspace_chat_input_surfaces_matrix.md` 记录 4 个独立实现：
+Memory file `workspace_chat_input_surfaces_matrix.md` records 4 independent implementations:
 
 - `src/features/SessionCreator/EditorArea.tsx` —— ternary `isChatPanel ? 140 : 300`
 - `src/engines/ChatPanel/InputArea/ComposerInput.tsx`
 - `src/components/UserChatItem`
 - `src/engines/ChatPanel/blocks/AgentMessageBlock`
 
-**风险**：每次"input 撑大了"的 bug 需要分别检查 4 处。
+**Risk**: Each "input grew too tall" bug requires checking all 4 locations.
 
-**评估**：🟡 中等合并工作量。可以提一个 `useChatInputMaxHeight(variant)` hook 或 layout primitive。但 4 处 surface 的 maxHeight 在不同语境下值不同（compact vs full），不一定该统一。
+**Assessment**: 🟡 Moderate consolidation effort. A `useChatInputMaxHeight(variant)` hook or layout primitive could help. However, the maxHeight values differ by context (compact vs full), so unifying them may not be appropriate.
 
-**Action**：Phase 6 step 2。先列出 4 处当前值，**用户决策**是否合并。
+**Action**: Phase 6, step 2. First list the current values in all 4 locations; **user decision** on whether to consolidate.
 
 ## 5. Context-pill prefix list
 
-memory `workspace_composer_pill_context_prefix_extension.md` 记录 `CONTEXT_PILL_PREFIXES`（前端 const）+ `PillIconType` + `pasteHandlers.ts`。
+Memory file `workspace_composer_pill_context_prefix_extension.md` records `CONTEXT_PILL_PREFIXES` (frontend const) + `PillIconType` + `pasteHandlers.ts`.
 
-**当前状态**：已有 canonical 源（单一 const + 单一 paste handler 分支表）。✅ 无重复。
+**Current state**: A canonical source already exists (one const + one paste-handler branch table). ✅ No duplication.
 
-不列入 Phase 6。
+Do not include in Phase 6.
 
-## 6. Sync 模块的 `Local` / `Remote` 命名
+## 6. `Local` / `Remote` naming in the sync module
 
-后端 `src-tauri/crates/.../sync/` 内：
+In backend `src-tauri/crates/.../sync/`:
 
-- `AppliedSide` 用 `Local` / `Remote`
-- `ConflictResolution`（adapter）用 `KeepLocal` / `UseRemote`
-- `ConflictResolution`（conflict_log）用 `UseLocal` / `UseRemote`
+- `AppliedSide` uses `Local` / `Remote`
+- `ConflictResolution` (adapter) uses `KeepLocal` / `UseRemote`
+- `ConflictResolution` (conflict_log) uses `UseLocal` / `UseRemote`
 
-**风险**：跨 enum 阅读时 `Keep*` 和 `Use*` 含义不一致 —— 用户决策"保留本地"和"使用本地"在 UI 上语义近乎相同，但 wire 不同。
+**Risk**: `Keep*` and `Use*` are inconsistent when reading across enums. The user choices "keep local" and "use local" are nearly synonymous in the UI but differ on the wire.
 
-**Action**：Phase 6 时同步前端 UI 标签（如果有"keep local" / "use local" 按钮）和后端 enum variant 的命名口径。
+**Action**: In Phase 6, align the backend enum variant naming with frontend UI labels (if there are "keep local" / "use local" buttons).
 
-## 7. tab 系统跨层
+## 7. Cross-layer tab systems
 
-memory `workspace_tab_systems_inventory.md` 记 8 套 tab 系统。
+Memory file `workspace_tab_systems_inventory.md` lists 8 tab systems.
 
-- 后端有自己的 session tab / replay tab 概念？未深查。
-- 前端 8 套 tab 实现是否每套都有自己的 `Tab` interface？未深查。
+- Does the backend have its own session tab / replay tab concepts? Not investigated in depth.
+- Does each of the 8 frontend tab implementations have its own `Tab` interface? Not investigated in depth.
 
-**Action**：tab 系统重复（前端 §4）合并完后回头看跨层。
+**Action**: Revisit cross-layer behavior after consolidating the duplicate tab systems (frontend §4).
 
 ## OPEN questions
 
-1. **mode 硬编码字符串清理范围**：只清前端，还是前后端 enum/as_str() 一起对账？
-2. **`invoke()` 命令名字符串硬编码**：是否值得做 codegen 包装层？还是接受"~915 条字符串"现状？
-3. **chat 输入 surface 4 处 maxHeight** 是否合并？合并后值能否抽象（不同 variant 值不同）？
+1. **Scope of hard-coded mode string cleanup**: clean up the frontend only, or reconcile the frontend and backend enums / `as_str()` together?
+2. **Hard-coded `invoke()` command-name strings**: is a code-generated wrapper layer worthwhile, or should we accept the current state of "~915 strings"?
+3. **Four maxHeight values across chat input surfaces**: consolidate them? Can the values be abstracted if they differ by variant?
 
 ---
 
-**审计范围声明**：本文件由主上下文综合两个 subagent + memory 索引推断。具体 grep 数据未深扫（避免覆盖前后端报告已有的内容）。Phase 6 执行前需先做"硬编码字符串 grep + 当前值列表"。
+**Audit scope statement**: This file synthesizes findings from the main context, two subagents, and the memory index. Specific grep results were not deeply investigated (to avoid duplicating the frontend/backend reports). Before Phase 6, first grep for hard-coded strings and list their current values.

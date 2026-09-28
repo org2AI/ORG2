@@ -1,264 +1,264 @@
-# Agent Org PR8S 用户实测问题交接
+# Agent Org PR8S User-Observed Issues Handoff
 
-> 状态：调查完成，修复尚未实施
+> Status: Investigation complete; fixes not yet implemented
 >
-> 日期：2026-08-28
+> Date: 2026-08-28
 >
-> 用户复现 Session：`pr8f test 0828`
+> User reproduction Session: `pr8f test 0828`
 >
-> 调查环境：当前 packaged Tauri App，真实 `orlando / gpt-5.6-terra`
+> Investigation environment: Current packaged Tauri App, real `orlando / gpt-5.6-terra`
 >
-> 本文范围：只记录用户亲自观察到、归属 PR8S 的问题，不包含后续额外调查发现，也不记录 PR8F 的 Group 消息断链。
+> Scope: Records only issues personally observed by the user and attributed to PR8S. It excludes later investigation findings and the PR8F Group message delivery break.
 >
-> **交付决定：不再创建任何 PR8S 修复 PR。本文只保留原 PR8S 区域的根因和测试证据；本文全部生产修复统一进入 `PR8 Stabilization`。**
+> **Delivery decision: Do not create any more PR8S fix PRs. This document retains the root causes and test evidence for the original PR8S area; all production fixes described here will be included in `PR8 Stabilization`.**
 
-## 一、最简单的结论
+## 1. Plain-language summary
 
-PR8S 当前有三处需要返修：
+PR8S currently has three areas that need rework:
 
-1. Tester 留下后台进程时，系统不能可靠自动停干净；
-2. Coordinator 回复 Tester 时，系统错误地向它展示了只供“Member 向 Coordinator 报告风险”使用的 `purpose` 参数；消息被拒绝后，Coordinator 又错误取消了 Tester；
-3. `Keep stopped` 之后，系统不知道当前这一轮工作怎样正式结束。
+1. When a Tester leaves a background process running, the system cannot reliably stop it automatically;
+2. When the Coordinator replies to a Tester, the system incorrectly exposes the `purpose` parameter, which is only for a “Member reporting a risk to the Coordinator.” After the message is rejected, the Coordinator incorrectly cancels the Tester;
+3. After `Keep stopped`, the system does not know how to formally close the current round of work.
 
-它们不代表 PR8S 整体方向错误。Coordinator 权限隔离、handoff receipt 和 completion certificate 仍可保留；需要重做的是 handoff、消息工具契约和 completion closure 这三段边界。
+These problems do not mean the overall PR8S direction is wrong. Coordinator permission isolation, handoff receipts, and completion certificates can remain. The handoff, message-tool contract, and completion-closure boundaries need rework.
 
-这里必须先澄清：**Coordinator 仍然可以正常给 Member 发消息。** 问题不是禁止 Coordinator 和 Member 对话，而是两个发送方向使用了不同规则：
+First, one point needs to be clear: **the Coordinator can still send messages to Members normally.** The issue is not a ban on Coordinator–Member conversation; the two directions use different rules:
 
-| 发送方向             | 应该怎样发送                                          | `purpose` 的作用                                                                               |
+| Direction | How to send | Role of `purpose` |
 | -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Member → Coordinator | 绑定当前 `related_task_id`，并提供 `purpose`          | 证明这不是普通进度，而是确实需要 Coordinator 行动的 blocker、decision、risk 等事项             |
-| Coordinator → Member | 绑定当前 `related_task_id`，发送普通 Task-scoped 消息 | **不使用 `purpose`**；Coordinator 本身已有协调权限，不需要用它证明“为什么可以唤醒 Coordinator” |
+| Member → Coordinator | Bind to the current `related_task_id` and provide `purpose` | Proves this is not ordinary progress, but a blocker, decision, risk, or other matter that actually requires Coordinator action |
+| Coordinator → Member | Bind to the current `related_task_id` and send an ordinary Task-scoped message | **Do not use `purpose`**; the Coordinator already has coordination authority and does not need it to prove “why it may wake the Coordinator” |
 
-`purpose` 是限制 Member 不要随便打扰 Coordinator 的入口分类，不是所有 Agent 对话都必须填写的“消息主题”。
+`purpose` classifies messages so Members do not interrupt the Coordinator arbitrarily. It is not a universal “message subject” that every Agent conversation must include.
 
-## 二、问题清单
+## 2. Issue list
 
-| 用户看到的问题                                                     | 最早根因                                                                                     | 大白话                                                             | 性质                             |
+| What the user sees | Earliest root cause | In plain language | Classification |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------- |
-| Tester 显示 Needs attention，要求用户处理停止失败                  | 旧 Tester 的后台进程没有被 Task/Turn owner 完整收走                                          | 系统停掉了工单，却没停干净工单启动的程序                           | PR8S handoff 实施不完整          |
-| `Keep stopped`、`Continue replacement`、`Abandon episode` 难以理解 | UI 没在作出决定前说明每个按钮影响的范围                                                      | 用户不知道是在停一个接班任务，还是放弃整轮工作                     | PR8S UI 契约不清                 |
-| Tester 已经完成测试，Overview 又 Needs attention                   | Coordinator 回复 Tester 时，工具 schema 错误暴露了只属于 Member→Coordinator 方向的 `purpose` | Coordinator 本来可以正常回复，却被系统诱导填写了一个反方向专用字段 | PR8S 工具契约自相矛盾            |
-| 所有 Task 都 terminal，仍然没有 completion certificate             | `Keep stopped` 留下的 cancelled scope 没有合法 resolution closure                            | 所有人都停下了，但系统没有一张能证明“这一轮怎样结束”的结算单       | PR8S completion 设计和实现未收口 |
+| Tester shows Needs attention and asks the user to handle a stop failure | The old Tester's background process was not fully reclaimed by its Task/Turn owner | The system cancelled the work order but did not fully stop the program it launched | PR8S handoff implementation is incomplete |
+| `Keep stopped`, `Continue replacement`, and `Abandon episode` are hard to understand | The UI does not explain each button's scope before the user decides | The user cannot tell whether they are stopping one replacement task or abandoning the whole round of work | PR8S UI contract is unclear |
+| Tester finished testing, but Overview shows Needs attention again | The tool schema incorrectly exposed `purpose`, which belongs only to the Member→Coordinator direction, when the Coordinator replied to the Tester | The Coordinator could have replied normally, but the system prompted it to fill in a field intended for the opposite direction | PR8S tool contract is self-contradictory |
+| All Tasks are terminal, but there is still no completion certificate | The cancelled scope left by `Keep stopped` has no valid resolution closure | Everyone has stopped, but the system has no settlement record proving how “this round ended” | PR8S completion design and implementation are unfinished |
 
-## 三、问题一：Tester 无法自动安全停止
+## 3. Issue 1: Tester cannot be stopped safely and automatically
 
-### 用户看到什么
+### What the user sees
 
-- Tester 看起来像测试失败或卡住；
-- Overview 显示 Needs attention；
-- 用户必须选择 `Continue replacement`、`Keep stopped` 或 `Abandon episode`；
-- 用户选择 `Keep stopped` 后所有 Member 变成 Idle；后来再发消息，Team 又能继续工作。
+- Tester appears to have failed or become stuck;
+- Overview shows Needs attention;
+- The user must choose `Continue replacement`, `Keep stopped`, or `Abandon episode`;
+- After the user chooses `Keep stopped`, all Members become Idle; when the user later sends a message, the Team can work again.
 
-### 实际发生了什么
+### What actually happened
 
-Tester 当时仍有后台测试服务器。Coordinator 发起 cancel-and-replace 后，原 Task 立即进入 cancelled，Tester 的后续工具调用失去权限，但后台子进程没有被可靠证明已经停止。
+The Tester still had a background test server running. After the Coordinator initiated cancel-and-replace, the original Task immediately became cancelled. The Tester lost permission to make further tool calls, but the system had not reliably proved that the background child process had stopped.
 
-系统因此只能把外部影响标为 unknown，并要求用户决定是否允许 replacement 继续。这种“确实无法证明已经停干净时让用户决定”的安全原则是正确的；错误在于系统过早撤销 Task 权限，却没有先可靠收走该 Task 启动的完整进程树。
+The system could therefore only mark the external effect as unknown and ask the user whether the replacement should continue. The safety principle—“ask the user when the system truly cannot prove that everything has stopped”—is correct. The error is that the system revoked the Task's permissions too early without first reliably reclaiming the complete process tree launched by that Task.
 
-正常情况下不应该出现用户决策：如果后端能够证明旧 Task、Turn 和完整进程树已经 terminal，就自动释放 replacement 并继续。只有停止超时、崩溃或外部影响确实无法证明时，才显示一次用户 handoff。
+Normally, the user should not have to decide. If the backend can prove that the old Task, Turn, and complete process tree are terminal, it should release the replacement and continue automatically. Show a user handoff only if stopping times out, crashes, or the external effect truly cannot be verified.
 
-相关生产入口：
+Relevant production entry points:
 
 - `src-tauri/crates/agent-core/src/core/tools/impls/orchestration/agent_org/task_update.rs`
 - `src-tauri/crates/agent-core/src/state/commands/session/org_tasks/handoff.rs`
 - `src-tauri/crates/agent-core/src/core/tools/impls/coding/exec/registry.rs`
 - `src/engines/ChatPanel/InputArea/components/AgentOrgOverviewPanel.tsx`
 
-### 大白话
+### In plain language
 
-Tester 开了一个测试服务器。Coordinator 把 Tester 的工单取消了，但测试服务器还在后台。Tester 又因为工单被取消而没有权限继续清理。系统不知道后台程序是否仍会产生影响，所以把风险丢给用户。
+The Tester started a test server. The Coordinator cancelled the Tester's work order, but the server kept running in the background. Since the work order was cancelled, the Tester no longer had permission to clean it up. The system did not know whether the background program could still have an effect, so it handed the risk to the user.
 
-### `Keep stopped` 当前到底做什么
+### What `Keep stopped` currently does
 
-`Keep stopped` 只表示：
+`Keep stopped` means only that:
 
-- 不启动这个被阻塞的 replacement；
-- 不恢复旧 Task；
-- 不关闭整个 Team；
-- 其他 Task 和后续新消息仍可能继续。
+- The blocked replacement will not start;
+- The old Task will not resume;
+- The entire Team will not be shut down;
+- Other Tasks and later messages may still continue.
 
-因此“按下 Keep stopped 后，后来发消息 Team 又继续”本身不是运行时错误。错误是按钮名称和说明让用户以为它等于“取消整个任务或停止整个 Team”。
+Therefore, “I pressed Keep stopped, then sent a message later and the Team continued” is not itself a runtime error. The error is that the button label and explanation led the user to think it meant “cancel the whole task or stop the whole Team.”
 
-### 正确修复边界
+### Correct fix boundary
 
-1. 每个 TaskExecution 启动的 shell、PTY、后台 job 和子进程必须始终绑定精确 Task/Turn owner；
-2. cancel-and-replace 后，后端自动停止该 owner 的完整进程树，并等待有界 terminal 证据；
-3. 只有停止超时、崩溃或结果确实无法证明时，才创建一次用户 handoff；
-4. 不给 Coordinator shell 或任意 kill 权限；
-5. replacement 只能在旧执行确定释放后启动；
-6. 三个用户选项必须在主卡片上直接说明影响范围和最终结果。
+1. Every shell, PTY, background job, and child process started by a TaskExecution must remain bound to its exact Task/Turn owner;
+2. After cancel-and-replace, the backend must automatically stop that owner's complete process tree and wait for bounded terminal evidence;
+3. Create a user handoff only if stopping times out, crashes, or the outcome truly cannot be verified;
+4. Do not give the Coordinator shell access or arbitrary kill authority;
+5. Start the replacement only after the old execution is confirmed released;
+6. Explain the scope and outcome of each of the three user choices directly on the main card.
 
-### 必须测试
+### Required tests
 
-- Tester 持有真实后台子进程时 cancel-and-replace，进程树自动终止；
-- detached child、PTY、shell 已返回但子进程仍运行等情况；
-- 停止成功时不出现 Needs attention；
-- 停止结果 unknown 时只创建一个 handoff，重启后不重复；
-- 三个按钮分别验证当前 Task、replacement、兄弟 Task 和整个 episode 的变化；
-- 所有可见按钮和确认框通过 packaged App 的真实 UI 操作。
+- With a real background child process owned by the Tester, cancel-and-replace must terminate the process tree automatically;
+- Cover detached children, PTYs, and cases where the shell has returned but a child process is still running;
+- A successful stop must not show Needs attention;
+- An unknown stop outcome must create only one handoff, with no duplicate after restart;
+- Verify how each of the three buttons affects the current Task, replacement, sibling Tasks, and the whole episode;
+- Operate all visible buttons and confirmation dialogs through the packaged App's real UI.
 
-## 四、问题二：Coordinator 回复 Tester 时被错误诱导使用 `purpose`
+## 4. Issue 2: The Coordinator was incorrectly prompted to use `purpose` when replying to the Tester
 
-### 用户看到什么
+### What the user sees
 
-Implementer 已完成修改，Tester 也实际完成测试，但 Overview 再次显示 Needs attention，看起来像测试结果丢失。
+The Implementer completed the change, and the Tester also completed testing, but Overview showed Needs attention again, making it look as though the test result had been lost.
 
-### `purpose` 原本是做什么的
+### What `purpose` is for
 
-`purpose` 只服务于下面这个方向：
+`purpose` serves only this direction:
 
 ```text
 TaskExecution Member → Coordinator
 ```
 
-Member 正常开工、完成了哪些模块、下一步做什么，应该写 Task 状态或 TaskOutput，不能每次都发消息唤醒 Coordinator。只有确实需要 Coordinator 行动时，Member 才能发送消息，并填写：
+Members should record ordinary work—what they started, which modules they completed, and what they plan to do next—in Task status or TaskOutput. They should not send a message to wake the Coordinator for every update. A Member should send a message with `purpose` only when Coordinator action is actually required:
 
-- `blocker`：我被卡住了；
-- `decision_required`：需要 Coordinator 做决定；
-- `material_change`：任务发生重大变化；
-- `risk`：发现重要风险；
-- `requested_reply`：Coordinator 明确要求我回复。
+- `blocker`: I am blocked;
+- `decision_required`: the Coordinator needs to make a decision;
+- `material_change`: the task has changed substantially;
+- `risk`: an important risk was found;
+- `requested_reply`: the Coordinator explicitly asked me to reply.
 
-Coordinator 给 Member 补充要求、追问风险或请求继续测试时，走的是反方向：
+When the Coordinator gives a Member additional instructions, asks about a risk, or requests more testing, the direction is the reverse:
 
 ```text
 Coordinator → TaskExecution Member
 ```
 
-这个方向仍然允许正常对话，只需要绑定准确的 `related_task_id`，**不应该出现或填写 `purpose`**。
+Normal conversation is allowed in this direction. The message only needs the correct `related_task_id`; **`purpose` should not appear or be supplied**.
 
-### 本次测试实际发生了什么
+### What happened in this test
 
-Tester 报告风险后，Coordinator 尝试向 Tester 发消息。工具 schema 向 Coordinator展示了 `purpose=material_change|blocker|...`，但后端规定 `purpose` 只允许 TaskExecution Member 向 Coordinator 使用。
+After the Tester reported a risk, the Coordinator tried to message the Tester. The tool schema showed the Coordinator `purpose=material_change|blocker|...`, even though the backend allows `purpose` only when a TaskExecution Member messages the Coordinator.
 
-Coordinator 连续收到工具错误后，改用 cancel-and-replace。取消事务先提交，Tester 稍后提交完成结果时，authoritative Task 已经 cancelled，所以 TaskOutput 被拒绝。
+After receiving consecutive tool errors, the Coordinator used cancel-and-replace instead. The cancellation transaction committed first. When the Tester later submitted its completion result, the authoritative Task was already cancelled, so TaskOutput was rejected.
 
-完整错误链是：
+The complete error chain was:
 
 ```text
-Tester 使用 purpose=risk 报告风险
+Tester reports a risk using purpose=risk
         ↓
-Coordinator 准备回复 Tester
+Coordinator prepares to reply to the Tester
         ↓
-系统错误地仍向 Coordinator 展示 purpose
+The system incorrectly still exposes purpose to the Coordinator
         ↓
-Coordinator 误填 purpose=material_change / blocker
+Coordinator mistakenly supplies purpose=material_change / blocker
         ↓
-后端按原设计拒绝这个反方向用法
+Backend correctly rejects use in this direction
         ↓
-Coordinator 没有去掉 purpose 重试，而是错误取消 Tester Task
+Instead of retrying without purpose, Coordinator incorrectly cancels the Tester Task
 ```
 
-因此，这次测试没有证明 Coordinator 需要 `purpose`。它证明的是：**工具 schema 没有按发送者角色和发送方向裁剪，向 Coordinator 暴露了一个不属于它的参数。**
+Therefore, this test did not show that the Coordinator needs `purpose`. It showed that **the tool schema was not filtered by sender role and direction, exposing the Coordinator to a parameter that does not belong to it.**
 
-相关生产入口：
+Relevant production entry points:
 
-- schema：`src-tauri/crates/agent-core/src/core/tools/impls/orchestration/agent_org/send_message.rs`
-- execute-time 校验：`src-tauri/crates/agent-core/src/core/tools/impls/orchestration/agent_org/send_message/persistence.rs`
-- cancel-and-replace：`src-tauri/crates/agent-core/src/core/tools/impls/orchestration/agent_org/task_update.rs`
+- Schema: `src-tauri/crates/agent-core/src/core/tools/impls/orchestration/agent_org/send_message.rs`
+- Execute-time validation: `src-tauri/crates/agent-core/src/core/tools/impls/orchestration/agent_org/send_message/persistence.rs`
+- Cancel-and-replace: `src-tauri/crates/agent-core/src/core/tools/impls/orchestration/agent_org/task_update.rs`
 
-### 大白话
+### In plain language
 
-Tester 用一张“我为什么必须打扰 Coordinator”的理由单报告风险。Coordinator 收到后本来可以直接回复，但系统又把同一张理由单塞给 Coordinator 填。Coordinator 填完才被告知“这张单只允许 Tester 使用”。随后 Coordinator 没有正常重发回复，反而错误取消了 Tester 工单。Tester 拿着已经完成的测试报告来提交时，系统说工单已作废，不能收件。
+The Tester used a form asking “Why must I interrupt the Coordinator?” to report a risk. The Coordinator could have replied directly, but the system handed it the same form to fill out. After the Coordinator filled it in, the system said, “Only the Tester may use this form.” The Coordinator then incorrectly cancelled the Tester's work order instead of sending a normal reply. When the Tester submitted its completed test report, the system said the work order had been voided and could not accept it.
 
-### 正确修复边界
+### Correct fix boundary
 
-1. 按 caller role 和发送方向生成真实工具 schema；
-2. Member→Coordinator 的 actionable fact 才出现并要求 `purpose`；
-3. Coordinator→Member 保留正常 Task-scoped 消息能力，只要求准确的 `related_task_id`，schema 中不出现 `purpose`；
-4. execute-time 仍保留 fail-closed 校验，防止旧调用绕过 schema；
-5. 如果旧调用误带 `purpose`，错误必须明确提示“去掉 purpose 后重试”，不能诱导升级为 cancel-and-replace；
-6. Coordinator 向 active worker 普通追问不能通过 cancel Task 实现；
-7. cancel 与 complete 的提交顺序必须有确定测试；不得静默把迟到结果当成普通 narration；
-8. Provider 看到的序列化工具 schema 必须和 Rust 执行规则完全一致。
+1. Generate the actual tool schema according to caller role and message direction;
+2. Show and require `purpose` only for actionable facts sent Member→Coordinator;
+3. Preserve normal Task-scoped messages for Coordinator→Member, requiring only the correct `related_task_id`; omit `purpose` from that schema;
+4. Keep fail-closed execute-time validation to prevent old calls from bypassing the rules;
+5. If an old call mistakenly includes `purpose`, the error must clearly say “retry without purpose” and must not encourage escalation to cancel-and-replace;
+6. Do not use Task cancellation to let the Coordinator ask an active worker a normal follow-up question;
+7. Test a deterministic commit order for cancel and complete; do not silently turn a late result into ordinary narration;
+8. The serialized tool schema seen by the Provider must match the Rust execution rules exactly.
 
-### 必须测试
+### Required tests
 
-- Coordinator、TaskExecution Member、普通 SDE 各自的真实 schema snapshot；
-- Coordinator→Member schema 不包含 `purpose`，但仍能发送带准确 `related_task_id` 的消息；
-- Member→Coordinator 合法场景包含五种允许的 `purpose`；普通进度不能借此唤醒 Coordinator；
-- Coordinator 追问 active Tester，Tester 能收到并回复，全程不取消 Task；
-- 旧调用误带 `purpose` 时返回可重试的方向性提示，零 Task mutation；
-- cancel 先提交和 complete 先提交两种竞态；
-- 真实 Terra 场景包含 Tester 正在停止服务器时的风险报告和追问。
+- Real schema snapshots for Coordinator, TaskExecution Member, and ordinary SDE;
+- The Coordinator→Member schema omits `purpose`, while still allowing a message with the correct `related_task_id`;
+- Valid Member→Coordinator cases include the five allowed `purpose` values; ordinary progress must not use them to wake the Coordinator;
+- The Coordinator follows up with an active Tester, the Tester receives and replies, and the Task is never cancelled;
+- An old call that includes `purpose` returns a direction-specific retry hint and causes zero Task mutations;
+- Cover both races: cancel commits first and complete commits first;
+- A real Terra scenario includes a risk report and follow-up while the Tester is stopping the server.
 
-## 五、问题三：`Keep stopped` 后这一轮工作无法正式结束
+## 5. Issue 3: The work round cannot be formally closed after `Keep stopped`
 
-### 用户看到什么
+### What the user sees
 
-- 所有 Task 最后都变成 completed、failed 或 cancelled；
-- 所有 Member 都是 Idle；
-- Overview 仍显示 Needs attention；
-- 没有最终报告。
+- All Tasks eventually become completed, failed, or cancelled;
+- All Members are Idle;
+- Overview still shows Needs attention;
+- There is no final report.
 
-### 本问题中属于 PR8S 的部分
+### The part of this issue that belongs to PR8S
 
-PR8F 的未读 Group 消息也是一个 blocker，但它单独记录在 PR8F 交接文档中。本节只记录另一个 blocker：`Keep stopped` 取消 replacement 后，旧 cancelled scope 没有 completed descendant，也没有明确的 user-scope-removal 证明，因此 completion validator 不能签发 delivered certificate。
+The unread Group message in PR8F is also a blocker, but it is documented separately in the PR8F handoff. This section records another blocker: after `Keep stopped` cancels the replacement, the old cancelled scope has no completed descendant and no explicit proof of `user_scope_removed`. Therefore, the completion validator cannot issue a delivered certificate.
 
-### 大白话
+### In plain language
 
-界面上所有人都停工了，不等于系统知道“这一轮是成功完成、部分取消，还是整体放弃”。当前少了一张说明 cancelled Task 怎样被合法关闭的结算单，所以系统不敢宣布完成。
+Everyone appearing to have stopped work does not tell the system whether “this round was completed successfully, partially cancelled, or abandoned entirely.” A settlement record explaining how the cancelled Task was legitimately closed is missing, so the system does not dare declare completion.
 
-### 已确认、需要写入 Design 的产品决定
+### Confirmed product decision to add to the Design
 
-用户已确认采用方案 A：
+The user has confirmed option A:
 
-> 用户选择 `Keep stopped`，并且已经没有其他 open work 时，立即把当前工作轮次结束为 Cancelled；之后用户发送的新 mission 自动开始新的工作轮次。
+> When the user chooses `Keep stopped` and no other open work remains, immediately end the current work round as Cancelled. A new mission sent afterward automatically starts a new work round. (Original: “用户选择 `Keep stopped`，并且已经没有其他 open work 时，立即把当前工作轮次结束为 Cancelled；之后用户发送的新 mission 自动开始新的工作轮次。”)
 
-`Keep stopped` 关闭当前被停止的 scope；如果本轮仍有其他 open work，它们继续；如果本轮不再有其他工作，则本轮以 Cancelled 收口。之后的新 mission 创建新的 work episode，不能继续混在旧的 cancelled closure 中。实施前必须把该语义写入权威 Design。
+`Keep stopped` closes the currently stopped scope. If other work remains in the round, that work continues; if no work remains, the round closes as Cancelled. A later mission creates a new work episode and must not remain mixed into the old cancelled closure. This meaning must be added to the authoritative Design before implementation.
 
-### 正确修复边界
+### Correct fix boundary
 
-1. 定义贯穿 Task、replacement、handoff、completion certificate 的稳定 work episode identity；
-2. `activation_generation` 继续只表示工作授权版本，不能兼任 episode identity；
-3. `Keep stopped` 必须产生明确、可验证的 scope resolution；
-4. 新 mission 必须绑定明确的当前或新 episode，不能靠 Root Session 和时间猜测；
-5. Run View 返回 typed blocker，不能把所有原因都压成泛化的 Needs attention；
-6. completion certificate 只在完整 resolution closure 成立时签发，不允许 UI 推断成功。
+1. Define a stable work episode identity spanning Tasks, replacements, handoffs, and completion certificates;
+2. Keep `activation_generation` as the work-authorization version; it must not also serve as the episode identity;
+3. `Keep stopped` must produce an explicit, verifiable scope resolution;
+4. Bind each new mission to an explicit current or new episode; do not infer it from the Root Session and time;
+5. Have Run View return a typed blocker instead of collapsing every cause into generic Needs attention;
+6. Issue a completion certificate only when full resolution closure holds; the UI must not infer success.
 
-### 必须测试
+### Required tests
 
-- Keep stopped 后仍有兄弟 Task；
-- Keep stopped 后没有任何 open Task；
-- Keep stopped 后用户发送第二个 mission；
-- replacement completed、replacement cancelled、abandon episode 三种 closure；
-- 全 terminal 但 closure 不完整时显示具体原因和真实解决按钮；
-- closure 完整时只签发一张 certificate，并允许后续 final summary 收口；
-- refresh、Session switch 和 App restart 后 episode、Task 与 certificate 一致。
+- Sibling Tasks still exist after Keep stopped;
+- No open Tasks remain after Keep stopped;
+- The user sends a second mission after Keep stopped;
+- The three closure cases: replacement completed, replacement cancelled, and episode abandoned;
+- When all Tasks are terminal but closure is incomplete, show the specific reason and a real action to resolve it;
+- When closure is complete, issue only one certificate and allow the final summary to close afterward;
+- Episode, Tasks, and certificate remain consistent after refresh, Session switch, and App restart.
 
-## 六、Stabilization 内部工作流与估算
+## 6. Stabilization workstreams and estimates
 
-以下只是同一个 `PR8 Stabilization` 内部的三个 workstream，用于实现和 review 组织；它们不是三个 PR，也不能单独合入或宣告完成：
+These are three workstreams within the same `PR8 Stabilization`, used to organize implementation and review. They are not three separate PRs and cannot be merged or declared complete independently:
 
-| 修复                                                 | P50 / P90 review lines | 实质文件 P50 / P90 |
+| Fix | P50 / P90 review lines | Substantive files P50 / P90 |
 | ---------------------------------------------------- | ---------------------: | -----------------: |
-| H1：精确进程树停止、handoff 与按钮说明               |          3,200 / 6,500 |      18–28 / 35–50 |
-| H2：按角色和发送方向生成消息工具 schema              |            800 / 1,800 |       6–10 / 12–18 |
-| H3：Keep stopped / work episode / completion closure |          5,000 / 9,000 |      28–40 / 50–65 |
+| H1: Exact process-tree stopping, handoff, and button explanations | 3,200 / 6,500 | 18–28 / 35–50 |
+| H2: Generate message-tool schema by role and direction | 800 / 1,800 | 6–10 / 12–18 |
+| H3: Keep stopped / work episode / completion closure | 5,000 / 9,000 | 28–40 / 50–65 |
 
-上述估算包含独立 Rust 测试、独立 TypeScript/React 测试、rendered E2E、真实 Provider 和 packaged App 验收。13 个 locale 文件另算；不同 workstream 之间存在文件重叠，不能直接把文件数相加。统一 PR 的去重总预算和范围闸门以 `agent-org-pr8-stabilization-handoff.md` 为准。
+These estimates include independent Rust tests, independent TypeScript/React tests, rendered E2E, a real Provider, and packaged App acceptance. The 13 locale files are estimated separately. Files overlap across workstreams, so their counts cannot simply be added. The deduplicated total budget and scope gate for the unified PR are defined in `agent-org-pr8-stabilization-handoff.md`.
 
-若 H3 发现必须同时重写其他生命周期的 episode 语义，应先更新 Design 和预算，不能边写边扩大范围。
+If H3 finds that episode semantics for other lifecycle paths must also be rewritten, update the Design and budget first; do not expand scope while implementing.
 
-## 七、明确不在本文中的内容
+## 7. Explicitly out of scope for this document
 
-- Group Chat 用户消息无人读取：归属 PR8F；
-- PlanRevision、FormalTriggerReceipt、Watchdog、FinalSummaryReceipt 的一般实现审查；
-- PR9 的 `@Member` GroupMention；
-- PR10 的 Group transcript projection；
-- 用户正常数据库迁移。
+- Group Chat user messages not being read: belongs to PR8F;
+- General implementation review of PlanRevision, FormalTriggerReceipt, Watchdog, or FinalSummaryReceipt;
+- PR9 `@Member` GroupMention;
+- PR10 Group transcript projection;
+- Migration of the user's normal database.
 
-## 八、完成标准
+## 8. Completion criteria
 
-`PR8 Stabilization` 中原 PR8S 区域的修复只有在以下条件全部成立时才算完成：
+Fixes in the original PR8S area of `PR8 Stabilization` are complete only when all of the following hold:
 
-- 可自动安全停止的 Tester 不再要求用户处理；
-- 正常自动交接完全不显示用户决策；
-- 确实 unknown 的外部影响只产生一个 typed handoff；
-- Coordinator→Member 仍可正常发送 Task-scoped 消息，但不会看到 Member→Coordinator 专用的 `purpose`；
-- Member→Coordinator 只有真正需要协调时才携带 `purpose`；
-- Coordinator 普通追问能够送达，不会取消 active Tester；
-- `Keep stopped` 的影响范围对用户清楚可见；
-- 每轮工作都能形成明确的 Delivered、Cancelled、Failed 或 typed blocker；
-- 真实 Terra + packaged App 覆盖后台进程、handoff、第二个 mission 和最终 certificate；
-- Rust 测试位于独立测试文件或 `tests/` 目录，TypeScript/React 测试使用独立 `.test.ts/.test.tsx`，不同功能不集中到大型总测试文件。
+- A Tester that can be stopped safely and automatically no longer requires user intervention;
+- A normal automatic handoff never asks the user to decide;
+- A genuinely unknown external effect creates only one typed handoff;
+- Coordinator→Member messages remain available as normal Task-scoped messages, without exposing the Member→Coordinator-only `purpose`;
+- Member→Coordinator messages include `purpose` only when coordination is truly needed;
+- A normal Coordinator follow-up reaches the active Tester without cancelling it;
+- The scope of `Keep stopped` is clear to the user;
+- Every work round can reach a clear Delivered, Cancelled, Failed, or typed-blocker outcome;
+- Real Terra plus the packaged App covers background processes, handoff, a second mission, and the final certificate;
+- Rust tests live in separate test files or the `tests/` directory; TypeScript/React tests use separate `.test.ts`/`.test.tsx` files; unrelated functions are not concentrated in a large omnibus test file.

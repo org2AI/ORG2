@@ -5,7 +5,6 @@ import {
   Copy01Icon,
   CursorInWindowIcon,
   Delete02Icon,
-  Login02Icon,
   PinIcon,
   PinOffIcon,
 } from "@src/icons";
@@ -15,7 +14,6 @@ interface BuildCloudSessionNativeMenuItemsParams {
   isPinned: boolean;
   labels: {
     openIn: string;
-    fork: string;
     openInNewTab: string;
     openInNewWindow: string;
     openInMyStation: string;
@@ -27,7 +25,6 @@ interface BuildCloudSessionNativeMenuItemsParams {
   onOpenInNewWindow: () => void;
   onOpenInMyStation: () => void;
   onCopyUrl: () => void;
-  onFork: () => void;
   onTogglePin: () => void;
   onRemove: () => void;
 }
@@ -43,7 +40,6 @@ export function buildCloudSessionNativeMenuItems({
   onOpenInNewWindow,
   onOpenInMyStation,
   onCopyUrl,
-  onFork,
   onTogglePin,
   onRemove,
 }: BuildCloudSessionNativeMenuItemsParams): SidebarMenuItem[] {
@@ -69,7 +65,6 @@ export function buildCloudSessionNativeMenuItems({
         },
       ],
     },
-    { text: labels.fork, icon: Login02Icon, action: onFork },
     { text: labels.copyUrl, icon: Copy01Icon, action: onCopyUrl },
     {
       text: labels.togglePin,

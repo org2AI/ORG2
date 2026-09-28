@@ -84,8 +84,8 @@ regex next to the code-generation invariant so format changes update both.
 
 ### 4. P2 — stale placeholder copy in 13 locales
 
-`navigation.json` `inviteCodePlaceholder` ("貼上 orgii:// 邀請連結或邀請代碼"
-etc.) predates the HTTPS link. Functionality is fine (`parseCloudInviteInput`
+`navigation.json` `inviteCodePlaceholder` ("貼上 orgii:// 邀請連結或邀請代碼",
+“Paste an orgii:// invite link or invite code,” and equivalents) predates the HTTPS link. Functionality is fine (`parseCloudInviteInput`
 accepts HTTPS/orgii/raw), but the user pasting the link they actually received
 is told it should look like `orgii://`. `importInputPlaceholder`
 (session shares) is correctly still `orgii://` — do not sweep that one.

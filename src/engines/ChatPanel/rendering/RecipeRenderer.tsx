@@ -93,10 +93,12 @@ export const RecipeRenderer: React.FC<RecipeRendererProps> = (props) => {
   const result = normalizedProps?.result;
   const media = React.useMemo(
     () => ({
-      images: turn?.outputImagesAtEnd ? [] : outputImages(result ?? {}),
+      images: turn?.outputImagesOwnedByProjection
+        ? []
+        : outputImages(result ?? {}),
       textResult: textOnlyOutputResult(result ?? {}),
     }),
-    [result, turn?.outputImagesAtEnd]
+    [result, turn?.outputImagesOwnedByProjection]
   );
 
   if (!normalizedProps) return null;
@@ -112,7 +114,7 @@ export const RecipeRenderer: React.FC<RecipeRendererProps> = (props) => {
   return (
     <>
       <Block {...normalizedProps} result={textResult} />
-      {!turn?.outputImagesAtEnd &&
+      {!turn?.outputImagesOwnedByProjection &&
         chatBlock !== "hidden" &&
         images.length > 0 && <OutputImageGallery images={images} />}
     </>

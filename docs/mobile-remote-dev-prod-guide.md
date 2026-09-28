@@ -1,18 +1,20 @@
-# Mobile Remote 开发与生产体验指南
+# Mobile Remote Development and Production Guide
 
-> **日常使用（生产 PWA + 公网 Relay）：** 请先阅读 [同事体验指南](./mobile-remote-colleague-guide.md)。  
-> 本文面向 **本地开发、Relay 部署与排障**。  
-> 相关 PR：[#1150](https://github.com/org2AI/ORG2/pull/1150)（分支 `junyu/mobile-remote-control`）
+> **For everyday production use (production PWA + public Relay):** Read the [Colleague Guide](./mobile-remote-colleague-guide.md) first.
+>
+> This guide covers **local development, Relay deployment, and troubleshooting**.
+>
+> Related PR: [#1150](https://github.com/org2AI/ORG2/pull/1150) (branch `junyu/mobile-remote-control`)
 
-Mobile Remote 让手机通过 PWA 遥控桌面 ORG2 上的 Agent 会话。桌面通过 **出站 WebSocket** 连接 Relay，手机经 Relay 与桌面通信，无需在路由器上开放入站端口。
+Mobile Remote lets a phone control Agent sessions on a desktop ORG2 through a PWA. The desktop connects to the Relay over an **outbound WebSocket**; the phone communicates with the desktop through the Relay. No inbound router port needs to be opened.
 
 ---
 
-## 架构概览
+## Architecture Overview
 
 ```mermaid
 flowchart LR
-  subgraph phone["手机（浏览器 PWA）"]
+  subgraph phone["Phone (browser PWA)"]
     PWA["/orgii/mobile"]
   end
 
@@ -21,84 +23,85 @@ flowchart LR
     DB[("~/.orgii/mobile-relay.sqlite3")]
   end
 
-  subgraph desktop["桌面 ORG2（Tauri）"]
-  Settings["设置 → 移动遥控"]
-  Agent["Agent 会话"]
+  subgraph desktop["Desktop ORG2 (Tauri)"]
+  Settings["Settings → Mobile Remote"]
+  Agent["Agent session"]
   end
 
-  PWA -->|"wss/ws + 配对"| WS
-  Settings -->|"出站 WebSocket + ORG2 Cloud JWT"| WS
+  PWA -->|"wss/ws + pairing"| WS
+  Settings -->|"outbound WebSocket + ORG2 Cloud JWT"| WS
   WS --> DB
   Settings --> Agent
-  PWA -.->|"OAuth（GitHub）"| Cloud["ORG2 Cloud / Supabase"]
+  PWA -.->|"OAuth (GitHub)"| Cloud["ORG2 Cloud / Supabase"]
 ```
 
-**三端职责：**
+**Responsibilities by component:**
 
-| 组件                            | 作用                                                |
-| ------------------------------- | --------------------------------------------------- |
-| **前端 dev server**（:1998）    | 提供桌面 UI 与 Mobile PWA（`/orgii/mobile`）        |
-| **orgii-mobile-relay**（:8787） | 配对、设备授权、手机↔桌面消息转发（payload-opaque） |
-| **Tauri 桌面**                  | 连接 Relay、生成配对码、执行 Agent 操作             |
+| Component | Role |
+| --- | --- |
+| **Frontend dev server** (:1998) | Serves the desktop UI and Mobile PWA (`/orgii/mobile`) |
+| **orgii-mobile-relay** (:8787) | Pairing, device authorization, and opaque-payload message forwarding between phone and desktop |
+| **Tauri desktop** | Connects to the Relay, generates pairing codes, and performs Agent actions |
 
-**认证方式：**
+**Authentication:**
 
-| 场景                  | 桌面侧认证                    | 手机侧认证        |
-| --------------------- | ----------------------------- | ----------------- |
-| **生产 / 公网 Relay** | ORG2 Cloud 登录（每用户 JWT） | GitHub OAuth 登录 |
-| **本地 Relay 开发**   | ORG2 Cloud 登录（每用户 JWT） | GitHub OAuth 登录 |
+| Scenario | Desktop authentication | Phone authentication |
+| --- | --- | --- |
+| **Production/public Relay** | ORG2 Cloud sign-in (per-user JWT) | GitHub OAuth sign-in |
+| **Local Relay development** | ORG2 Cloud sign-in (per-user JWT) | GitHub OAuth sign-in |
 
-`本地` 与 `生产` 预设只切换 Relay 地址，不切换身份系统。Rust Relay 仍支持显式启用的共享密钥 fallback，但它仅用于协议测试或旧客户端，ORG2 Desktop 设置页不提供该认证路径。
+The “Local” and “Production” presets change only the Relay address, not the identity system. The Rust Relay still supports an explicitly enabled shared-secret fallback, but only for protocol tests or older clients. The ORG2 Desktop settings page does not offer that authentication path.
 
-旧版本写入 `settings.jsonc` 的 `mobileRemote.desktopToken` 会被保留但不再读取；升级不会自动删除这项历史配置。
+Older versions may have written `mobileRemote.desktopToken` to `settings.jsonc`. This value is retained but no longer read; upgrading does not automatically delete this historical setting.
 
 ---
 
-## 前置条件
+## Prerequisites
 
-| 工具                             | 说明                                               |
-| -------------------------------- | -------------------------------------------------- |
-| [pnpm](https://pnpm.io/) 9.15    | `npm install -g pnpm@9.15`                         |
-| [Rust](https://rustup.rs/) 1.85+ | `rustup toolchain install stable`                  |
-| Node.js 20+                      | 与 [CONTRIBUTING](../.github/CONTRIBUTING.md) 一致 |
-| **不需要 Xcode**                 | Mobile Remote 是浏览器 PWA，不是原生 iOS 应用      |
+| Tool | Notes |
+| --- | --- |
+| [pnpm](https://pnpm.io/) 9.15 | Install with `npm install -g pnpm@9.15` |
+| [Rust](https://rustup.rs/) 1.85+ | Install with `rustup toolchain install stable` |
+| Node.js 20+ | Matches [CONTRIBUTING](../.github/CONTRIBUTING.md) |
+| **Xcode is not required** | Mobile Remote is a browser PWA, not a native iOS app |
 
 ```bash
-# 仓库根目录
+# From the repository root
 pnpm install
 ```
 
 ---
 
-## 本地开发（Development）
+## Local Development
 
-### 方式 A：一键启动（推荐初次体验）
+### Option A: Start Everything at Once (Recommended for a First Look)
 
 ```bash
 pnpm run tauri:dev
 ```
 
-`tauri:dev` 会启动前端 dev server 并打开 Tauri 桌面。macOS / Linux 默认使用 **rspack** bundler；Windows 默认 webpack。可用 `pnpm run tauri:dev:webpack` 强制 webpack。
+`tauri:dev` starts the frontend dev server and opens the Tauri desktop app. macOS and Linux use **rspack** by default; Windows uses webpack. Use `pnpm run tauri:dev:webpack` to force webpack.
 
-### 方式 B：分终端启动（调试 Relay 时更清晰）
+### Option B: Start Components in Separate Terminals (Clearer Relay Debugging)
 
-适合需要单独观察 relay 日志、或避免 Tauri 重复拉起 dev server 的场景。
+Use this when you want to observe Relay logs separately or avoid Tauri starting the dev server again.
 
-**终端 1 — 前端 dev server：**
+**Terminal 1 — frontend dev server:**
 
 ```bash
 pnpm run dev:frontend
-# 或 rspack：pnpm run dev:frontend:rspack
+# Or use rspack:
+pnpm run dev:frontend:rspack
 ```
 
-**终端 2 — 本地 Relay：**
+**Terminal 2 — local Relay:**
 
 ```bash
 cd src-tauri
 cargo run -p orgii-mobile-relay
 ```
 
-本地 Relay 默认与生产一样校验 ORG2 Cloud JWT。仅在协议测试或兼容旧客户端时，才显式开启服务端共享密钥 fallback：
+By default, the local Relay validates ORG2 Cloud JWTs, just like production. Enable the server-side shared-secret fallback explicitly only for protocol testing or compatibility with older clients:
 
 ```bash
 ORGII_RELAY_DESKTOP_TOKEN_FALLBACK=true \
@@ -106,230 +109,232 @@ ORGII_RELAY_DESKTOP_TOKEN=123456789012345678901234 \
 cargo run -p orgii-mobile-relay
 ```
 
-> ORG2 Desktop 不读取这个共享密钥；日常本地联调仍需先登录 ORG2 Cloud。
+> ORG2 Desktop does not read this shared secret. Normal local integration testing still requires signing in to ORG2 Cloud first.
 
-Relay 默认监听 `127.0.0.1:8787`，数据库写入 `~/.orgii/mobile-relay.sqlite3`（避免写在 `src-tauri/` 内触发 Tauri dev 文件监听导致桌面退出——此问题已在 PR 中修复）。
+The Relay listens on `127.0.0.1:8787` by default and writes its database to `~/.orgii/mobile-relay.sqlite3`. Keeping the database outside `src-tauri/` prevents Tauri's dev file watcher from exiting the desktop app; this issue was fixed in the PR.
 
-**终端 3 — 仅 Tauri 桌面（`beforeDevCommand` 置空模式）：**
+**Terminal 3 — Tauri desktop only (with `beforeDevCommand` disabled):**
 
 ```bash
 pnpm run tauri:dev:only
 ```
 
-`tauri:dev:only` 不会再次启动 webpack/rspack，需确保终端 1 的 dev server 已在运行。
+`tauri:dev:only` does not start webpack/rspack again. Make sure the dev server in Terminal 1 is already running.
 
-### 访问 URL
+### URLs
 
-| 用途                           | URL                                 |
-| ------------------------------ | ----------------------------------- |
-| 桌面 Web UI                    | http://localhost:1998/              |
-| Mobile PWA（本机浏览器）       | http://localhost:1998/orgii/mobile  |
-| Mobile PWA（手机，同一 Wi-Fi） | http://\<mac-ip\>:1998/orgii/mobile |
+| Purpose | URL |
+| --- | --- |
+| Desktop Web UI | http://localhost:1998/ |
+| Mobile PWA (browser on this computer) | http://localhost:1998/orgii/mobile |
+| Mobile PWA (phone on the same Wi-Fi) | http://&lt;mac-ip&gt;:1998/orgii/mobile |
 
-查看 Mac 局域网 IP：
+Find your Mac's LAN IP:
 
 ```bash
 ipconfig getifaddr en0   # Wi-Fi
-# 或：系统设置 → 网络
+# Or: System Settings → Network
 ```
 
-> **提示：** dev server 默认绑定 `localhost`。若手机无法访问 Mac IP，可尝试在前端启动时增加 host 绑定（例如 webpack-dev-server 的 `--host 0.0.0.0`），并确认 Mac 防火墙允许入站 1998。
+> **Tip:** The dev server binds to `localhost` by default. If the phone cannot reach the Mac IP, try binding the frontend server to a host address (for example, webpack-dev-server's `--host 0.0.0.0`) and confirm that the Mac firewall allows inbound traffic on port 1998.
 
 ---
 
-## 桌面配置（设置 → 移动遥控）
+## Desktop Settings (Settings → Mobile Remote)
 
-### 本地 Relay 开发（预设「本地」）
+### Local Relay Development (the “Local” Preset)
 
-1. 先在 **设置 → 通用** 登录 **ORG2 Cloud**
-2. 打开 **设置 → 移动遥控**，开启 **移动遥控**
-3. 在 **户外连接** 区域：
-   - 开启 **连接 Relay**（本地开发时也通过 Relay 走完整配对流程）
-   - 选择预设 **「本地」** → Relay 地址应为：
+1. In **Settings → General**, sign in to **ORG2 Cloud**.
+2. Open **Settings → Mobile Remote** and enable **Mobile Remote**.
+3. In the **Remote connection** section:
+   - Enable **Connect to Relay** (local development also uses the Relay for the full pairing flow).
+   - Select the **“Local”** preset. The Relay address should be:
      ```
      ws://127.0.0.1:8787/v1/mobile/ws
      ```
-4. 确认 **ORG2 Cloud 登录** 行显示已登录账号，**Relay 状态** 为「已连接」或「正在连接」
-5. 点击 **生成户外配对码**，出现 QR 码与配对载荷文本
+4. Confirm the **ORG2 Cloud sign-in** row shows your account and **Relay status** is **Connected** or **Connecting**.
+5. Click **Generate remote pairing code**. A QR code and pairing payload text will appear.
 
-预设 URL 定义见 `src/config/mobileRemoteRelay.ts`。
+Preset URLs are defined in `src/config/mobileRemoteRelay.ts`.
 
-### 生产 / 自定义公网 Relay
+### Production / Custom Public Relay
 
-1. 先在 **设置 → 通用** 登录 **ORG2 Cloud**（与云同步、邀请等同一路径）
-2. **设置 → 移动遥控** → 开启移动遥控与 **连接公网 Relay**
-3. 选择 **「生产」** 或填写自定义 `wss://` Relay 地址
-4. 确认 **ORG2 Cloud 登录** 行显示已登录账号（未登录时先登录）
-5. 确认 **Relay 状态** 已连接后 **生成户外配对码**
+1. In **Settings → General**, sign in to **ORG2 Cloud** (the same flow used for cloud sync and invitations).
+2. Open **Settings → Mobile Remote** and enable Mobile Remote and **Connect to public Relay**.
+3. Select the **“Production”** preset or enter a custom `wss://` Relay address.
+4. Confirm the **ORG2 Cloud sign-in** row shows a signed-in account. If it does not, sign in first.
+5. After **Relay status** shows Connected, click **Generate remote pairing code**.
 
-本地、生产和自定义预设都通过桌面出站连接携带的 ORG2 Cloud JWT 识别用户。
+The Local, Production, and custom presets all identify the user through the ORG2 Cloud JWT carried over the desktop's outbound connection.
 
 ---
 
-## 手机端流程
+## Phone Flow
 
-### 1. 打开 PWA
+### 1. Open the PWA
 
-在手机浏览器（Safari / Chrome）打开：
+In a phone browser (Safari or Chrome), open:
 
 ```
 http://<mac-ip>:1998/orgii/mobile
 ```
 
-本机调试可用 `http://localhost:1998/orgii/mobile`。
+For debugging on this computer, use `http://localhost:1998/orgii/mobile`.
 
-### 2. GitHub 登录
+### 2. Sign In with GitHub
 
-首次进入会要求 **使用 GitHub 继续**（ORG2 Cloud / Supabase OAuth）。
+The first time you open the PWA, it asks you to **Continue with GitHub** (ORG2 Cloud / Supabase OAuth).
 
-本地 dev 时，`scripts/dev/webpack-server.js`（及 `rspack-server.js`）内置了 `/v1/mobile/auth/session` stub，对 `POST` / `DELETE` 返回 `204`，无需真实后端即可完成登录流程调试。
+During local development, `scripts/dev/webpack-server.js` (and `rspack-server.js`) includes a stub for `/v1/mobile/auth/session` that returns `204` for `POST` and `DELETE`. This lets you debug the sign-in flow without a real backend.
 
-### 3. 配对
+### 3. Pair
 
-1. 在欢迎页点击 **扫描或粘贴配对码**
-2. 扫描桌面设置中的 QR，或粘贴 **配对载荷** 文本
-3. 核对 **安全短语**（SAS）与桌面一致后，在桌面点击 **短语一致，确认配对**
-4. 配对成功后，手机可查看会话列表并发送消息
-
----
-
-## 快速上手 Checklist
-
-### 本地 Relay
-
-- [ ] `pnpm install` 完成
-- [ ] 前端 dev server 运行于 **:1998**（`pnpm run dev:frontend` 或 `pnpm run tauri:dev`）
-- [ ] Relay 已启动并监听 **:8787**
-- [ ] 桌面 **设置 → 通用** 已登录 ORG2 Cloud
-- [ ] 桌面 **设置 → 移动遥控**：已开启、预设「本地」、Relay 已连接
-- [ ] 桌面已 **生成户外配对码**
-- [ ] 手机打开 `http://<host>:1998/orgii/mobile`，完成 GitHub 登录
-- [ ] 手机扫码/粘贴配对码，桌面确认 SAS 短语
-- [ ] 手机会话列表可见桌面 session
-
-### 生产 Relay
-
-- [ ] 桌面 **设置 → 通用** 已登录 ORG2 Cloud
-- [ ] 桌面 **设置 → 移动遥控**：预设「生产」、Relay 已连接
-- [ ] 手机打开 Workers PWA URL，GitHub 登录
-- [ ] 配对 → SAS 确认 → 会话列表 → 发消息
+1. On the welcome page, tap **Scan or paste pairing code**.
+2. Scan the QR code shown in desktop settings or paste the **pairing payload** text.
+3. Confirm that the **security phrase** (SAS) matches the desktop phrase, then have the desktop user click **The phrase matches — confirm pairing**.
+4. Once paired, the phone can view the session list and send messages.
 
 ---
 
-## 常见问题与排查
+## Quick Start Checklist
 
-| 现象                                    | 可能原因                                     | 处理                                                                                                                       |
-| --------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `Connection refused` / 无法连接 Relay   | dev server 或 relay 未启动                   | 确认终端 1（:1998）和终端 2（:8787）均在运行                                                                               |
-| Relay 401 / `auth_required`（任何预设） | 未登录 ORG2 Cloud 或会话过期                 | 在 **设置 → 通用** 登录 ORG2 Cloud，回到移动遥控刷新 Relay 状态                                                            |
-| 切换 Relay 预设后连接失败               | Relay 未连通或 ORG2 Cloud 会话无效           | 确认预设地址正确；确认通用设置中已登录                                                                                     |
-| 配对后桌面意外退出                      | 旧版 relay DB 写在 `src-tauri/` 触发文件监听 | 已修复：DB 默认在 `~/.orgii/mobile-relay.sqlite3`；拉取最新分支即可                                                        |
-| `/orgii/mobile` 显示桌面 UI             | dev bundler 未加载 mobile 入口               | 确认使用 webpack/rspack 配置（含 `mobile` entry 与 `/orgii/mobile` → `mobile.html` rewrite）；勿用仅编译 `main` 的简化配置 |
-| 手机打不开 Mac IP:1998                  | dev server 只监听 localhost                  | 尝试 host `0.0.0.0` 绑定；检查防火墙与同一 Wi-Fi                                                                           |
-| OAuth 登录卡住                          | dev stub 未生效                              | 确认通过 `webpack-server.js` / `rspack-server.js` 启动，而非静态文件服务                                                   |
+### Local Relay
+
+- [ ] `pnpm install` completed
+- [ ] Frontend dev server is running on **:1998** (`pnpm run dev:frontend` or `pnpm run tauri:dev`)
+- [ ] Relay is running and listening on **:8787**
+- [ ] Signed in to ORG2 Cloud on desktop under **Settings → General**
+- [ ] Desktop **Settings → Mobile Remote**: enabled, “Local” preset selected, Relay connected
+- [ ] Generated a pairing code on desktop
+- [ ] Opened `http://<host>:1998/orgii/mobile` on the phone and signed in with GitHub
+- [ ] Scanned/pasted the pairing code on the phone and confirmed the SAS phrase on desktop
+- [ ] The desktop session is visible in the phone's session list
+
+### Production Relay
+
+- [ ] Signed in to ORG2 Cloud on desktop under **Settings → General**
+- [ ] Desktop **Settings → Mobile Remote**: “Production” preset selected, Relay connected
+- [ ] Opened the Workers PWA URL on the phone and signed in with GitHub
+- [ ] Paired → confirmed SAS → opened the session list → sent a message
 
 ---
 
-## 生产环境（Production）
+## Troubleshooting
 
-### 当前已部署实例（Cloudflare Workers）
+| Symptom | Possible cause | What to do |
+| --- | --- | --- |
+| `Connection refused` / cannot connect to Relay | Dev server or Relay is not running | Confirm Terminal 1 (:1998) and Terminal 2 (:8787) are both running |
+| Relay 401 / `auth_required` (any preset) | Not signed in to ORG2 Cloud or the session expired | Sign in to ORG2 Cloud in **Settings → General**, then return to Mobile Remote and refresh Relay status |
+| Connection fails after changing Relay preset | Relay is unreachable or ORG2 Cloud session is invalid | Confirm the preset address and that you are signed in under General settings |
+| Desktop unexpectedly exits after pairing | Older Relay DB was written under `src-tauri/`, triggering the file watcher | Fixed: DB defaults to `~/.orgii/mobile-relay.sqlite3`; pull the latest branch |
+| `/orgii/mobile` displays the desktop UI | Dev bundler did not load the mobile entry | Use the webpack/rspack configuration (with the `mobile` entry and `/orgii/mobile` → `mobile.html` rewrite); do not use a simplified config that compiles only `main` |
+| Phone cannot open Mac IP:1998 | Dev server listens only on localhost | Try binding to `0.0.0.0`; check the firewall and that both devices are on the same Wi-Fi |
+| OAuth sign-in hangs | Dev stub is not active | Start through `webpack-server.js` / `rspack-server.js`, not a static file server |
 
-团队已在 Cloudflare Workers 上部署 `orgii-mobile-relay`，同时托管 **Mobile PWA** 静态资源与 **Relay WebSocket**。
+---
 
-| 用途                                | URL                                                                    |
-| ----------------------------------- | ---------------------------------------------------------------------- |
-| 健康检查                            | https://orgii-mobile-relay.superficial-jasper.workers.dev/healthz      |
-| Mobile PWA（手机浏览器）            | https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile |
-| Relay WebSocket（桌面「生产」预设） | `wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws` |
+## Production
 
-探测结果（供参考）：
+### Currently Deployed Instance (Cloudflare Workers)
 
-- `/healthz` 返回 `{"ok":true,"protocolVersion":1}`
-- `/orgii/mobile` 返回 **200 `text/html`**，为打包后的 Mobile PWA 壳（`ORG2 Mobile Remote`），非重定向
-- `/v1/mobile/ws` 在无会话时返回 **401** `auth_required`（说明 WebSocket 路径正确，需 ORG2 Cloud JWT / 手机 OAuth 后建连）
+The team has deployed `orgii-mobile-relay` on Cloudflare Workers. It hosts both the **Mobile PWA** static assets and the **Relay WebSocket**.
 
-> **`relay.orgii.ai`** 仍为规划中的自定义域名，当前未作为默认预设；代码默认生产主机见 `src/config/mobileRemoteRelay.ts` 中的 `MOBILE_REMOTE_RELAY_PRODUCTION_HOST`。
+| Purpose | URL |
+| --- | --- |
+| Health check | https://orgii-mobile-relay.superficial-jasper.workers.dev/healthz |
+| Mobile PWA (phone browser) | https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile |
+| Relay WebSocket (desktop “Production” preset) | `wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws` |
 
-### 桌面使用「生产」预设
+Probe results (for reference):
 
-1. **设置 → 通用** 登录 ORG2 Cloud
-2. **设置 → 移动遥控** → 开启移动遥控与 **连接公网 Relay**
-3. 预设选择 **「生产」** → Relay 地址应为：
+- `/healthz` returns `{"ok":true,"protocolVersion":1}`.
+- `/orgii/mobile` returns **200 `text/html`**, the bundled Mobile PWA shell (`ORG2 Mobile Remote`), without a redirect.
+- `/v1/mobile/ws` returns **401** `auth_required` when no session is present. This confirms the WebSocket path is correct; a connection requires an ORG2 Cloud JWT / phone OAuth session.
+
+> **`relay.orgii.ai`** is a planned custom domain and is not the default preset today. The default production host in code is `MOBILE_REMOTE_RELAY_PRODUCTION_HOST` in `src/config/mobileRemoteRelay.ts`.
+
+### Use the “Production” Preset on Desktop
+
+1. Sign in to ORG2 Cloud in **Settings → General**.
+2. Open **Settings → Mobile Remote**, enable Mobile Remote and **Connect to public Relay**.
+3. Select the **“Production”** preset. The Relay address should be:
    ```
    wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws
    ```
-4. 确认 **ORG2 Cloud 登录** 状态为已登录
-5. **生成户外配对码**，手机打开上表中的 **Mobile PWA** URL，GitHub 登录后扫码/粘贴配对
+4. Confirm that **ORG2 Cloud sign-in** shows as signed in.
+5. Click **Generate remote pairing code**. On the phone, open the **Mobile PWA** URL above, sign in with GitHub, then scan or paste the pairing code.
 
-本地联调仍请用 **「本地」** 预设与自启 relay，不必走 Workers。
+For local integration, use the **“Local”** preset and the local Relay instead of Workers.
 
-### 发布 / 更新生产 Workers（维护者）
+### Release / Update Production Workers (Maintainers)
 
-> **重要：** 生产环境的 Relay + Mobile PWA **不在本仓库（ORG2）发布**。  
-> 实际部署在独立基础设施仓库 **[ORGII-cloud-infra](https://github.com/org2AI/ORGII-cloud-infra)** 的 **`mobile-relay-worker/`** 子目录，通过 **Wrangler** 发布到 Cloudflare Workers。  
-> 本仓库的 `src-tauri/crates/mobile-relay-server/` 是本地开发用的 Rust relay，**不是**线上 Workers 实现。
+> **Important:** Production Relay + Mobile PWA are **not released from this repository (ORG2)**.
+>
+> They are deployed with **Wrangler** from the `mobile-relay-worker/` subdirectory of the separate infrastructure repository [ORGII-cloud-infra](https://github.com/org2AI/ORGII-cloud-infra).
+>
+> `src-tauri/crates/mobile-relay-server/` in this repository is the Rust Relay for local development, **not** the production Workers implementation.
 
-**本仓库没有** `wrangler.toml`、`stage-mobile-assets` 脚本，也没有 GitHub Actions 自动发布 mobile-relay。更新生产需按下列步骤手动执行。
+This repository has no `wrangler.toml`, `stage-mobile-assets` script, or GitHub Actions workflow that automatically publishes mobile-relay. Follow these steps to update production manually.
 
-#### 前置条件
+#### Prerequisites
 
-| 项                  | 说明                                                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Cloudflare 账号     | 已 `npx wrangler login`（当前实例在 **Superficial Jasper** 账号下的 `workers.dev`）                                          |
-| Wrangler            | ≥ 4.102（`mobile-relay-worker` 内 `npm install` 会安装）                                                                     |
-| Supabase Auth       | 回调 URL 须包含 `https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile/auth/callback`（换域名后须同步更新） |
-| Cookie 签名（可选） | **`MOBILE_AUTH_SECRET`**；生产建议单独配置                                                                                   |
+| Item | Notes |
+| --- | --- |
+| Cloudflare account | Logged in with `npx wrangler login` (the current instance is under the **Superficial Jasper** account's `workers.dev` domain) |
+| Wrangler | ≥ 4.102 (installed by `npm install` inside `mobile-relay-worker`) |
+| Supabase Auth | Callback URL must include `https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile/auth/callback` (update it too when changing domains) |
+| Cookie signing (optional) | **`MOBILE_AUTH_SECRET`**; a separate production value is recommended |
 
-> 生产 Relay 桌面认证已迁移为 **ORG2 Cloud JWT**（每用户）。`DESKTOP_TOKEN` / wrangler secret 仅为历史本地 dev 或过渡部署保留，不再作为桌面「生产」预设的配置项。
+> Desktop authentication for the production Relay has migrated to **ORG2 Cloud JWTs** (per user). `DESKTOP_TOKEN` / Wrangler secrets remain only for historical local development or transitional deployments; they are no longer configuration for the desktop “Production” preset.
 
-#### 标准发布流程
+#### Standard Release Process
 
 ```bash
-# 1. 在 ORG2 仓库构建前端（含 mobile 入口）
+# 1. Build the frontend (including the mobile entry) in the ORG2 repository
 cd /path/to/ORG2
 pnpm build
 
-# 2. 将 PWA 静态资源复制到 Worker 的 public/
+# 2. Copy the PWA static assets to the Worker's public/ directory
 cd /path/to/ORGII-cloud-infra/mobile-relay-worker
 npm install
 npm run stage:mobile -- /path/to/ORG2/build
 
-# 3. 发布到 Cloudflare Workers
+# 3. Deploy to Cloudflare Workers
 npx wrangler deploy
 ```
 
-`stage:mobile` 会从 `build/` 解析 `mobile.html` 及其引用的 JS/CSS，写入 `mobile-relay-worker/public/`（约 20+ 个文件）。**发布用的是本地 build 产物，不依赖 PR 是否已 merge 到 main**——但维护者应确保 build 来自已验证的分支/提交。
+`stage:mobile` resolves `mobile.html` and its referenced JS/CSS from `build/` and writes them to `mobile-relay-worker/public/` (about 20+ files). **The deployment uses the local build output and does not depend on whether a PR has been merged to main**—but maintainers should ensure the build came from a verified branch/commit.
 
-#### 首次部署（可选密钥）
+#### First Deployment (Optional Secret)
 
 ```bash
 cd /path/to/ORGII-cloud-infra/mobile-relay-worker
 
-# 可选：手机 OAuth cookie 签名
+# Optional: phone OAuth cookie signing
 npx wrangler secret put MOBILE_AUTH_SECRET
 ```
 
-也可在 `mobile-relay-worker/` 下创建 **`.deploy-secrets.json`**（参考 `.env.example` 字段名），用于临时账号首次发布：
+You can also create **`.deploy-secrets.json`** under `mobile-relay-worker/` (using the field names in `.env.example`) for a first deployment from a temporary account:
 
 ```bash
 npx wrangler deploy --temporary --secrets-file .deploy-secrets.json
 ```
 
-临时部署会打印 `workers.dev` URL 与 claim 链接，须在 **60 分钟内** claim 账号，否则部署与配对数据会被删除。
+A temporary deployment prints a `workers.dev` URL and claim link. Claim the account within **60 minutes**, or the deployment and pairing data will be deleted.
 
-#### 发布后验证
+#### Verify After Release
 
 ```bash
 curl https://orgii-mobile-relay.superficial-jasper.workers.dev/healthz
-# 期望：{"ok":true,"protocolVersion":1}
+# Expected: {"ok":true,"protocolVersion":1}
 
 curl -sI https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile | head -5
-# 期望：HTTP 200，Content-Type 为 text/html
+# Expected: HTTP 200, Content-Type is text/html
 ```
 
-桌面 **设置 → 通用** 登录 ORG2 Cloud，**设置 → 移动遥控** 选「生产」预设，确认 Relay 已连接后走一遍配对 → SAS 确认 → 会话列表 → 发消息。
+On desktop, sign in to ORG2 Cloud under **Settings → General**. In **Settings → Mobile Remote**, choose the “Production” preset and confirm that Relay is connected. Then complete pairing → SAS confirmation → session list → send a message.
 
-本地集成测试（需有效 Supabase access token）：
+Local integration test (requires a valid Supabase access token):
 
 ```bash
 cd /path/to/ORGII-cloud-infra/mobile-relay-worker
@@ -337,18 +342,18 @@ SUPABASE_ACCESS_TOKEN=... \
   npm run test:integration -- https://orgii-mobile-relay.superficial-jasper.workers.dev
 ```
 
-更完整的 Worker 生命周期说明见 **`ORGII-cloud-infra/mobile-relay-worker/README.md`**。
+For more on the Worker lifecycle, see **`ORGII-cloud-infra/mobile-relay-worker/README.md`**.
 
-### 自托管 Relay
+### Self-Hosted Relay
 
-Relay 实现位于 `src-tauri/crates/mobile-relay-server/`（crate 名 `orgii-mobile-relay`）。
+The Relay implementation is in `src-tauri/crates/mobile-relay-server/` (crate name `orgii-mobile-relay`).
 
-**1. 构建并运行（需 TLS 终止，生产用 wss://）：**
+**1. Build and run (requires TLS termination; production uses wss://):**
 
 ```bash
 cd src-tauri
 
-# 可选
+# Optional
 export ORGII_RELAY_LISTEN="0.0.0.0:8787"
 export ORGII_RELAY_PUBLIC_WS_URL="wss://relay.example.com/v1/mobile/ws"
 export ORGII_RELAY_PUBLIC_APP_URL="https://relay.example.com/orgii/mobile"
@@ -356,65 +361,65 @@ export ORGII_RELAY_PUBLIC_APP_URL="https://relay.example.com/orgii/mobile"
 cargo run -p orgii-mobile-relay --release
 ```
 
-通常在前置反向代理（Caddy / nginx）后终止 TLS，对外暴露 `wss://`。
+TLS is usually terminated at a reverse proxy such as Caddy or nginx, with `wss://` exposed publicly.
 
-**2. 部署 Mobile PWA**
+**2. Deploy the Mobile PWA**
 
-将包含 `mobile` entry 的前端构建产物部署到 HTTPS 域名，路径需支持 `/orgii/mobile`（与 `public/mobile.html` + history fallback 一致）。
+Deploy a frontend build that includes the `mobile` entry to an HTTPS domain. The path must support `/orgii/mobile`, consistent with `public/mobile.html` plus history fallback.
 
-**3. 桌面连接**
+**3. Connect the Desktop**
 
-- **公网 / 每用户 Relay（推荐）：** 桌面在 **设置 → 通用** 登录 ORG2 Cloud，Relay 地址填 `wss://<host>/v1/mobile/ws`
-- **本地 Rust Relay：** 桌面仍先登录 ORG2 Cloud，然后选择预设「本地」
+- **Public/per-user Relay (recommended):** Sign in to ORG2 Cloud in desktop **Settings → General**, then set the Relay address to `wss://<host>/v1/mobile/ws`.
+- **Local Rust Relay:** Still sign in to ORG2 Cloud first, then select the “Local” preset on desktop.
 
-**4. 覆盖默认生产 Relay URL（构建时）**
+**4. Override the Default Production Relay URL (at build time)**
 
-若需指向其他 relay 主机（非默认 Workers 实例），在构建前端时设置：
+To use another Relay host instead of the default Workers instance, set this when building the frontend:
 
 ```bash
 REACT_APP_MOBILE_RELAY_PRODUCTION_URL=wss://your-relay.example.com/v1/mobile/ws pnpm build
 ```
 
-定义见 `src/config/mobileRemoteRelay.ts`，rspack/webpack 均已透传该环境变量。
+The value is defined in `src/config/mobileRemoteRelay.ts`; both rspack and webpack pass through this environment variable.
 
-### 正式上线 checklist（Workers 路径）
+### Production Launch Checklist (Workers Path)
 
-- [ ] `pnpm build`（ORG2）→ `npm run stage:mobile` → `npx wrangler deploy`（`ORGII-cloud-infra/mobile-relay-worker`）
-- [ ] （推荐）独立配置 **`MOBILE_AUTH_SECRET`**
-- [ ] Supabase Auth 回调 URL 已登记（见上文 `auth/callback` 路径）
-- [ ] `/healthz` 与 `/orgii/mobile` 返回正常
-- [ ] （可选）自定义域名 CNAME 到 Workers（例如未来的 `relay.orgii.ai`）
-- [ ] 配置 `REACT_APP_MOBILE_RELAY_PRODUCTION_URL`（仅当默认 Workers URL 需覆盖时；见 `config/rspack.config.js` / `config/webpack.config.js`）
-- [ ] 端到端验证：桌面 ORG2 Cloud 登录 → Relay 连接 → 配对 → SAS 确认 → 会话列表 → 发消息 / 停止 session
+- [ ] `pnpm build` (ORG2) → `npm run stage:mobile` → `npx wrangler deploy` (`ORGII-cloud-infra/mobile-relay-worker`)
+- [ ] (Recommended) Configure a dedicated **`MOBILE_AUTH_SECRET`**
+- [ ] Register the Supabase Auth callback URL (see the `auth/callback` path above)
+- [ ] `/healthz` and `/orgii/mobile` return successfully
+- [ ] (Optional) CNAME a custom domain to Workers (for example, a future `relay.orgii.ai`)
+- [ ] Configure `REACT_APP_MOBILE_RELAY_PRODUCTION_URL` only if overriding the default Workers URL (see `config/rspack.config.js` / `config/webpack.config.js`)
+- [ ] End-to-end check: desktop ORG2 Cloud sign-in → Relay connection → pairing → SAS confirmation → session list → send a message / stop a session
 
-### 自托管 Rust Relay checklist（非 Workers）
+### Self-Hosted Rust Relay Checklist (Not Workers)
 
-若不用 Cloudflare Workers，而是自建 `cargo run -p orgii-mobile-relay`：
+If you are not using Cloudflare Workers and are self-hosting with `cargo run -p orgii-mobile-relay`:
 
-- [ ] TLS 终止（Caddy / nginx）与持久化 `~/.orgii/` 或 `ORGII_RELAY_DATABASE`
-- [ ] Relay 可访问与 Desktop 相同的 ORG2 Cloud / Supabase 认证服务
-- [ ] 桌面已登录 ORG2 Cloud，并在设置中填写该 Relay 地址
-- [ ] 单独部署 HTTPS 版 Mobile PWA（`/orgii/mobile`）
-
----
-
-## 相关代码路径
-
-| 路径                                                                    | 说明                                      |
-| ----------------------------------------------------------------------- | ----------------------------------------- |
-| `src/modules/MobileRemote/`                                             | Mobile PWA UI                             |
-| `src/mobileRemoteEntry.tsx`                                             | PWA 入口（独立于桌面 `src/index.tsx`）    |
-| `src/config/mobileRemoteRelay.ts`                                       | 本地/生产 Relay URL 预设                  |
-| `src/modules/MainApp/Settings/sections/MobileRemoteSettingsSection.tsx` | 桌面设置 UI                               |
-| `src/features/Org2Cloud/`                                               | ORG2 Cloud 登录与会话                     |
-| `src-tauri/crates/mobile-relay-server/`                                 | 本地 Relay 服务                           |
-| `config/webpack.config.js` / `config/rspack.config.js`                  | `mobile` entry 与 `/orgii/mobile` rewrite |
-| `scripts/dev/webpack-server.js`                                         | dev auth session stub                     |
+- [ ] TLS termination (Caddy / nginx) and persistent `~/.orgii/` storage or `ORGII_RELAY_DATABASE`
+- [ ] Relay can reach the same ORG2 Cloud / Supabase authentication service as Desktop
+- [ ] Desktop is signed in to ORG2 Cloud and configured with this Relay address
+- [ ] Deploy an HTTPS version of the Mobile PWA separately (`/orgii/mobile`)
 
 ---
 
-## 参考
+## Related Code Paths
 
-- PR：[#1150 — Mobile Remote control](https://github.com/org2AI/ORG2/pull/1150)
-- 生产 Workers 部署：[ORGII-cloud-infra/mobile-relay-worker](https://github.com/org2AI/ORGII-cloud-infra/tree/main/mobile-relay-worker)（`README.md`、`wrangler.toml`）
-- 通用开发环境：[CONTRIBUTING.md](../.github/CONTRIBUTING.md)
+| Path | Description |
+| --- | --- |
+| `src/modules/MobileRemote/` | Mobile PWA UI |
+| `src/mobileRemoteEntry.tsx` | PWA entry point (separate from desktop `src/index.tsx`) |
+| `src/config/mobileRemoteRelay.ts` | Local/production Relay URL presets |
+| `src/modules/MainApp/Settings/sections/MobileRemoteSettingsSection.tsx` | Desktop settings UI |
+| `src/features/Org2Cloud/` | ORG2 Cloud sign-in and session |
+| `src-tauri/crates/mobile-relay-server/` | Local Relay service |
+| `config/webpack.config.js` / `config/rspack.config.js` | `mobile` entry and `/orgii/mobile` rewrite |
+| `scripts/dev/webpack-server.js` | Dev auth session stub |
+
+---
+
+## References
+
+- PR: [#1150 — Mobile Remote control](https://github.com/org2AI/ORG2/pull/1150)
+- Production Workers deployment: [ORGII-cloud-infra/mobile-relay-worker](https://github.com/org2AI/ORGII-cloud-infra/tree/main/mobile-relay-worker) (`README.md`, `wrangler.toml`)
+- General development environment: [CONTRIBUTING.md](../.github/CONTRIBUTING.md)

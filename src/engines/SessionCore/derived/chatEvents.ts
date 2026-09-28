@@ -173,6 +173,24 @@ export function appendLiveAssistantEvent(
     return events.filter((event) => event.id !== liveId);
   }
   const liveId = `live-assistant-${sessionId}`;
+  // CLI already owns a live EventStore row for cancellation retention. Chat
+  // renders that row with the same live buffer; only surfaces that omit it
+  // (Workstation Messages) need the additional synthetic placeholder.
+  if (
+    events.some(
+      (event) =>
+        event.id !== liveId &&
+        event.sessionId === sessionId &&
+        event.source === "assistant" &&
+        event.displayVariant === "message" &&
+        event.isDelta === true &&
+        event.args?.syntheticLive === true
+    )
+  ) {
+    return events.some((event) => event.id === liveId)
+      ? events.filter((event) => event.id !== liveId)
+      : events;
+  }
   const createdAt = getLiveAssistantCreatedAt(sessionId);
   if (isFinalAssistantDuplicate(events, content, createdAt, sessionId)) {
     _liveAssistantCreatedAtBySession.delete(sessionId);
@@ -249,6 +267,16 @@ export function appendQueuedUserEvents(
   for (const message of queuedMessages) {
     if (message.sessionId !== sessionId) continue;
     const representedIndex = representedTurnIntents.get(message.turnIntentId);
+    const provenError =
+      representedIndex !== undefined
+        ? next[representedIndex]?.result?.executionError
+        : undefined;
+    const executionError =
+      message.executionError ||
+      (typeof provenError === "string" ? provenError : undefined);
+    const deliveryError = executionError ? undefined : message.deliveryError;
+    const failure = deliveryError || executionError;
+    const failedStatus = executionError ? "sent" : "failed";
     if (representedIndex !== undefined) {
       // The durable queue row is the failure owner. When its optimistic
       // transcript row could not be patched (the session was not loaded
@@ -272,7 +300,7 @@ export function appendQueuedUserEvents(
         (existing.result?.["backendPersisted"] === true ||
           importedNativeUser) &&
         existing.result?.["deliveryStatus"] === undefined;
-      if (message.deliveryError && nativeUserEcho) {
+      if (failure && nativeUserEcho) {
         // Native history may replace the optimistic row before the model
         // fails. Its completed user echo proves prompt persistence, not a
         // successful response or retirement of the durable failure owner.
@@ -287,29 +315,36 @@ export function appendQueuedUserEvents(
             createdAt: message.createdAt,
             imageDataUrls: message.imageDataUrls,
             turnIntentId: message.turnIntentId,
-            deliveryStatus: "failed",
-            deliveryError: message.deliveryError,
+            deliveryStatus: failedStatus,
+            deliveryError,
+            executionError,
             queueMessageId: message.id,
           }
         );
         continue;
       }
       if (
-        !message.deliveryError ||
+        !failure ||
         !existing ||
         existing.result?.["queueMessageId"] !== message.id ||
-        existing.result?.["deliveryStatus"] !== "pending"
+        (existing.result?.["deliveryStatus"] !== "pending" &&
+          !(
+            executionError &&
+            (existing.result?.["deliveryStatus"] !== "sent" ||
+              existing.result?.executionError !== executionError)
+          ))
       ) {
         continue;
       }
       if (next === events) next = [...events];
       next[representedIndex] = {
         ...existing,
-        displayStatus: "failed",
+        displayStatus: executionError ? "completed" : "failed",
         result: {
           ...existing.result,
-          deliveryStatus: "failed",
-          deliveryError: message.deliveryError,
+          deliveryStatus: failedStatus,
+          deliveryError,
+          executionError,
         },
       };
       continue;
@@ -322,8 +357,9 @@ export function appendQueuedUserEvents(
         createdAt: message.createdAt,
         imageDataUrls: message.imageDataUrls,
         turnIntentId: message.turnIntentId,
-        deliveryStatus: message.deliveryError ? "failed" : "pending",
-        deliveryError: message.deliveryError,
+        deliveryStatus: failure ? failedStatus : "pending",
+        deliveryError,
+        executionError,
         queueMessageId: message.id,
       }
     );
@@ -519,6 +555,7 @@ const USER_DELIVERY_ACTION_KEYS = [
   "deliveryOwnerRetired",
   "deliveryStatus",
   "deliveryError",
+  "executionError",
   "turnIntentId",
   "syntheticUserInput",
 ] as const;

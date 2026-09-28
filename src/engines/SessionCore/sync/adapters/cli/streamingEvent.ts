@@ -21,6 +21,7 @@ export function buildCliStreamingEvent(
   return {
     ...baseEvent,
     createdAt,
+    args: isMessage ? { syntheticLive: true } : baseEvent.args,
     result: isMessage
       ? { content, observation: content, role: "assistant", is_delta: true }
       : { thought: content, content, observation: content, is_delta: true },

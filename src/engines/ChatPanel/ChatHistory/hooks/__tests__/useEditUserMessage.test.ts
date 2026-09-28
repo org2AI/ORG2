@@ -21,6 +21,7 @@ import type {
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { appendQueuedUserEvents } from "@src/engines/SessionCore/derived/chatEvents";
+import { UserIntentSendError } from "@src/engines/SessionCore/services/userIntentDispatch";
 import {
   type QueuedMessage,
   messageQueueAtom,
@@ -36,10 +37,12 @@ const {
   evictSessionSpy,
   invokeTauriSpy,
   flushMessageQueueSpy,
+  getEventsSpy,
   hydrateMessageQueueSpy,
   messageQueueHydrated,
   queuedDeliveries,
   realQueueStore,
+  reconcileOrphanSpy,
   removeByIdPrefixSpy,
   updateByIdSpy,
   upsertSpy,
@@ -56,10 +59,12 @@ const {
   evictSessionSpy: vi.fn(async () => undefined),
   invokeTauriSpy: vi.fn(async () => 0),
   flushMessageQueueSpy: vi.fn(async () => undefined),
+  getEventsSpy: vi.fn(async () => [] as SessionEvent[]),
   hydrateMessageQueueSpy: vi.fn(async () => undefined),
   messageQueueHydrated: { current: true },
   queuedDeliveries: { current: [] as Array<Record<string, unknown>> },
   realQueueStore: { current: null as Store | null },
+  reconcileOrphanSpy: vi.fn(async () => false),
   removeByIdPrefixSpy: vi.fn(async () => 1),
   updateByIdSpy: vi.fn(async () => true),
   upsertSpy: vi.fn(async (..._args: unknown[]) => undefined),
@@ -139,6 +144,7 @@ vi.mock("@src/engines/SessionCore/core/atoms", () => ({
 
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
+    getEvents: getEventsSpy,
     removeByIdPrefix: removeByIdPrefixSpy,
     updateById: updateByIdSpy,
     upsert: upsertSpy,
@@ -152,6 +158,7 @@ vi.mock(
   () => ({
     flushMessageQueuePersistence: flushMessageQueueSpy,
     hydrateMessageQueue: hydrateMessageQueueSpy,
+    reconcileOrphanedOptimisticQueueProjections: reconcileOrphanSpy,
     refreshMessageDeliveries: refreshMessageDeliveriesSpy,
   })
 );
@@ -259,7 +266,11 @@ describe("useEditUserMessage resend projection", () => {
     evictSessionSpy.mockClear();
     invokeTauriSpy.mockClear();
     flushMessageQueueSpy.mockClear();
+    getEventsSpy.mockReset();
+    getEventsSpy.mockResolvedValue([]);
     hydrateMessageQueueSpy.mockClear();
+    reconcileOrphanSpy.mockReset();
+    reconcileOrphanSpy.mockResolvedValue(false);
     hydrateMessageQueueSpy.mockImplementation(async () => {
       queuedDeliveries.current = [...durableHydrationRows.current];
       messageQueueHydrated.current = true;
@@ -490,61 +501,116 @@ describe("useEditUserMessage resend projection", () => {
     );
   });
 
-  it("retries a hydrated failed queue row in place without losing attachments", async () => {
-    queuedDeliveries.current = [
-      {
-        id: "queue-failed",
-        turnIntentId: "turn-intent-failed",
-        sessionId: "osagent-session-1",
-        content: "retry this exact request",
-        displayContent: "retry this exact request",
-        imageDataUrls: ["data:image/png;base64,keep"],
-        priority: "next",
-        status: "queued",
-        requiresExplicitDispatch: true,
-        deliveryError: "provider unavailable",
-        createdAt: "2026-01-01T00:00:00.000Z",
-      },
-    ];
+  it("repairs a missing durable owner on Retry before resubmitting the failed turn", async () => {
+    storeSessionId.current = "sdeagent-root";
     const failed = {
       event: {
-        id: "queued-user-turn-intent-failed",
-        displayText: "retry this exact request",
+        id: "queued-user:queue-orphan:",
+        sessionId: "cliagent-child",
+        source: "user",
+        displayText: "continue the conversation",
         displayStatus: "failed",
         result: {
           syntheticUserInput: true,
           deliveryStatus: "failed",
-          queueMessageId: "queue-failed",
-          turnIntentId: "turn-intent-failed",
+          queueMessageId: "queue-orphan",
+          turnIntentId: "intent-orphan",
+          deliveryError: "native transcript mismatch",
         },
       },
-      chunk_id: "queued-user-turn-intent-failed",
+      chunk_id: "queued-user:queue-orphan:",
     } as unknown as OptimizedChatItem;
+    reconcileOrphanSpy.mockResolvedValueOnce(true);
+    const failedEvent = failed.event as SessionEvent;
+    getEventsSpy.mockResolvedValueOnce([
+      {
+        ...failedEvent,
+        result: {
+          ...failedEvent.result,
+          queueMessageId: undefined,
+        },
+      } as SessionEvent,
+    ]);
 
     await act(async () => {
-      await editUserMessage?.(failed, "retry this exact request");
+      await editUserMessage?.(failed, "continue the conversation");
     });
 
-    expect(updateByIdSpy).toHaveBeenCalledWith(
-      "queued-user:queue-failed:",
+    expect(reconcileOrphanSpy).toHaveBeenCalledWith("cliagent-child");
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        displayText: "retry this exact request",
-        displayStatus: "pending",
-        result: expect.objectContaining({
-          images: ["data:image/png;base64,keep"],
-          turnIntentId: expect.not.stringMatching("turn-intent-failed"),
-          deliveryStatus: "pending",
-          queueMessageId: "queue-failed",
-        }),
-      }),
-      "osagent-session-1"
+        sessionId: "sdeagent-root",
+        turnIntentId: "intent-orphan",
+      })
     );
-    expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
-    expect(storeSetSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
-      "queue-failed"
+    expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
+      "queued-user:queue-orphan:",
+      "cliagent-child"
     );
   });
+
+  it.each(["delivery", "execution"] as const)(
+    "retries a hydrated %s failure in place without losing attachments",
+    async (kind) => {
+      queuedDeliveries.current = [
+        {
+          id: "queue-failed",
+          turnIntentId: "turn-intent-failed",
+          sessionId: "osagent-session-1",
+          content: "retry this exact request",
+          displayContent: "retry this exact request",
+          imageDataUrls: ["data:image/png;base64,keep"],
+          priority: "next",
+          status: "queued",
+          requiresExplicitDispatch: true,
+          [kind === "execution" ? "executionError" : "deliveryError"]:
+            "provider unavailable",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ];
+      const failed = {
+        event: {
+          id: "queued-user-turn-intent-failed",
+          displayText: "retry this exact request",
+          displayStatus: kind === "execution" ? "completed" : "failed",
+          result: {
+            syntheticUserInput: true,
+            deliveryStatus: kind === "execution" ? "sent" : "failed",
+            ...(kind === "execution"
+              ? { executionError: "provider unavailable" }
+              : {}),
+            queueMessageId: "queue-failed",
+            turnIntentId: "turn-intent-failed",
+          },
+        },
+        chunk_id: "queued-user-turn-intent-failed",
+      } as unknown as OptimizedChatItem;
+
+      await act(async () => {
+        await editUserMessage?.(failed, "retry this exact request");
+      });
+
+      expect(updateByIdSpy).toHaveBeenCalledWith(
+        "queued-user:queue-failed:",
+        expect.objectContaining({
+          displayText: "retry this exact request",
+          displayStatus: "pending",
+          result: expect.objectContaining({
+            images: ["data:image/png;base64,keep"],
+            turnIntentId: expect.not.stringMatching("turn-intent-failed"),
+            deliveryStatus: "pending",
+            queueMessageId: "queue-failed",
+          }),
+        }),
+        "osagent-session-1"
+      );
+      expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+      expect(storeSetSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ debugLabel: "forceSendMessageAtom" }),
+        "queue-failed"
+      );
+    }
+  );
 
   it("retries a held canonical row with the runtime the picker shows now", async () => {
     const admittedDispatch: QueuedConversationDispatch = {
@@ -826,14 +892,58 @@ describe("useEditUserMessage resend projection", () => {
     expect(submitUserIntentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         displayContent: "retry after the owner retired",
-        turnIntentId: "turn-intent-retired",
+        turnIntentId: expect.any(String),
       })
+    );
+    expect(submitUserIntentSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ turnIntentId: "turn-intent-retired" })
     );
     expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
       "queued-user:queue-retired:",
       expect.any(String)
     );
   });
+
+  it.each([false, true])(
+    "preserves accepted history when retrying a retired execution (send failure: %s)",
+    async (sendFails) => {
+      const accepted = {
+        event: {
+          id: "queued-user:queue-accepted-retired:",
+          source: "user",
+          displayText: "accepted prompt",
+          displayStatus: "completed",
+          result: {
+            syntheticUserInput: true,
+            deliveryStatus: "sent",
+            executionError: "runner recovery blocked",
+            deliveryOwnerRetired: true,
+            queueMessageId: "queue-accepted-retired",
+            turnIntentId: "accepted-retired-intent",
+          },
+        },
+        chunk_id: "queued-user:queue-accepted-retired:",
+      } as unknown as OptimizedChatItem;
+      if (sendFails) {
+        submitUserIntentSpy.mockRejectedValueOnce(
+          new UserIntentSendError("provider unavailable", "replacement-row")
+        );
+      }
+      await act(async () => {
+        await editUserMessage?.(accepted, "accepted prompt");
+      });
+      expect(submitUserIntentSpy).toHaveBeenCalledOnce();
+      expect(submitUserIntentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ turnIntentId: expect.any(String) })
+      );
+      expect(submitUserIntentSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ turnIntentId: "accepted-retired-intent" })
+      );
+      expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+      expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+      expect(updateByIdSpy).not.toHaveBeenCalled();
+    }
+  );
 
   it("edits a hydrated failed queue row and patches its existing bubble", async () => {
     queuedDeliveries.current = [

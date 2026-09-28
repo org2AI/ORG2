@@ -7,129 +7,44 @@ mod lifecycle;
 #[cfg(target_os = "macos")]
 pub(super) mod process;
 use agent_cli::managed_config::native_app::NativeAppProfile;
-use std::path::{Path, PathBuf};
+#[cfg(any(target_os = "macos", test))]
+use std::path::Path;
 #[cfg(any(target_os = "macos", test))]
 use std::process::Command;
 
-fn bundle_id(agent: &str) -> Result<&'static str, String> {
-    match agent {
-        "codex" => Ok("com.openai.codex"),
-        "claude_desktop" => Ok("com.anthropic.claudefordesktop"),
-        _ => Err("Unsupported official App".into()),
-    }
-}
-// Desktop versions are independent of the Codex CLI version axis. Isolation
-// uses vendor implementation flags verified against this installed release;
-// unknown releases require a new source/runtime capability audit.
-const CODEX_ISOLATION_RELEASES: &[&str] = &["26.908.70816", "26.915.31945"];
-/// Audited together with codex-cli 0.155.0-alpha.9.2: local GUI catalogs use
-/// state-only lists, paginated history uses the four versioned projection tables,
-/// and settings events bind resume without rewriting immutable fork prefixes.
+#[cfg(any(target_os = "macos", test))]
+use super::native_compatibility::bundle_id;
+use super::native_compatibility::ResolvedNativeClient;
+
+#[cfg(any(target_os = "macos", test))]
+pub(super) const CLEARED_ENVIRONMENT: &[&str] = &[
+    "CLAUDE_USER_DATA_DIR",
+    "CLAUDE_CDP_AUTH",
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_MODEL",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "CODEX_APP_SERVER_CHATGPT_BASE_URL",
+    "CODEX_APP_SERVER_OPENAI_BASE_URL",
+];
+
 #[cfg(target_os = "macos")]
-pub(super) async fn verify_codex_history() -> Result<String, String> {
-    tokio::task::spawn_blocking(|| {
-        let bundle = installed_bundle("codex")?;
-        let info = plist::Value::from_file(bundle.join("Contents/Info.plist"))
-            .map_err(|_| "Cannot inspect Codex history capability")?;
-        // Compatibility is decided by the data the release actually writes
-        // (schema and settings-event gates in the engine), not by this number;
-        // it is reported so a paused handoff names the release it saw.
-        info.as_dictionary()
-            .and_then(|v| v.get("CFBundleShortVersionString"))
-            .and_then(plist::Value::as_string)
-            .map(str::to_owned)
-            .ok_or_else(|| "Cannot read the Codex Desktop version".to_string())
-    })
-    .await
-    .map_err(|_| "Codex history capability lookup failed")?
-}
-fn validate_bundle(agent: &str, path: &Path) -> Result<(), String> {
-    let value = plist::Value::from_file(path.join("Contents/Info.plist"))
-        .map_err(|_| "Cannot read the selected official App version")?;
-    let info = value
-        .as_dictionary()
-        .ok_or("Invalid official App metadata")?;
-    if info
-        .get("CFBundleIdentifier")
-        .and_then(plist::Value::as_string)
-        != Some(bundle_id(agent)?)
-    {
-        return Err("Official App bundle identity changed".into());
-    }
-    let version = info
-        .get("CFBundleShortVersionString")
-        .and_then(plist::Value::as_string)
-        .ok_or("Cannot read the selected official App version")?;
-    if agent == "claude_desktop" {
-        return crate::harness_connections::verify_claude_desktop_bundle_version(version);
-    }
-    if !CODEX_ISOLATION_RELEASES.contains(&version) {
-        tracing::warn!(
-            version,
-            "Codex Desktop version is not verified for isolated Market profiles"
-        );
-        return Err("native_app_version_unverified".into());
-    }
-    Ok(())
-}
-fn installed_bundle_in(agent: &str, roots: &[PathBuf]) -> Result<PathBuf, String> {
-    let expected = bundle_id(agent)?;
-    for root in roots {
-        let Ok(entries) = std::fs::read_dir(root) else {
-            continue;
-        };
-        let mut candidates = entries
-            .take(512)
-            .flatten()
-            .map(|entry| entry.path())
-            .collect::<Vec<_>>();
-        candidates.sort();
-        for path in candidates {
-            if path.extension().is_none_or(|ext| ext != "app") {
-                continue;
-            }
-            let Ok(info) = plist::Value::from_file(path.join("Contents/Info.plist")) else {
-                continue;
-            };
-            if info
-                .as_dictionary()
-                .and_then(|value| value.get("CFBundleIdentifier"))
-                .and_then(plist::Value::as_string)
-                == Some(expected)
-            {
-                let resolved = path
-                    .canonicalize()
-                    .map_err(|_| "Cannot resolve the installed official App")?;
-                validate_bundle(agent, &resolved)?;
-                return Ok(resolved);
-            }
-        }
-    }
-    Err("Install the official desktop App before opening this connection".into())
-}
-fn installed_bundle(agent: &str) -> Result<PathBuf, String> {
-    installed_bundle_in(
+fn command(
+    agent: &str,
+    profile: &NativeAppProfile,
+    client: &ResolvedNativeClient,
+) -> Result<Command, String> {
+    client.ensure_current()?;
+    command_with_account_home(
         agent,
-        &[
-            app_paths::home_dir().join("Applications"),
-            PathBuf::from("/Applications"),
-        ],
+        profile,
+        &client.bundle,
+        &account_home::resolve()?,
+        (agent == "codex").then(|| client.runtime()).transpose()?,
     )
-}
-/// Market official Apps use their own bundle version; the terminal flow retains
-/// its separate CLI requirements. Catalog metadata probing is independent.
-pub(super) async fn verify_installed(agent: &str) -> Result<(), String> {
-    if agent == "claude_code" {
-        return crate::harness_connections::verify_installed_version(agent).await;
-    }
-    let agent = agent.to_owned();
-    tokio::task::spawn_blocking(move || installed_bundle(&agent).map(|_| ()))
-        .await
-        .map_err(|_| "Official App version lookup failed")?
-}
-#[cfg(target_os = "macos")]
-fn command(agent: &str, profile: &NativeAppProfile, bundle: &Path) -> Result<Command, String> {
-    command_with_account_home(agent, profile, bundle, &account_home::resolve()?)
 }
 #[cfg(any(target_os = "macos", test))]
 fn command_with_account_home(
@@ -137,6 +52,7 @@ fn command_with_account_home(
     profile: &NativeAppProfile,
     bundle: &Path,
     account_home: &Path,
+    codex_runtime: Option<&Path>,
 ) -> Result<Command, String> {
     bundle_id(agent)?;
     profile.validate(agent)?;
@@ -144,17 +60,7 @@ fn command_with_account_home(
     command.arg("-n").arg("-a").arg(bundle);
     // open --env changes the launched process, whereas Command::env_remove
     // only changes the dispatcher. Empty explicit values mask launchd defaults.
-    for name in [
-        "CLAUDE_USER_DATA_DIR",
-        "CLAUDE_CDP_AUTH",
-        "CLAUDE_CODE_OAUTH_TOKEN",
-        "ANTHROPIC_API_KEY",
-        "ANTHROPIC_AUTH_TOKEN",
-        "ANTHROPIC_BASE_URL",
-        "ANTHROPIC_MODEL",
-        "OPENAI_API_KEY",
-        "OPENAI_BASE_URL",
-    ] {
+    for name in CLEARED_ENVIRONMENT {
         command.env_remove(name).arg("--env").arg(name);
     }
     // Security.framework needs the OS account HOME to locate its default
@@ -171,9 +77,24 @@ fn command_with_account_home(
             .arg(format!("{name}={}", path.display()));
     }
     if agent == "codex" {
+        let runtime = codex_runtime
+            .filter(|path| path.is_absolute())
+            .ok_or("native_runtime_unverified")?;
+        // This selects the intended binary; the vendor can still overwrite its
+        // environment from a login shell. Lifecycle must observe the real child.
+        command
+            .arg("--env")
+            .arg(format!("CODEX_CLI_PATH={}", runtime.display()));
+        command.arg("--env").arg("CODEX_APP_SERVER_FORCE_CLI=1");
+        command
+            .arg("--env")
+            .arg("CODEX_APP_SERVER_USE_LOCAL_DAEMON=0");
         command
             .arg("--env")
             .arg(format!("CODEX_HOME={}", profile.home().display()));
+        command
+            .arg("--env")
+            .arg(format!("CODEX_SQLITE_HOME={}", profile.home().display()));
         command.arg("--env").arg(format!(
             "CODEX_ELECTRON_USER_DATA_PATH={}",
             profile.user_data().display()
@@ -233,71 +154,25 @@ fn run_dispatcher(
     }
 }
 
-#[cfg(target_os = "macos")]
-pub(crate) const CLAUDE_DESKTOP_HISTORY_LINE: &str = "2.2553";
-
-#[cfg(target_os = "macos")]
-pub(crate) fn claude_desktop_prepares_history(version: &str) -> bool {
-    let mut parts = version.trim().split('.');
-    let (Some(major), Some(minor), Some(patch)) = (parts.next(), parts.next(), parts.next()) else {
-        return false;
-    };
-    parts.next().is_none()
-        && format!("{major}.{minor}") == CLAUDE_DESKTOP_HISTORY_LINE
-        && patch.parse::<u32>().is_ok_and(|patch| patch >= 1)
-}
-
 pub(super) fn open(
+    client: &ResolvedNativeClient,
     agent: &str,
     profile: &NativeAppProfile,
     check_owner: impl Fn() -> Result<(), String> + Clone + Send + Sync + 'static,
 ) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        let bundle = installed_bundle(agent)?;
-        profile.prepare_launch_directories()?;
-        // Only the audited release line's local namespace may be prepared
-        // before launch. Other compatible Desktop releases retain vendor discovery.
-        let can_prepare_history = agent == "claude_desktop"
-            && plist::Value::from_file(bundle.join("Contents/Info.plist"))
-                .ok()
-                .and_then(|v| {
-                    v.as_dictionary()?
-                        .get("CFBundleShortVersionString")?
-                        .as_string()
-                        .map(str::to_owned)
-                })
-                .is_some_and(|version| claude_desktop_prepares_history(&version));
-        let history_ready = if can_prepare_history {
-            crate::agent_sessions::cli::native_materializer::isolated_claude_history::prepare_before_launch(profile)?;
-            true
-        } else {
-            agent != "claude_desktop"
-                || crate::agent_sessions::cli::native_materializer::isolated_claude_history::import(
-                    profile,
-                )?
-        };
-        lifecycle::open(agent, profile, &bundle, check_owner.clone())?;
-        // First launch creates the vendor-owned account/project identity. Wait
-        // only within this user action; no background poll or watcher survives.
-        if !history_ready {
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-            loop {
-                check_owner()?;
-                if crate::agent_sessions::cli::native_materializer::isolated_claude_history::import(
-                    profile,
-                )? || std::time::Instant::now() >= deadline
-                {
-                    break;
-                }
-                std::thread::sleep(std::time::Duration::from_millis(250));
-            }
+        if client.agent != agent {
+            return Err("Native App target changed".into());
         }
+        client.ensure_current()?;
+        profile.prepare_launch_directories()?;
+        lifecycle::open(agent, profile, client, check_owner)?;
         Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (agent, profile, check_owner);
+        let _ = (client, agent, profile, check_owner);
         Err("Opening official Apps is not available on this platform yet".into())
     }
 }
@@ -312,27 +187,6 @@ pub(super) use process::{claude_writer_identities, writer_identity_current};
 
 #[cfg(test)]
 mod tests {
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn only_the_audited_claude_desktop_line_prepares_history_before_launch() {
-        for version in ["2.2553.1", "2.2553.13", " 2.2553.99 "] {
-            assert!(super::claude_desktop_prepares_history(version), "{version}");
-        }
-        for version in [
-            "2.2553.0",
-            "2.2553",
-            "2.2554.1",
-            "2.7032.0",
-            "1.2553.1",
-            "2.2553.1.2",
-            "x.y.z",
-        ] {
-            assert!(
-                !super::claude_desktop_prepares_history(version),
-                "{version}"
-            );
-        }
-    }
     use super::*;
     #[cfg(target_os = "macos")]
     pub(super) struct FixtureChild(pub(super) std::process::Child);
@@ -372,20 +226,6 @@ mod tests {
             }
         }
     }
-    fn fixture_bundle(root: &Path, name: &str, agent: &str, version: &str) -> PathBuf {
-        let path = root.join(name);
-        std::fs::create_dir_all(path.join("Contents")).unwrap();
-        let mut info = plist::Dictionary::new();
-        info.insert(
-            "CFBundleIdentifier".into(),
-            bundle_id(agent).unwrap().into(),
-        );
-        info.insert("CFBundleShortVersionString".into(), version.into());
-        plist::Value::Dictionary(info)
-            .to_file_xml(path.join("Contents/Info.plist"))
-            .unwrap();
-        path.canonicalize().unwrap()
-    }
     #[cfg(unix)]
     #[test]
     fn dispatcher_completes_or_times_out_without_launching_gui() {
@@ -412,69 +252,21 @@ mod tests {
         assert!(start.elapsed() < std::time::Duration::from_secs(2));
     }
     #[test]
-    fn verified_codex_releases_preserve_the_bundle_identity_gate() {
-        let root = tempfile::tempdir().unwrap();
-        for version in CODEX_ISOLATION_RELEASES {
-            let path = fixture_bundle(root.path(), "Codex.app", "codex", version);
-            assert!(validate_bundle("codex", &path).is_ok());
-            // A matching version alone must never authorize another vendor bundle.
-            fixture_bundle(root.path(), "Codex.app", "claude_desktop", version);
-            assert_eq!(
-                validate_bundle("codex", &path).unwrap_err(),
-                "Official App bundle identity changed"
-            );
-        }
-        for version in ["", "26.915.31946", "27.0.0", "26.915.31945-preview"] {
-            let path = fixture_bundle(root.path(), "Codex.app", "codex", version);
-            assert_eq!(
-                validate_bundle("codex", &path).unwrap_err(),
-                "native_app_version_unverified"
-            );
-        }
-    }
-    #[test]
-    fn selected_bundle_itself_must_have_verified_version() {
-        let root = tempfile::tempdir().unwrap();
-        let old = fixture_bundle(root.path(), "A.app", "codex", "0.99.0");
-        fixture_bundle(root.path(), "Z.app", "codex", CODEX_ISOLATION_RELEASES[0]);
-        // Cannot validate a supported second candidate then launch the first.
-        assert_eq!(
-            installed_bundle_in("codex", &[root.path().into()]).unwrap_err(),
-            "native_app_version_unverified"
-        );
-        std::fs::remove_dir_all(old).unwrap();
-        let selected = installed_bundle_in("codex", &[root.path().into()]).unwrap();
-        assert_eq!(selected.file_name().unwrap(), "Z.app");
-        let profile = NativeAppProfile::new("codex", "https://cloud.example", "owner").unwrap();
-        assert_eq!(
-            command_with_account_home("codex", &profile, &selected, root.path())
-                .unwrap()
-                .get_args()
-                .nth(2)
-                .unwrap(),
-            selected.as_os_str()
-        );
-        let claude = fixture_bundle(
-            root.path(),
-            "Claude Renamed.app",
-            "claude_desktop",
-            "2.110.0",
-        );
-        assert_eq!(
-            installed_bundle_in("claude_desktop", &[root.path().into()]).unwrap(),
-            claude
-        );
-        fixture_bundle(root.path(), "Claude Renamed.app", "claude_desktop", "3.0.0");
-        assert!(installed_bundle_in("claude_desktop", &[root.path().into()]).is_err());
-    }
-    #[test]
     fn launch_targets_exact_bundle_and_same_profile_without_global_url_dispatch() {
         for agent in ["codex", "claude_desktop"] {
             let account_home = tempfile::tempdir().unwrap();
             let profile = NativeAppProfile::new(agent, "https://cloud.example", "owner").unwrap();
             let bundle = Path::new("/Applications/Vendor App.app");
-            let command =
-                command_with_account_home(agent, &profile, bundle, account_home.path()).unwrap();
+            let command = command_with_account_home(
+                agent,
+                &profile,
+                bundle,
+                account_home.path(),
+                Some(Path::new(
+                    "/Applications/Vendor App.app/Contents/Resources/codex",
+                )),
+            )
+            .unwrap();
             let args = command
                 .get_args()
                 .map(|v| v.to_string_lossy().into_owned())
@@ -486,7 +278,13 @@ mod tests {
             );
             assert!(!args.iter().any(|v| v.contains("claude://") || v == "-b"));
             if agent == "codex" {
+                assert!(args.contains(
+                    &"CODEX_CLI_PATH=/Applications/Vendor App.app/Contents/Resources/codex".into()
+                ));
+                assert!(args.contains(&"CODEX_APP_SERVER_FORCE_CLI=1".into()));
+                assert!(args.contains(&"CODEX_APP_SERVER_USE_LOCAL_DAEMON=0".into()));
                 assert!(args.contains(&format!("CODEX_HOME={}", profile.home().display())));
+                assert!(args.contains(&format!("CODEX_SQLITE_HOME={}", profile.home().display())));
                 assert!(args.contains(&format!(
                     "CODEX_ELECTRON_USER_DATA_PATH={}",
                     profile.user_data().display()
@@ -506,6 +304,8 @@ mod tests {
                 "CLAUDE_USER_DATA_DIR",
                 "ANTHROPIC_API_KEY",
                 "OPENAI_API_KEY",
+                "CODEX_APP_SERVER_CHATGPT_BASE_URL",
+                "CODEX_APP_SERVER_OPENAI_BASE_URL",
             ] {
                 assert!(args.windows(2).any(|pair| pair == ["--env", name]));
             }

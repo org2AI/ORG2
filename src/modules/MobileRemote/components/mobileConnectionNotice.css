@@ -1,0 +1,5 @@
+/* Transient mobile connection guidance stays flat; the shared notice owns
+ * typography, wrapping and the accessible status/action structure. */
+.page-notice.mobile-connection-notice {
+  box-shadow: none;
+}

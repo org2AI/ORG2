@@ -55,7 +55,7 @@ describe("SettingsTable sticky toolbar contract", () => {
       /&\.table-settings-sticky-first-col\s*\{[\s\S]*background:\s*var\(--settings-table-body-surface\);/
     );
     expect(tableStyles).toMatch(
-      /&\.table-settings-pin-last-column\s*\{[\s\S]*var\(--settings-table-body-surface\) 100%/
+      /&\.table-settings-pin-last-column\s*\{[\s\S]*background:\s*var\(--settings-table-pinned-cell-surface\);[\s\S]*var\(--settings-table-pinned-cell-surface\) 100%/
     );
   });
 
@@ -81,8 +81,8 @@ describe("SettingsTable sticky toolbar contract", () => {
   });
 
   it("uses the row hover surface for regular and pinned cell paint layers", () => {
-    expect(tableStyles).toContain(
-      "--settings-table-row-hover-surface: var(--settings-table-body-surface);"
+    expect(tableStyles).toMatch(
+      /--settings-table-row-hover-surface:\s*color-mix\(\s*in srgb,\s*var\(--color-fill-2\) 60%,\s*var\(--settings-table-hover-base-surface\)\s*\);/
     );
     expect(tableStyles).toMatch(
       /\.table-settings\.table-settings-page-list-hover\.table-hover\s*\{\s*--settings-table-row-hover-surface:\s*var\(--color-surface-hover\);/

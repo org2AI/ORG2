@@ -1,21 +1,33 @@
+import { createInstance } from "i18next";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { I18nextProvider } from "react-i18next";
 import { describe, expect, it } from "vitest";
+
+import en from "@src/i18n/locales/en/common.json";
+import zh from "@src/i18n/locales/zh/common.json";
 
 import ChatLoadingBlock from "./ChatLoadingBlock";
 
 describe("ChatLoadingBlock", () => {
-  it("renders the shared chat skeleton without visible loading text", () => {
-    const markup = renderToStaticMarkup(createElement(ChatLoadingBlock));
+  it.each(["en", "zh"])("announces loading visibly in %s", async (lng) => {
+    const i18n = createInstance();
+    await i18n.init({
+      lng,
+      defaultNS: "common",
+      resources: { en: { common: en }, zh: { common: zh } },
+    });
+    const markup = renderToStaticMarkup(
+      createElement(I18nextProvider, { i18n }, createElement(ChatLoadingBlock))
+    );
 
     expect(markup).toContain("mx-auto w-full max-w-[800px]");
-    expect(markup).toContain("rounded bg-fill-2");
-    expect(markup).toContain("h-4");
-    expect(markup).not.toContain("h-8");
     expect(markup).toContain('data-testid="chat-loading-block"');
-    // Static by design: a pulse on a placeholder that resolves in a few
-    // hundred milliseconds reads as a flash, not as progress.
-    expect(markup).not.toContain("animate-pulse");
-    expect(markup).toMatch(/^<span[^>]*><\/span>$/);
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain('aria-busy="true"');
+    expect(markup).toContain(
+      `<span>${lng === "zh" ? zh.status.loading : en.status.loading}</span>`
+    );
+    expect(markup).toContain("motion-reduce:animate-none");
   });
 });

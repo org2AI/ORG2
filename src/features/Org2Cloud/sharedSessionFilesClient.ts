@@ -1,13 +1,17 @@
 import { z } from "zod/v4";
 
 import { type CloudEndpoint } from "./config";
-import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
+import {
+  fetchWithTransportRetry,
+  runCloudRequestWithTimeout,
+} from "./org2CloudFetchRetry";
 
 export class SharedSessionFileRequestError extends Error {
   constructor(
     message: string,
     readonly status: number | null,
-    readonly recoveryPending = false
+    readonly recoveryPending = false,
+    readonly code: string | null = null
   ) {
     super(message);
     this.name = "SharedSessionFileRequestError";
@@ -36,13 +40,25 @@ const FileSchema = z.object({
 });
 export type SharedSessionFile = z.infer<typeof FileSchema>;
 export function encodeFileBytes(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 32768)
-    binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
-  return btoa(binary);
+  const nativeEncode = (bytes as Uint8Array & { toBase64?: () => string })
+    .toBase64;
+  if (nativeEncode) return nativeEncode.call(bytes);
+  // Each non-final chunk must end on a three-byte boundary so concatenating
+  // its Base64 does not introduce padding in the middle of the payload.
+  const chunkBytes = 3 * 8192;
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.length; i += chunkBytes)
+    chunks.push(
+      btoa(String.fromCharCode(...bytes.subarray(i, i + chunkBytes)))
+    );
+  return chunks.join("");
 }
 export async function fileSha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
+  const input =
+    bytes.buffer instanceof ArrayBuffer
+      ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      : new Uint8Array(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", input);
   return Array.from(new Uint8Array(digest), (value) =>
     value.toString(16).padStart(2, "0")
   ).join("");
@@ -54,34 +70,43 @@ async function rpc(
   body: unknown,
   signal?: AbortSignal
 ): Promise<unknown> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const response = await fetchWithTransportRetry(
-      `${endpoint.supabaseUrl}/rest/v1/rpc/${method}`,
-      {
-        method: "POST",
-        headers: {
-          apikey: endpoint.anonKey,
-          authorization: `Bearer ${token}`,
-          "content-type": "application/json",
-          "content-profile": "org2_cloud",
-        },
-        body: JSON.stringify(body),
-        signal: signal
-          ? AbortSignal.any([signal, controller.signal])
-          : controller.signal,
-      }
-    );
-    if (!response.ok)
-      throw new SharedSessionFileRequestError(
-        `Shared file request failed (${response.status}). Check session access, file quota, and server support.`,
-        response.status
+  return runCloudRequestWithTimeout(
+    async (timeoutSignal) => {
+      const response = await fetchWithTransportRetry(
+        `${endpoint.supabaseUrl}/rest/v1/rpc/${method}`,
+        {
+          method: "POST",
+          headers: {
+            apikey: endpoint.anonKey,
+            authorization: `Bearer ${token}`,
+            "content-type": "application/json",
+            "content-profile": "org2_cloud",
+          },
+          body: JSON.stringify(body),
+          signal: timeoutSignal,
+        }
       );
-    return await response.json();
-  } finally {
-    clearTimeout(timeout);
-  }
+      if (!response.ok) {
+        // PostgREST puts RAISE EXCEPTION identifiers in message (code is P0001).
+        // Keep only a bounded domain code, never arbitrary server text or SQL.
+        const error = await response.json().catch(() => null);
+        const code =
+          [error?.message, error?.code].find(
+            (value): value is string =>
+              typeof value === "string" && /^ORG2_[A-Z0-9_]{1,80}$/.test(value)
+          ) ?? null;
+        throw new SharedSessionFileRequestError(
+          `Shared file request failed (${response.status}${code ? `: ${code}` : ""}). Check session access, file quota, and server support.`,
+          response.status,
+          false,
+          code
+        );
+      }
+      return await response.json();
+    },
+    30000,
+    signal
+  );
 }
 export async function uploadSharedSessionFile(
   token: string,
@@ -90,20 +115,27 @@ export async function uploadSharedSessionFile(
   sessionId: string,
   name: string,
   bytes: Uint8Array,
-  source?: { path: string; revision: string }
+  source?: { path: string; revision: string },
+  signal?: AbortSignal
 ): Promise<SharedSessionFile> {
   if (bytes.byteLength > SHARED_FILE_MAX_BYTES)
     throw new Error("Shared file exceeds the 32 MiB transfer limit");
   const result = FileSchema.parse(
-    await rpc(token, endpoint, "cloud_put_session_file", {
-      p_org_id: orgId,
-      p_session_id: sessionId,
-      p_name: name,
-      p_content: encodeFileBytes(bytes),
-      ...(source
-        ? { p_source_path: source.path, p_source_revision: source.revision }
-        : {}),
-    })
+    await rpc(
+      token,
+      endpoint,
+      "cloud_put_session_file",
+      {
+        p_org_id: orgId,
+        p_session_id: sessionId,
+        p_name: name,
+        p_content: encodeFileBytes(bytes),
+        ...(source
+          ? { p_source_path: source.path, p_source_revision: source.revision }
+          : {}),
+      },
+      signal
+    )
   );
   if (
     result.name !== name ||
@@ -117,7 +149,8 @@ export async function readSharedSessionFile(
   token: string,
   endpoint: CloudEndpoint,
   id: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  shareToken?: string
 ): Promise<SharedSessionFile & { bytes: Uint8Array }> {
   const wire = FileSchema.extend({
     content: z.string().max(Math.ceil(SHARED_FILE_MAX_BYTES / 3) * 4 + 10),
@@ -125,19 +158,19 @@ export async function readSharedSessionFile(
     await rpc(
       token,
       endpoint,
-      "cloud_get_session_file",
-      { p_file_id: id },
+      shareToken ? "cloud_get_session_file_by_share" : "cloud_get_session_file",
+      { p_file_id: id, ...(shareToken ? { p_share_token: shareToken } : {}) },
       signal
     )
   );
-  const bytes = Uint8Array.from(atob(wire.content), (character) =>
-    character.charCodeAt(0)
-  );
-  if (
-    wire.id !== id ||
-    bytes.length !== wire.size ||
-    (await fileSha256(bytes)) !== wire.sha256
-  )
+  const binary = atob(wire.content);
+  if (wire.id !== id || binary.length !== wire.size)
+    throw new Error("Shared file download integrity check failed");
+  // TypedArray.from(string) materializes the character iterator before mapping.
+  // Allocate the bounded result directly instead of a file-sized temporary list.
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  if ((await fileSha256(bytes)) !== wire.sha256)
     throw new Error("Shared file download integrity check failed");
   return {
     id: wire.id,
@@ -156,15 +189,17 @@ export async function findSharedSessionFile(
   sessionId: string,
   sourcePath: string,
   revision?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  shareToken?: string
 ): Promise<SharedSessionFile | null> {
   const value = await rpc(
     token,
     endpoint,
-    "cloud_find_session_file",
+    shareToken ? "cloud_find_session_file_by_share" : "cloud_find_session_file",
     {
-      p_org_id: orgId,
-      p_session_id: sessionId,
+      ...(shareToken
+        ? { p_share_token: shareToken }
+        : { p_org_id: orgId, p_session_id: sessionId }),
       p_source_path: sourcePath,
       p_source_revision: revision ?? null,
     },
@@ -178,18 +213,57 @@ export async function findSharedSessionFileRevisions(
   endpoint: CloudEndpoint,
   orgId: string,
   sessionId: string,
-  files: readonly { path: string; revision: string }[]
+  files: readonly { path: string; revision: string }[],
+  signal?: AbortSignal
 ): Promise<Set<string>> {
   if (files.length > 64) throw new Error("Shared file lookup batch exceeded");
   const rows = z
     .array(z.object({ path: z.string(), revision: z.string() }))
     .max(64)
     .parse(
-      await rpc(token, endpoint, "cloud_find_session_file_revisions", {
-        p_org_id: orgId,
-        p_session_id: sessionId,
-        p_files: files,
-      })
+      await rpc(
+        token,
+        endpoint,
+        "cloud_find_session_file_revisions",
+        {
+          p_org_id: orgId,
+          p_session_id: sessionId,
+          p_files: files,
+        },
+        signal
+      )
     );
   return new Set(rows.map((row) => `${row.path}\0${row.revision}`));
+}
+
+/** Exact immutable version; never fall back to a same-path upload from another author. */
+export async function findSharedSessionFileVersion(
+  token: string,
+  endpoint: CloudEndpoint,
+  source: {
+    orgId: string;
+    sessionId: string;
+    path: string;
+    version: { uploaderUserId: string; revision: string };
+  },
+  signal?: AbortSignal,
+  shareToken?: string
+): Promise<SharedSessionFile | null> {
+  const value = await rpc(
+    token,
+    endpoint,
+    shareToken
+      ? "cloud_find_session_file_version_by_share"
+      : "cloud_find_session_file_version",
+    {
+      ...(shareToken
+        ? { p_share_token: shareToken }
+        : { p_org_id: source.orgId, p_session_id: source.sessionId }),
+      p_source_path: source.path,
+      p_source_revision: source.version.revision,
+      p_uploader_user_id: source.version.uploaderUserId,
+    },
+    signal
+  );
+  return value === null ? null : FileSchema.parse(value);
 }

@@ -64,6 +64,8 @@ pub struct QuotaInfo {
     pub quota_source: Option<String>,
     pub is_unlimited: Option<bool>,
     pub usage_items: Vec<UsageItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub model_quotas: Vec<crate::types::ModelQuotaInfo>,
     pub auto_message: Option<String>,
     pub named_message: Option<String>,
 }

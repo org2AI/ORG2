@@ -350,11 +350,11 @@ pub(super) fn append_native_items_from_chunks(
                 let interrupted =
                     chunk.result.get("interrupted").and_then(Value::as_bool) == Some(true);
                 let output = chunk_text(chunk);
-                // A call with no provider result cannot cross a runtime
-                // boundary. If Stop already observed durable output, however,
-                // carry an honest interrupted result: both native writers can
-                // encode it as failure (Claude is_error / Codex exit 130).
-                if (status_is_pending || interrupted) && (!interrupted || output.is_empty()) {
+                // Pending calls have no terminal result. Stop may still have
+                // observed durable partial output, which is transferable as
+                // interrupted. A terminal interrupted result is also valid
+                // with an empty body: emptiness does not mean it is missing.
+                if status_is_pending && (!interrupted || output.is_empty()) {
                     continue;
                 }
                 let is_error = chunk.result.get("is_error").and_then(Value::as_bool) == Some(true)
@@ -485,7 +485,12 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
                         .get("name")
                         .and_then(Value::as_str)
                         .unwrap_or("tool");
-                    call_names.insert(raw_call_id.to_string(), name.to_string());
+                    // Agent history keeps its executable tool name (for example
+                    // `run_shell`), while SessionEvents use the storage alias.
+                    // Normalize only this read-back projection so a later
+                    // provider switch compares the same semantic vocabulary.
+                    let name = resolve_function_name(name, "", None);
+                    call_names.insert(raw_call_id.to_string(), name.clone());
                     let arguments = function
                         .get("arguments")
                         .and_then(Value::as_str)
@@ -493,7 +498,7 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
                     items.push(NativeConversationItem::ToolCall {
                         id: format!("agent-history-{index}-tool-{tool_index}"),
                         call_id,
-                        name: name.to_string(),
+                        name,
                         arguments: arguments.to_string(),
                         created_at: created_at.clone(),
                     });
@@ -533,6 +538,7 @@ fn tool_result_item(
         .map(str::to_string)
         .or_else(|| call_names.get(raw_call_id).cloned())
         .unwrap_or_else(|| "tool".to_string());
+    let name = resolve_function_name(&name, "", None);
     NativeConversationItem::ToolResult {
         id: format!("agent-history-{index}-result"),
         call_id,
@@ -1084,6 +1090,37 @@ mod tests {
     }
 
     #[test]
+    fn agent_shell_history_is_a_prefix_of_the_storage_canonical_conversation() {
+        let history = vec![
+            json!({"role":"assistant","tool_calls":[{
+                "id":"call_shell",
+                "function":{"name":"run_shell","arguments":"{\"command\":\"printf ok\"}"}
+            }]}),
+            json!({"role":"tool","tool_call_id":"call_shell","name":"run_shell","content":"ok"}),
+        ];
+        let native = native_items_from_agent_history(&history);
+        let canonical = vec![
+            test_tool_call(
+                "call_shell",
+                "run_command_line",
+                r#"{"command":"printf ok"}"#,
+            ),
+            NativeConversationItem::ToolResult {
+                id: "canonical-result".to_string(),
+                call_id: "call_shell".to_string(),
+                name: "run_command_line".to_string(),
+                output: "ok".to_string(),
+                is_error: false,
+                interrupted: false,
+                created_at: String::new(),
+            },
+        ];
+        assert!(provider_portable_append_suffix(&native, &canonical)
+            .expect("SDE shell history must remain a semantic prefix after a provider switch")
+            .is_empty());
+    }
+
+    #[test]
     fn interrupted_agent_batch_projects_only_durable_pairs_before_next_turn() {
         let history = vec![
             json!({"role":"assistant","content":null,"tool_calls": [
@@ -1185,6 +1222,25 @@ mod tests {
         ));
 
         assert!(native_items_from_chunks(&[interrupted("")]).is_empty());
+
+        let mut terminal = interrupted("");
+        terminal.result["status"] = json!("interrupted");
+        terminal.result["exit_code"] = json!(130);
+        assert!(matches!(
+            native_items_from_chunks(&[terminal]).as_slice(),
+            [
+                NativeConversationItem::ToolCall { call_id, .. },
+                NativeConversationItem::ToolResult {
+                    call_id: result_call_id,
+                    output,
+                    is_error: true,
+                    interrupted: true,
+                    ..
+                }
+            ] if call_id == "call_interrupted"
+                && result_call_id == "call_interrupted"
+                && output.is_empty()
+        ));
     }
 
     #[test]

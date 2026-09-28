@@ -1,5 +1,10 @@
 //! Inspect kernel process identity, never shell-formatted command strings.
 use std::path::{Path, PathBuf};
+#[path = "process_codex_runtime.rs"]
+pub(crate) mod codex_runtime;
+#[path = "process_profile.rs"]
+mod profile;
+pub(crate) use profile::ProfileBinding;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Identity {
@@ -8,16 +13,31 @@ pub(crate) struct Identity {
 }
 
 /// KERN_PROCARGS2 contains argc, executable, padding, argv, then environment.
-/// Parse exactly argc arguments so credentials in the environment are not read
-/// as arguments or retained in the returned value.
-fn arguments(bytes: &[u8]) -> Result<Vec<&[u8]>, String> {
+/// Parse exactly argc arguments. The separate environment slice is inspected
+/// only by the selective profile verifier, never treated as argv or logged.
+struct KernelArguments<'a> {
+    executable: &'a [u8],
+    args: Vec<&'a [u8]>,
+    environment: &'a [u8],
+}
+
+const MAX_PROCESS_ARGS_BYTES: usize = 1024 * 1024;
+
+fn kernel_arguments(bytes: &[u8]) -> Result<KernelArguments<'_>, String> {
     let invalid = "Cannot inspect official App arguments";
+    if bytes.len() > MAX_PROCESS_ARGS_BYTES {
+        return Err(invalid.into());
+    }
     let count = i32::from_ne_bytes(bytes.get(..4).ok_or(invalid)?.try_into().unwrap());
     if !(1..=4096).contains(&count) {
         return Err(invalid.into());
     }
     let mut remaining = &bytes[4..];
     let executable_end = remaining.iter().position(|b| *b == 0).ok_or(invalid)?;
+    if executable_end == 0 || executable_end >= 4096 {
+        return Err(invalid.into());
+    }
+    let executable = &remaining[..executable_end];
     remaining = &remaining[executable_end + 1..];
     while remaining.first() == Some(&0) {
         remaining = &remaining[1..];
@@ -28,7 +48,15 @@ fn arguments(bytes: &[u8]) -> Result<Vec<&[u8]>, String> {
         args.push(&remaining[..end]);
         remaining = &remaining[end + 1..];
     }
-    Ok(args)
+    Ok(KernelArguments {
+        executable,
+        args,
+        environment: remaining,
+    })
+}
+
+fn arguments(bytes: &[u8]) -> Result<Vec<&[u8]>, String> {
+    Ok(kernel_arguments(bytes)?.args)
 }
 
 fn profile_argument<'a>(args: &[&'a [u8]]) -> Result<Option<&'a [u8]>, String> {
@@ -128,10 +156,74 @@ fn info(pid: i32) -> Result<Option<libc::proc_bsdinfo>, String> {
     Err("Cannot verify official App process identity".into())
 }
 
+/// Check the recorded process lifetime, not its executable or current argv.
+/// PID reuse proves the old lifetime ended; unreadable kernel state does not.
+pub(super) fn has_exited(identity: &Identity) -> Result<bool, String> {
+    Ok(info(identity.pid)?.is_none_or(|value| {
+        (value.pbi_start_tvsec, value.pbi_start_tvusec) != identity.started
+            || value.pbi_status == libc::SZOMB
+    }))
+}
+
+// XNU bsd/sys/proc_info_private.h declares this as a 56-byte API structure
+// and PROC_PIDUNIQIDENTIFIERINFO as flavor 17. Public SDK/libc omit this ABI.
+// https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/proc_info_private.h
+#[repr(C)]
+#[derive(Default)]
+struct ProcessUniqueInfo {
+    _executable_uuid: [u8; 16],
+    unique_id: u64,
+    _parent_unique_id: u64,
+    id_version: i32,
+    _original_parent_id_version: i32,
+    _reserved2: u64,
+    _reserved3: u64,
+}
+
+const PROC_PIDUNIQIDENTIFIERINFO: i32 = 17;
+const _: () = assert!(std::mem::size_of::<ProcessUniqueInfo>() == 56);
+const _: () = assert!(std::mem::offset_of!(ProcessUniqueInfo, unique_id) == 16);
+const _: () = assert!(std::mem::offset_of!(ProcessUniqueInfo, id_version) == 32);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ExecGeneration {
+    unique_id: u64,
+    id_version: i32,
+}
+
+fn checked_exec_generation(
+    value: &ProcessUniqueInfo,
+    count: i32,
+) -> Result<ExecGeneration, &'static str> {
+    if count != std::mem::size_of::<ProcessUniqueInfo>() as i32 || value.unique_id == 0 {
+        return Err("writer_unknown");
+    }
+    Ok(ExecGeneration {
+        unique_id: value.unique_id,
+        id_version: value.id_version,
+    })
+}
+
+fn exec_generation(pid: i32) -> Result<ExecGeneration, &'static str> {
+    let mut value = ProcessUniqueInfo::default();
+    // SAFETY: this is the size- and offset-checked C ABI above; libproc writes
+    // into initialized POD storage, and a short/error response is rejected.
+    let count = unsafe {
+        libc::proc_pidinfo(
+            pid,
+            PROC_PIDUNIQIDENTIFIERINFO,
+            0,
+            (&mut value as *mut ProcessUniqueInfo).cast(),
+            std::mem::size_of::<ProcessUniqueInfo>() as i32,
+        )
+    };
+    checked_exec_generation(&value, count)
+}
+
 fn process_args(pid: i32) -> Result<Vec<u8>, String> {
     let mut mib = [libc::CTL_KERN, libc::KERN_PROCARGS2, pid];
     // Darwin ARG_MAX is bounded; do not allocate from untrusted process data.
-    let mut bytes = vec![0u8; 1024 * 1024];
+    let mut bytes = vec![0u8; MAX_PROCESS_ARGS_BYTES];
     let mut size = bytes.len();
     let result = unsafe {
         libc::sysctl(
@@ -465,19 +557,129 @@ pub(crate) fn writer_identity_current(identity: &Identity) -> Result<bool, &'sta
                 && info.pbi_flags & PROC_FLAG_INEXIT == 0
         }))
 }
+
+/// Compare observed executable paths without treating equal basenames as identity.
+fn same_kernel_executable(left: &[u8], right: &[u8]) -> bool {
+    use std::os::unix::{ffi::OsStrExt, fs::MetadataExt};
+    if left == right {
+        return true;
+    }
+    let metadata = |bytes| {
+        let path = Path::new(std::ffi::OsStr::from_bytes(bytes));
+        if !path.is_absolute() {
+            return None;
+        }
+        let value = std::fs::metadata(path).ok()?;
+        value.is_file().then_some((
+            value.dev(),
+            value.ino(),
+            value.len(),
+            value.mtime(),
+            value.mtime_nsec(),
+            value.ctime(),
+            value.ctime_nsec(),
+        ))
+    };
+    // proc_pidpath resolves aliases that KERN_PROCARGS2 may retain. Different
+    // strings are compatible only while both identify the same stable file.
+    match (metadata(left), metadata(right)) {
+        (Some(first), Some(second)) if first == second => {
+            metadata(left) == Some(first) && metadata(right) == Some(second)
+        }
+        _ => false,
+    }
+}
+
+fn classify_claude_writer(
+    executable: Option<&[u8]>,
+    registered: bool,
+    bytes: Option<&[u8]>,
+) -> Result<bool, &'static str> {
+    let kernel = bytes
+        .map(kernel_arguments)
+        .transpose()
+        .map_err(|_| "writer_unknown")?;
+    if let (Some(path), Some(kernel)) = (executable, &kernel) {
+        if !same_kernel_executable(path, kernel.executable) {
+            return Err("writer_unknown");
+        }
+    }
+    let path = executable
+        .or_else(|| kernel.as_ref().map(|value| value.executable))
+        .ok_or("writer_unknown")?;
+    let path = std::str::from_utf8(path).map_err(|_| "writer_unknown")?;
+    if !Path::new(path).is_absolute()
+        || Path::new(path)
+            .components()
+            .any(|part| matches!(part, std::path::Component::ParentDir))
+    {
+        return Err("writer_unknown");
+    }
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or("writer_unknown")?;
+    if registered || claude_executable(path) {
+        return Ok(true);
+    }
+    if matches!(name, "node" | "nodejs" | "bun" | "deno") {
+        let kernel = kernel.ok_or("writer_unknown")?;
+        // argv[0] is caller-controlled. The observed executable selects the
+        // wrapper, and only its argc-bounded arguments can name Claude code.
+        // The caller separately fences exec: procargs strings can be stale.
+        let mut writer = false;
+        for arg in kernel.args.iter().skip(1) {
+            let arg = std::str::from_utf8(arg).map_err(|_| "writer_unknown")?;
+            writer |= claude_executable(arg);
+        }
+        return Ok(writer);
+    }
+    Ok(false)
+}
+
+fn inspected_writer_identity(
+    pid: i32,
+    uid: u32,
+    before: &libc::proc_bsdinfo,
+    after: Option<&libc::proc_bsdinfo>,
+    generations: (ExecGeneration, ExecGeneration),
+) -> Result<Option<Identity>, &'static str> {
+    if generations.0 != generations.1 || before.pbi_pid != pid as u32 || before.pbi_uid != uid {
+        return Err("writer_unknown");
+    }
+    let Some(after) = after else {
+        return Ok(None);
+    };
+    if after.pbi_pid != before.pbi_pid
+        || after.pbi_uid != before.pbi_uid
+        || (after.pbi_start_tvsec, after.pbi_start_tvusec)
+            != (before.pbi_start_tvsec, before.pbi_start_tvusec)
+    {
+        return Err("writer_unknown");
+    }
+    if after.pbi_status == libc::SZOMB || after.pbi_flags & PROC_FLAG_INEXIT != 0 {
+        return Ok(None);
+    }
+    Ok(Some(Identity {
+        pid,
+        started: (after.pbi_start_tvsec, after.pbi_start_tvusec),
+    }))
+}
+
 pub(crate) fn claude_writer_identities() -> Result<Vec<Identity>, &'static str> {
     let apps = objc2_app_kit::NSRunningApplication::runningApplicationsWithBundleIdentifier(
         &objc2_foundation::NSString::from_str("com.anthropic.claudefordesktop"),
     );
     let app_pids: Vec<_> = apps.iter().map(|app| app.processIdentifier()).collect();
     let mut writers = Vec::new();
+    let uid = unsafe { libc::geteuid() };
     const PROC_UID_ONLY: u32 = 4;
     let mut pids = vec![0i32; 65536];
     let capacity = std::mem::size_of_val(pids.as_slice());
     let bytes = unsafe {
         libc::proc_listpids(
             PROC_UID_ONLY,
-            libc::geteuid(),
+            uid,
             pids.as_mut_ptr().cast(),
             capacity as i32,
         )
@@ -490,58 +692,93 @@ pub(crate) fn claude_writer_identities() -> Result<Vec<Identity>, &'static str> 
     }
     pids.truncate(bytes as usize / std::mem::size_of::<i32>());
     for pid in pids.into_iter().filter(|pid| *pid > 0) {
-        let Some(before) = info(pid).map_err(|_| "writer_unknown")? else {
-            continue;
-        };
-        if before.pbi_status == libc::SZOMB || before.pbi_flags & PROC_FLAG_INEXIT != 0 {
-            continue;
+        if let Some(identity) =
+            inspect_claude_writer(pid, uid, app_pids.contains(&pid), exec_generation)?
+        {
+            if writers.len() >= 512 {
+                return Err("writer_unknown");
+            }
+            writers.push(identity);
         }
-        let mut path = [0u8; 4096];
-        let len = unsafe { libc::proc_pidpath(pid, path.as_mut_ptr().cast(), path.len() as u32) };
-        if len <= 0 {
+    }
+    Ok(writers)
+}
+
+// Kernel reads are not atomic: an ordinary process exit between any two reads
+// must not strand pending history. Only a confirmed exit can dismiss a failed
+// generation read; inaccessible live processes and changed identities fail closed.
+fn inspect_claude_writer(
+    pid: i32,
+    uid: u32,
+    registered: bool,
+    generation: impl Fn(i32) -> Result<ExecGeneration, &'static str>,
+) -> Result<Option<Identity>, &'static str> {
+    let Some(before) = info(pid).map_err(|_| "writer_unknown")? else {
+        return Ok(None);
+    };
+    if before.pbi_pid != pid as u32 || before.pbi_uid != uid {
+        return Err("writer_unknown");
+    }
+    if before.pbi_status == libc::SZOMB || before.pbi_flags & PROC_FLAG_INEXIT != 0 {
+        return Ok(None);
+    }
+    let live_generation = || match generation(pid) {
+        Ok(value) => Ok(Some(value)),
+        Err(_) if exiting(pid).map_err(|_| "writer_unknown")? => Ok(None),
+        Err(error) => Err(error),
+    };
+    // PID/UID/start time survive exec. Fence classification reads, including
+    // proc_pidpath, with XNU's exec generation; procargs may expose the old VM.
+    let Some(generation_before) = live_generation()? else {
+        return Ok(None);
+    };
+    let mut path = [0u8; 4096];
+    let len = unsafe { libc::proc_pidpath(pid, path.as_mut_ptr().cast(), path.len() as u32) };
+    let executable = if len <= 0 {
+        if exiting(pid).map_err(|_| "writer_unknown")? {
+            return Ok(None);
+        }
+        None
+    } else {
+        if len as usize >= path.len() {
             return Err("writer_unknown");
         }
         let end = path
             .iter()
             .position(|value| *value == 0)
-            .unwrap_or(path.len());
-        let executable = std::str::from_utf8(&path[..end]).map_err(|_| "writer_unknown")?;
-        let name = Path::new(executable)
-            .file_name()
-            .and_then(|value| value.to_str())
             .ok_or("writer_unknown")?;
-        let mut writer = app_pids.contains(&pid) || claude_executable(executable);
-        if matches!(name, "node" | "nodejs" | "bun" | "deno") {
-            let bytes = process_args(pid).map_err(|_| "writer_unknown")?;
-            let args = arguments(&bytes).map_err(|_| "writer_unknown")?;
-            if args
-                .iter()
-                .any(|arg| std::str::from_utf8(arg).is_ok_and(claude_executable))
-            {
-                writer = true;
-            }
+        Some(&path[..end])
+    };
+    let wrapper = executable
+        .map(|value| std::str::from_utf8(value).map_err(|_| "writer_unknown"))
+        .transpose()?
+        .and_then(|value| Path::new(value).file_name())
+        .and_then(|value| value.to_str())
+        .is_some_and(|name| matches!(name, "node" | "nodejs" | "bun" | "deno"));
+    let bytes = if executable.is_none() || wrapper {
+        match process_args(pid) {
+            Ok(bytes) => Some(bytes),
+            Err(_) if exiting(pid).map_err(|_| "writer_unknown")? => return Ok(None),
+            Err(_) => return Err("writer_unknown"),
         }
-        let Some(after) = info(pid).map_err(|_| "writer_unknown")? else {
-            continue;
-        };
-        if (before.pbi_start_tvsec, before.pbi_start_tvusec)
-            != (after.pbi_start_tvsec, after.pbi_start_tvusec)
-            || before.pbi_uid != after.pbi_uid
-        {
-            return Err("writer_unknown");
-        }
-        if writer {
-            if writers.len() >= 512 {
-                return Err("writer_unknown");
-            }
-            writers.push(Identity {
-                pid,
-                started: (after.pbi_start_tvsec, after.pbi_start_tvusec),
-            });
-        }
-    }
-    Ok(writers)
+    } else {
+        None
+    };
+    let writer = classify_claude_writer(executable, registered, bytes.as_deref())?;
+    let after = info(pid).map_err(|_| "writer_unknown")?;
+    let Some(generation_after) = live_generation()? else {
+        return Ok(None);
+    };
+    let identity = inspected_writer_identity(
+        pid,
+        uid,
+        &before,
+        after.as_ref(),
+        (generation_before, generation_after),
+    )?;
+    Ok(identity.filter(|_| writer))
 }
+
 fn claude_executable(path: &str) -> bool {
     // Installed browser native messaging host only writes its bridge socket/log;
     // it is not Desktop or a CLI writer. Keep scanning every other process and

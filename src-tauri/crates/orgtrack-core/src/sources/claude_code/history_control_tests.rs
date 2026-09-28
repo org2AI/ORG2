@@ -82,3 +82,63 @@ fn native_resume_control_pair_does_not_pollute_replay_windows_or_previews() {
     assert_eq!(std::fs::read_to_string(&path).unwrap(), content);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn materialized_artifact_provenance_survives_replay_and_window_index() {
+    let dir = std::env::temp_dir().join(format!("orgii-claude-artifact-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("resume.jsonl");
+    let rows = [
+        json!({"type":"user","entrypoint":"orgii","message":{"content":"[file:/repo/input.txt]"}}),
+        json!({"type":"assistant","entrypoint":"orgii","message":{"content":[{"type":"text","text":"[result](/repo/result.txt)"},{"type":"tool_use","id":"inherited-write","name":"Write","input":{"file_path":"/repo/result.txt","content":"old"}}]}}),
+        // Even if the result is appended by the CLI, the original call owns provenance.
+        json!({"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"inherited-write","content":"ok"}]}}),
+        json!({"type":"user","entrypoint":"cli","message":{"content":"[file:/repo/new.txt]"}}),
+        json!({"type":"assistant","message":{"content":[{"type":"text","text":"[new](/repo/new.txt)"},{"type":"tool_use","id":"local-write","name":"Write","input":{"file_path":"/repo/new.txt","content":"new"}}]}}),
+        json!({"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"local-write","content":"ok"}]}}),
+        json!({"type":"assistant","entrypoint":"orgii","message":{"content":[{"type":"tool_use","id":"pending","name":"Write","input":{"file_path":"/repo/pending.txt","content":"old"}}]}}),
+    ];
+    let content = rows
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut row)| {
+            row["uuid"] = json!(format!("row-{i}"));
+            row["timestamp"] = json!("2026-09-24T12:00:00Z");
+            row.to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&path, &content).unwrap();
+    let session = "cliagent-artifact-origin";
+    let full = load_claude_code_history_from_path(session, &path).unwrap();
+    assert_eq!(full.len(), 7);
+    for (i, chunk) in full.iter().enumerate() {
+        assert_eq!(
+            chunk.args["__orgiiMaterialized"].as_bool(),
+            if i < 3 || i == 6 { Some(true) } else { None }
+        );
+    }
+    let turns = index_claude_user_turns(session, &path).unwrap();
+    assert_eq!(turns.len(), 2);
+    assert_eq!(turns[0].user_chunk.args["__orgiiMaterialized"], json!(true));
+    assert!(turns[1]
+        .user_chunk
+        .args
+        .get("__orgiiMaterialized")
+        .is_none());
+    let ids = turns
+        .iter()
+        .map(|turn| turn.user_chunk.chunk_id.clone())
+        .collect::<Vec<_>>();
+    let windows = load_claude_code_turn_windows_from_path(session, &path, &ids).unwrap();
+    assert!(windows[0]
+        .chunks
+        .iter()
+        .all(|chunk| chunk.args["__orgiiMaterialized"] == json!(true)));
+    assert_eq!(
+        serde_json::to_value(&full).unwrap(),
+        serde_json::to_value(load_claude_code_history_from_path(session, &path).unwrap()).unwrap()
+    );
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), content);
+    std::fs::remove_dir_all(&dir).unwrap();
+}

@@ -74,7 +74,7 @@ export function useChatPanelCliChrome({
 
   const cliVersionAlert: CliVersionAlert = showCliVersionOutdatedAlert
     ? {
-        cliAgentType,
+        cliAgent: selectedCliAgent,
         cliDisplayName:
           selectedCliAgent?.displayName ?? cliAgentType ?? undefined,
         installedVersion: selectedCliVersion?.installed_version ?? undefined,

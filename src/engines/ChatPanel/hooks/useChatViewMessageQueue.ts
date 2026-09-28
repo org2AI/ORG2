@@ -61,10 +61,11 @@ export function useChatViewMessageQueue({
           // cards. Their user row and ordinary planning/working footer already
           // render in the transcript once dispatch begins.
           message.status === "queued" &&
-          // A pre-acceptance failure whose EventStore commit could not finish
-          // remains in the durable registry as the retry owner. It is rendered
-          // as a failed transcript bubble, not as a second queued footer card.
+          // Failed sends and accepted execution failures remain in the
+          // durable registry as explicit retry owners. Their transcript
+          // controls already own Retry; do not duplicate them in the footer.
           !message.deliveryError &&
+          !message.executionError &&
           queuedMessageBelongsToConversationView(message, {
             pipelineSessionId,
             queueSessionId,

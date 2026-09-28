@@ -128,6 +128,10 @@ export async function closeObservedCliTerminalEvents(
           ...event,
           displayStatus,
           activityStatus: "processed",
+          args:
+            event.args?.syntheticLive === true
+              ? { ...event.args, syntheticLive: false }
+              : event.args,
           // A visible assistant stream is useful partial conversation text,
           // so terminalize it into a portable message. A running tool call is
           // different: no provider may receive it without a paired result.

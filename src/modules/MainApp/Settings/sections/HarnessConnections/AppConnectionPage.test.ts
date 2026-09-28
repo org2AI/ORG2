@@ -142,7 +142,7 @@ vi.mock("@src/features/MarketConnect/marketProfiles", () => ({
 }));
 vi.mock("./useHarnessConnection", () => ({
   refreshHarnessConnections: (...args: unknown[]) => refresh(...args),
-  useHarnessConnection: () => ({
+  useHarnessConnection: (target: string) => ({
     view: {
       installed,
       config: {
@@ -157,7 +157,7 @@ vi.mock("./useHarnessConnection", () => ({
             : null,
         selectedModel: direct ? "model-a" : connected ? "claude-b" : null,
         nativeApp: nativeApp
-          ? { version: 1, agent: "codex", scope: "scope" }
+          ? { version: 1, agent: target, scope: "scope" }
           : null,
         targetFiles: overlay
           ? [
@@ -478,7 +478,7 @@ it("blocks a Direct Claude launch when the overlay changed externally", async ()
 
 it.each([
   ["native_app_restore_required", "restoreRequired"],
-  ["native_app_version_unverified", "versionUnverified"],
+  ["native_app_version_unverified", "actionFailed"],
   ["native_app_version_unverified secret-fixture", "actionFailed"],
   ["native_app_restore_required secret-fixture", "actionFailed"],
   ["backend failed with secret-fixture", "actionFailed"],
@@ -517,7 +517,7 @@ it("shows the automatic Codex history state under a managed native connection", 
   };
   await render("codex");
   const status = () =>
-    container.querySelector('[data-testid="codex-history-sync-status"]');
+    container.querySelector('[data-testid="native-history-sync-status"]');
   expect(status()?.textContent).toBe(
     "harnessConnections.marketApps.historySync.attention:49:2"
   );
@@ -533,7 +533,7 @@ it("shows the automatic Codex history state under a managed native connection", 
   };
   await render("codex");
   expect(status()?.textContent).toBe(
-    "harnessConnections.marketApps.historySync.paused:Native Codex settings events no longer carry `permission_profile`"
+    "harnessConnections.marketApps.historySync.paused:harnessConnections.marketApps.historySync.reasons.unavailable"
   );
   expect(status()?.className).toContain("text-warning-6");
 
@@ -550,6 +550,81 @@ it("shows the automatic Codex history state under a managed native connection", 
     "harnessConnections.marketApps.historySync.idle"
   );
 
-  await render("claude_desktop");
+  historySync = null;
+  await render("claude_code");
   expect(status()).toBeNull();
+});
+
+it("shows Claude's automatic history status without adding manual sync controls", async () => {
+  connected = true;
+  nativeApp = true;
+  historySync = {
+    state: "active",
+    reason: null,
+    nativeVersion: "2.7032.0",
+    shared: 0,
+    conflicts: 0,
+    pending: 0,
+  };
+  await render("claude_desktop");
+  const status = () =>
+    container.querySelector('[data-testid="native-history-sync-status"]');
+  expect(status()?.textContent).toBe(
+    "harnessConnections.marketApps.historySync.observing"
+  );
+  expect(status()?.textContent).not.toContain("historySync.active:0");
+  expect(status()?.className).not.toContain("text-warning-6");
+
+  historySync = {
+    ...historySync,
+    reason: "claude_history_waiting_for_exit",
+  };
+  await render("claude_desktop");
+  expect(status()?.textContent).toBe(
+    "harnessConnections.marketApps.historySync.reasons.waiting"
+  );
+
+  historySync = {
+    ...historySync,
+    state: "paused",
+    reason: "claude_history_namespace_pending",
+  };
+  await render("claude_desktop");
+  expect(status()?.textContent).toBe(
+    "harnessConnections.marketApps.historySync.paused:harnessConnections.marketApps.historySync.reasons.namespace"
+  );
+  expect(status()?.className).toContain("text-warning-6");
+  expect(button("harnessConnections.marketApps.open").disabled).toBe(false);
+  expect(
+    [...container.querySelectorAll("button, input, [role='switch']")].some(
+      (control) =>
+        /session.?sync|history.?sync/i.test(
+          `${control.textContent ?? ""} ${control.getAttribute("aria-label") ?? ""}`
+        )
+    )
+  ).toBe(false);
+  expect(configure).not.toHaveBeenCalled();
+  expect(restore).not.toHaveBeenCalled();
+});
+
+it("keeps private Claude diagnostics out of the visible history status", async () => {
+  connected = true;
+  nativeApp = true;
+  historySync = {
+    state: "paused",
+    reason: "/private/owner/claude/config.json secret-token",
+    nativeVersion: "2.7032.0",
+    shared: 0,
+    conflicts: 0,
+    pending: 1,
+  };
+  await render("claude_desktop");
+  expect(
+    container.querySelector('[data-testid="native-history-sync-status"]')
+      ?.textContent
+  ).toBe(
+    "harnessConnections.marketApps.historySync.paused:harnessConnections.marketApps.historySync.reasons.unavailable"
+  );
+  expect(container.textContent).not.toContain("/private/");
+  expect(container.textContent).not.toContain("secret-token");
 });

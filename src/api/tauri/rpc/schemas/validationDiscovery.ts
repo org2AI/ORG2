@@ -12,6 +12,7 @@ import { z } from "zod/v4";
 
 import { AuthMethodSchema, CliAgentTypeSchema } from "./validationEnums";
 import {
+  ModelQuotaInfoSchema,
   ProviderProtocolSchema,
   UsageItemSchema,
 } from "./validationValueObjects";
@@ -30,6 +31,7 @@ export const DetectedQuotaInfoSchema = z.object({
   quota_source: z.string().nullable().optional(),
   is_unlimited: z.boolean().nullable().optional(),
   usage_items: z.array(UsageItemSchema).optional(),
+  model_quotas: z.array(ModelQuotaInfoSchema).optional(),
   auto_message: z.string().nullable().optional(),
   named_message: z.string().nullable().optional(),
 });
@@ -163,6 +165,8 @@ export const AvailableAgentSchema = z.object({
   configFiles: z.array(CliConfigFileSchema),
   installMethods: z.array(CliInstallMethodSchema),
   uninstallMethods: z.array(CliInstallMethodSchema),
+  /** Older discovery responses may not include upgrade capabilities. */
+  upgradeMethods: z.array(CliInstallMethodSchema).optional(),
   envConfig: AgentEnvConfigSchema.optional(),
   isComplexSetup: z.boolean(),
   defaultSetupMethod: z.string().optional(),

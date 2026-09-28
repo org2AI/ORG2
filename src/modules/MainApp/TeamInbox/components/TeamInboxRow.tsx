@@ -63,7 +63,9 @@ const TeamInboxRow = forwardRef<HTMLButtonElement, TeamInboxRowProps>(
     const title = isMention
       ? item.target.kind === "session_comment"
         ? item.target.sessionTitle
-        : item.target.workItemTitle
+        : item.target.kind === "channel_message"
+          ? `#${item.target.channelName}`
+          : item.target.workItemTitle
       : item.payload.title;
     const { meta, summary } = useMemo(() => {
       if (item.kind === "comment_mention") {

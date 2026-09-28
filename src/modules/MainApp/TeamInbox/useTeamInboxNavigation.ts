@@ -10,6 +10,7 @@ import {
 import { useOpenCloudConversationRoot } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { createLogger } from "@src/hooks/logger";
 import {
+  openChannelInChatPanelTabAtom,
   openOrFocusSessionInChatPanelTabAtom,
   openWorkItemInChatPanelTabAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
@@ -25,11 +26,22 @@ export function useTeamInboxNavigation(): (
   const { t } = useTranslation();
   const sessions = useAtomValue(sessionsAtom);
   const openCloudConversationRoot = useOpenCloudConversationRoot();
+  const openChannel = useSetAtom(openChannelInChatPanelTabAtom);
   const openSession = useSetAtom(openOrFocusSessionInChatPanelTabAtom);
   const openWorkItem = useSetAtom(openWorkItemInChatPanelTabAtom);
 
   return useCallback(
     (intent: TeamInboxNavigationIntent) => {
+      if (intent.kind === "open_channel_message") {
+        openChannel({
+          scope: "cloud",
+          orgId: intent.orgId,
+          channelId: intent.channelId,
+          name: intent.channelName,
+          visibility: intent.visibility,
+        });
+        return;
+      }
       if (
         intent.kind === "open_session" ||
         intent.kind === "open_session_comment"
@@ -117,6 +129,13 @@ export function useTeamInboxNavigation(): (
           log.warn("Failed to open project Team Inbox Work Item", error);
         });
     },
-    [openCloudConversationRoot, openSession, openWorkItem, sessions, t]
+    [
+      openChannel,
+      openCloudConversationRoot,
+      openSession,
+      openWorkItem,
+      sessions,
+      t,
+    ]
   );
 }

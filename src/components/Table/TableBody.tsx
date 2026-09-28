@@ -2,7 +2,6 @@ import { Cell, Row, flexRender } from "@tanstack/react-table";
 import React, { useState } from "react";
 
 import Button from "@src/components/Button";
-import DisclosureChevron from "@src/components/DisclosureChevron";
 import { Placeholder } from "@src/components/Placeholder";
 import {
   ChevronsDownUpIcon,
@@ -87,7 +86,7 @@ function renderExpandedContent<T>(
             : undefined
         }
       >
-        <td className="table-td table-expand-cell" />
+        {!settings && <td className="table-td table-expand-cell" />}
         {cells.map((cell, cellIdx) => {
           const parentHeader = row.getVisibleCells()[cellIdx];
           const meta = parentHeader
@@ -153,7 +152,9 @@ export function TableBody<T>({
   noDataElement,
 }: TableBodyProps<T>) {
   const totalColSpan =
-    columns.length + (hasRowSelection ? 1 : 0) + (expandable ? 1 : 0);
+    columns.length +
+    (hasRowSelection ? 1 : 0) +
+    (expandable && !settings ? 1 : 0);
   const [hoverSuppressedRowKey, setHoverSuppressedRowKey] = useState<
     string | null
   >(null);
@@ -210,16 +211,7 @@ export function TableBody<T>({
         const canExpand =
           expandable?.rowExpandable?.(row.original) ?? !!expandable;
         const isExpanded = expandedRows.has(rowKey);
-        // Settings tables disclose with a chevron that rotates from ">" to "v";
-        // data tables use the unfold/fold pair, which is two distinct glyphs
-        // with no rotation between them.
-        const expandIcon = settings ? (
-          <DisclosureChevron
-            expanded={isExpanded}
-            size={14}
-            className="shrink-0"
-          />
-        ) : (
+        const expandIcon = (
           <HugeiconsIcon
             icon={isExpanded ? ChevronsDownUpIcon : UnfoldMoreIcon}
             data-icon={isExpanded ? "chevrons-down-up" : "chevrons-up-down"}
@@ -227,6 +219,13 @@ export function TableBody<T>({
             className="shrink-0"
           />
         );
+        const activateRow = () => {
+          onRowClick?.(row.original, index);
+          if (canExpand && (settings || !onRowClick)) {
+            setHoverSuppressedRowKey(rowKey);
+            toggleRowExpand(rowKey);
+          }
+        };
 
         return (
           <React.Fragment key={rowKey}>
@@ -242,6 +241,8 @@ export function TableBody<T>({
               ]
                 .filter(Boolean)
                 .join(" ")}
+              tabIndex={settings && canExpand ? 0 : undefined}
+              aria-expanded={settings && canExpand ? isExpanded : undefined}
               onMouseLeave={() => {
                 if (hoverSuppressedRowKey === rowKey) {
                   setHoverSuppressedRowKey(null);
@@ -249,16 +250,20 @@ export function TableBody<T>({
               }}
               onClick={(event) => {
                 if (isInteractiveTableTarget(event.target)) return;
-                if (onRowClick) {
-                  onRowClick(row.original, index);
-                }
-                if (canExpand && (settings || !onRowClick)) {
-                  setHoverSuppressedRowKey(rowKey);
-                  toggleRowExpand(rowKey);
-                }
+                activateRow();
               }}
+              onKeyDown={
+                settings && canExpand
+                  ? (event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      activateRow();
+                    }
+                  : undefined
+              }
             >
-              {expandable && (
+              {expandable && !settings && (
                 <td className="table-td table-expand-cell">
                   <div className="flex h-full items-center justify-end">
                     {canExpand ? (

@@ -389,3 +389,18 @@ describe("getDefaultEnabledModels", () => {
     expect(enabled).toEqual(["minimax/minimax-m3", "minimax/minimax-m2.7"]);
   });
 });
+
+it("keeps reserve as a current independent Luna group", () => {
+  const groups = groupModels([
+    "gpt-5.6-luna",
+    "gpt-5.6-luna-high",
+    "gpt-reserve",
+    "gpt-reserve-high",
+  ]);
+  expect(groups).toHaveLength(2);
+  const reserve = groups.find(
+    (group) => group.label === "GPT 5.6 Luna Reserve"
+  )!;
+  expect(reserve.models).toEqual(["gpt-reserve", "gpt-reserve-high"]);
+  expect(isLegacyGroup(reserve)).toBe(false);
+});

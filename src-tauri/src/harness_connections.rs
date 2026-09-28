@@ -48,7 +48,7 @@ pub struct HarnessConnectionView {
     configuration_issue: Option<String>,
     desktop_options: Option<DesktopConnectionOptions>,
     #[cfg(all(feature = "market-connect", target_os = "macos"))]
-    history_sync: Option<crate::market_connection::codex_history::HistorySyncView>,
+    history_sync: Option<crate::market_connection::history_status::HistorySyncView>,
     profiles: Vec<ClaudeProviderProfile>,
     applied_profile: Option<ClaudeProviderProfile>,
     choices: Vec<ConnectionChoice>,
@@ -76,14 +76,9 @@ pub async fn harness_connection_status(
     let target = ConnectionTarget::try_from(agent_name.as_str())?;
     let config = agent_cli::managed_config::cli_config_get_status(agent_name.clone()).await?;
     let mut configuration_issue = None;
-    let version = if target == ConnectionTarget::ClaudeDesktop {
+    let installation = if target == ConnectionTarget::ClaudeDesktop {
         match desktop::installation().await {
-            Ok(version) => {
-                if let Some(value) = &version {
-                    configuration_issue = desktop::validate_version(value).err();
-                }
-                version
-            }
+            Ok(installation) => installation,
             Err(error) => {
                 configuration_issue = Some(error);
                 None
@@ -92,7 +87,8 @@ pub async fn harness_connection_status(
     } else {
         None
     };
-    let desktop_installed = version.is_some();
+    let desktop_installed = installation.is_some();
+    let version = installation.and_then(|installation| installation.version);
     let (installed, choices, desktop_options, policy_issue) = tokio::task::spawn_blocking({
         let config = config.clone();
         move || {
@@ -157,6 +153,8 @@ pub async fn harness_connection_status(
     } else {
         (vec![], None)
     };
+    #[cfg(all(feature = "market-connect", target_os = "macos"))]
+    let history_sync = crate::market_connection::history_status(&config.agent_name);
     Ok(HarnessConnectionView {
         profiles,
         applied_profile,
@@ -167,9 +165,7 @@ pub async fn harness_connection_status(
         configuration_issue: configuration_issue.or(policy_issue),
         desktop_options,
         #[cfg(all(feature = "market-connect", target_os = "macos"))]
-        history_sync: (target == ConnectionTarget::Codex)
-            .then(crate::market_connection::codex_history_status)
-            .flatten(),
+        history_sync,
     })
 }
 
@@ -361,10 +357,9 @@ pub(crate) fn authorize_managed(
 
 pub(crate) async fn verify_installed_version(agent: &str) -> Result<(), String> {
     if ConnectionTarget::try_from(agent)? == ConnectionTarget::ClaudeDesktop {
-        let version = desktop::installation()
+        desktop::installation()
             .await?
             .ok_or("Install Claude Desktop before configuring a connection")?;
-        desktop::validate_version(&version)?;
         return tokio::task::spawn_blocking(agent_cli::managed_config::desktop::ensure_unmanaged)
             .await
             .map_err(|_| "Desktop policy lookup failed")?;
@@ -404,11 +399,6 @@ pub(crate) async fn verify_installed_version(agent: &str) -> Result<(), String> 
         ));
     }
     Ok(())
-}
-
-/// Verify the version of the exact Claude bundle selected by the isolated launcher.
-pub(crate) fn verify_claude_desktop_bundle_version(version: &str) -> Result<(), String> {
-    desktop::validate_version(version)
 }
 
 #[cfg(test)]

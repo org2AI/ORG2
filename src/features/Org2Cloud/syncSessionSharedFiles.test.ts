@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
-import { syncSessionSharedFiles } from "./syncSessionSharedFiles";
+import {
+  syncSessionSharedFileCandidates,
+  syncSessionSharedFiles,
+} from "./syncSessionSharedFiles";
 
 const mocks = vi.hoisted(() => ({
   capabilities: vi.fn(),
@@ -51,6 +54,67 @@ beforeEach(() => {
   mocks.read.mockResolvedValue(new Uint8Array([1, 2, 3]));
 });
 describe("shared session artifact publication", () => {
+  it("propagates snapshot storage errors without marking a valid capture unavailable", async () => {
+    await expect(
+      syncSessionSharedFileCandidates({
+        ...input,
+        candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+        readCandidate: async () => {
+          throw new Error("database busy");
+        },
+      })
+    ).rejects.toThrow("database busy");
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+  it("retries captured bytes after upload failure without rereading a changed source", async () => {
+    const bytes = new Uint8Array([4, 5, 6]);
+    const readCandidate = vi.fn().mockResolvedValue(bytes);
+    const pending = {
+      ...input,
+      candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+      readCandidate,
+    };
+    mocks.upload.mockRejectedValueOnce(new Error("offline"));
+    await expect(syncSessionSharedFileCandidates(pending)).rejects.toThrow(
+      "offline"
+    );
+    mocks.read.mockResolvedValue(new Uint8Array([9, 9, 9]));
+    await syncSessionSharedFileCandidates(pending);
+    expect(mocks.upload.mock.calls.map((call) => call[5])).toEqual([
+      bytes,
+      bytes,
+    ]);
+    expect(mocks.read).not.toHaveBeenCalled();
+  });
+  it("does not fall back to the original source when a captured object is unavailable", async () => {
+    const result = await syncSessionSharedFileCandidates({
+      ...input,
+      candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+      readCandidate: async () => null,
+    });
+    expect(result.sourceUnavailable).toBe(true);
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
+  it("keeps a durable candidate pending when its source read fails", async () => {
+    mocks.read.mockRejectedValueOnce(new Error("volume unavailable"));
+    const pending = {
+      ...input,
+      candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+    };
+    await expect(syncSessionSharedFileCandidates(pending)).resolves.toEqual({
+      supported: true,
+      sourceUnavailable: true,
+    });
+    expect(mocks.upload).not.toHaveBeenCalled();
+    await expect(syncSessionSharedFileCandidates(pending)).resolves.toEqual({
+      supported: true,
+      sourceUnavailable: false,
+    });
+    expect(mocks.upload).toHaveBeenCalledOnce();
+  });
   it("uploads an agent file without rewriting conversation events or requiring a comment", async () => {
     await syncSessionSharedFiles(input);
     expect(mocks.upload).toHaveBeenCalledWith(
@@ -60,7 +124,8 @@ describe("shared session artifact publication", () => {
       "session",
       "report.md",
       new Uint8Array([1, 2, 3]),
-      { path: "/author/report.md", revision: "e1:now" }
+      { path: "/author/report.md", revision: "e1:now" },
+      undefined
     );
     expect(event.filePath).toBe("/author/report.md");
   });
@@ -92,6 +157,29 @@ describe("shared session artifact publication", () => {
   it("propagates network failure for the existing delivery lifecycle to retry", async () => {
     mocks.upload.mockRejectedValue(new Error("offline"));
     await expect(syncSessionSharedFiles(input)).rejects.toThrow("offline");
+  });
+  it("forwards cancellation to lookup and upload and stops before the next file", async () => {
+    const controller = new AbortController();
+    mocks.upload.mockImplementation(async () => controller.abort());
+    await expect(
+      syncSessionSharedFiles({
+        ...input,
+        events: [event, { ...event, id: "e2", filePath: "/author/second.md" }],
+        signal: controller.signal,
+        assertCurrentIdentity: () => controller.signal.throwIfAborted(),
+      })
+    ).rejects.toThrow();
+    expect(mocks.find).toHaveBeenCalledWith(
+      "token",
+      input.endpoint,
+      "org",
+      "session",
+      expect.any(Array),
+      controller.signal
+    );
+    expect(mocks.upload.mock.calls[0][7]).toBe(controller.signal);
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.read).toHaveBeenCalledTimes(1);
   });
   it("bounds manifest queries and processes more than five files", async () => {
     await syncSessionSharedFiles({

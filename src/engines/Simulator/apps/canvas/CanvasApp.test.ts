@@ -23,6 +23,11 @@ const testState = vi.hoisted(() => ({
   previewEventId: null as string | null,
   revisionDraft: null as CanvasRevisionDraft | null,
   publishedHeader: null as ReactNode,
+  createNewCanvas: vi.fn(),
+}));
+
+vi.mock("./useNewCanvasDraft", () => ({
+  useNewCanvasDraft: () => testState.createNewCanvas,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -93,8 +98,14 @@ vi.mock("../core/useSimulatorAppState", () => ({
 }));
 vi.mock("./canvasConfig", () => ({ CANVAS_APP_CONFIG: {} }));
 vi.mock("@src/hooks/tabHost/useWorkstationTabHeader", () => ({
-  usePublishWorkstationTabHeader: ({ content }: { content: ReactNode }) => {
-    testState.publishedHeader = content;
+  usePublishWorkstationTabHeader: ({
+    content,
+    enabled,
+  }: {
+    content: ReactNode;
+    enabled: boolean;
+  }) => {
+    testState.publishedHeader = enabled ? content : null;
   },
 }));
 vi.mock("@src/components/WindowChrome", () => ({
@@ -248,6 +259,7 @@ describe("CanvasApp interaction lifecycle", () => {
   });
 
   beforeEach(() => {
+    testState.createNewCanvas.mockClear();
     testState.appEvents = [];
     testState.previewEventId = null;
     testState.revisionDraft = null;
@@ -293,6 +305,21 @@ describe("CanvasApp interaction lifecycle", () => {
       );
     });
   }
+
+  it("keeps New Canvas available with no events and after selecting a canvas", () => {
+    render();
+    const button = () =>
+      Array.from(container.querySelectorAll("button")).find(
+        (entry) => entry.textContent === "New Canvas"
+      )!;
+    expect(button()).toBeDefined();
+    act(() => button().click());
+    expect(testState.createNewCanvas).toHaveBeenCalledOnce();
+    testState.appEvents = [canvasEvent("existing")];
+    render();
+    expect(button()).toBeDefined();
+    expect(container.textContent).toContain("existing");
+  });
 
   function previewSurface() {
     return container.querySelector<HTMLElement>(

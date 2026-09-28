@@ -17,6 +17,7 @@ mod context_usage;
 mod desktop_exec;
 mod impact;
 mod index;
+pub mod materialized_tool;
 mod meta;
 mod normalize;
 mod transcript;

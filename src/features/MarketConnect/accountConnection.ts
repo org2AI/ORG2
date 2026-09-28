@@ -10,6 +10,7 @@ import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { createLogger } from "@src/hooks/logger";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
+import { marketAppSchemeSchema } from "./appScheme";
 import { authorizeMarketInBackground } from "./backgroundAuthorization";
 import { type MarketStore, captureMarketOwner } from "./identity";
 
@@ -48,7 +49,7 @@ export async function authorizeMarketAccount(
     let started = false;
     let completed = false;
     try {
-      if (!/^orgii(?:-market-local-[a-f0-9]{8})?$/.test(appScheme))
+      if (!marketAppSchemeSchema.safeParse(appScheme).success)
         throw Error("invalid_market_app_scheme");
       // The marker resolves server-side to this identity's account catalog.
       // This URL is only the Rust enrollment input; it is never opened by the OS.

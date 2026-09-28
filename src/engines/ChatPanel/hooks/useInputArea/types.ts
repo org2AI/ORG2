@@ -48,6 +48,14 @@ export class SubmitValidationError extends Error {
   }
 }
 
+/** A blocking dialog already explains this rejected send to the user. */
+export class SubmitHandledByDialogError extends SubmitValidationError {
+  constructor(message: string) {
+    super(message);
+    this.name = "SubmitHandledByDialogError";
+  }
+}
+
 /**
  * The transport rejected the send after its owning surface had already
  * retained the optimistic message as a visible failed row. Callers must not

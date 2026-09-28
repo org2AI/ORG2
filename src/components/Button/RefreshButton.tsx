@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 
@@ -41,7 +42,7 @@ export default function RefreshButton({
 }: RefreshButtonProps): ReactNode {
   const { spinClass, handleClick } = useRefreshSpin(onRefresh, refreshing);
 
-  return (
+  const button = (
     <Button
       htmlType="button"
       variant={variant}
@@ -49,7 +50,6 @@ export default function RefreshButton({
       size={size ?? (variant === "secondary" ? "default" : "small")}
       disabled={disabled || refreshing}
       aria-label={label}
-      title={label}
       onClick={handleClick}
       icon={
         <HugeiconsIcon
@@ -63,5 +63,12 @@ export default function RefreshButton({
     >
       {iconOnly ? null : label}
     </Button>
+  );
+
+  // Icon-only has no visible text, so the label moves to the shared tooltip.
+  return iconOnly ? (
+    <ToolbarTooltip label={label}>{button}</ToolbarTooltip>
+  ) : (
+    button
   );
 }

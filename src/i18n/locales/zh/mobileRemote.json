@@ -250,7 +250,7 @@
     "ticket": "连接校验未通过，请确认手机时间准确并使用最新版 App",
     "authorization": "此设备的连接授权已失效，请重新配对",
     "unavailable": "请检查网络，并确认电脑上的 ORG2 正在运行",
-    "retrying": "正在自动重试，你也可以立即重新连接"
+    "retrying": "正在自动重试…"
   },
   "connectionRecovery": {
     "retry": "重新连接",

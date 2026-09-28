@@ -52,7 +52,10 @@ const SessionForkHeaderExtras: React.FC<SessionForkHeaderExtrasProps> = ({
   );
 
   if (!session) return null;
-  const showForkButton = Boolean(session.importedFrom);
+  // Cloud members continue directly through the canonical Agent composer.
+  // Guest-share imports still need a separate local fork because they cannot
+  // write turns to the member-only Cloud conversation.
+  const showForkButton = Boolean(session.importedFrom?.shareToken);
   if (!showForkButton && !forkedFrom) return null;
 
   const handleFork = async (): Promise<void> => {

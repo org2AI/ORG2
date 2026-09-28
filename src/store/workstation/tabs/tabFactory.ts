@@ -70,6 +70,7 @@ export const DEFAULT_CATEGORY_BY_TYPE: Record<
   WorkStationTabType,
   WorkStationTabCategory
 > = {
+  "shared-file": "preview",
   file: "file",
   directory: "explorer",
   explorer: "explorer",

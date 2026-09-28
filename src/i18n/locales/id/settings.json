@@ -1114,11 +1114,12 @@
     "marketApps": {
       "isolatedStorage": "50 percakapan terbaru Anda disinkronkan secara otomatis. Jika sebuah percakapan sudah terbuka di Codex, tutup dan buka kembali Codex untuk menerima pesan terbarunya. Pengaturan aplikasi dan CLI tetap terpisah",
       "isolatedClaudeStorage": "50 percakapan terbaru Anda disinkronkan secara otomatis setelah Claude Desktop dan Claude Code ditutup",
+      "historyPolicy": "Jika kedua salinan berubah, penulisan terakhir menimpa salinan lainnya; pesan yang tertimpa tidak dapat dipulihkan",
       "loading": "Memuat paket ORG2 Market…",
       "loadFailed": "Paket ORG2 Market tidak dapat dimuat",
       "nonePurchased": "Saat ini tidak ada paket ORG2 Market yang tersedia",
       "checking": "Memeriksa aplikasi…",
-      "unavailable": "Tidak tersedia untuk versi yang terpasang ini",
+      "unavailable": "Koneksi aplikasi ini tidak tersedia",
       "notInstalled": "Belum terpasang",
       "original": "Menggunakan pengaturan asli aplikasi",
       "open": "Buka aplikasi",
@@ -1128,7 +1129,6 @@
       "actionFailed": "Tidak dapat memperbarui koneksi aplikasi ini",
       "openFailed": "Tidak dapat membuka aplikasi ini",
       "restoreRequired": "Pulihkan pengaturan asli aplikasi ini, lalu pilih paket Anda dan terapkan kembali koneksi",
-      "versionUnverified": "Versi aplikasi desktop ini belum diverifikasi untuk koneksi terisolasi pada versi ORG2 ini. Perbarui ORG2 dan coba lagi",
       "workspaceNumber": "Layanan {{index}} dari {{count}}",
       "openTerminal": "Buka terminal",
       "terminalOpened": "Terminal dibuka",
@@ -1138,10 +1138,21 @@
       "defaultModel": "Model default",
       "packageLimit": "Pilih hingga 8 paket",
       "historySync": {
+        "observing": "Sinkronisasi riwayat otomatis sedang memantau perubahan",
         "active": "Sinkronisasi riwayat aktif · {{shared}} percakapan dibagikan",
         "attention": "Sinkronisasi riwayat aktif · {{shared}} dibagikan · {{conflicts}} perlu perhatian",
         "paused": "Sinkronisasi riwayat dijeda: {{reason}}",
-        "idle": "Sinkronisasi riwayat tidak aktif"
+        "idle": "Sinkronisasi riwayat tidak aktif",
+        "reasons": {
+          "compatibility": "Kompatibilitas dengan format riwayat aplikasi ini belum diverifikasi",
+          "changed": "Aplikasi telah berubah dan kompatibilitas riwayat perlu diperiksa kembali",
+          "route": "Model dan penyedia tujuan tidak dapat diverifikasi",
+          "checking": "Memeriksa riwayat percakapan",
+          "waiting": "Tutup Claude Desktop dan Claude Code untuk menyinkronkan riwayat, lalu buka kembali Claude Desktop untuk melihatnya",
+          "namespace": "Penggunaan pertama: buka Claude Desktop, lalu tutup dan buka kembali untuk memuat riwayat",
+          "attention": "Beberapa percakapan perlu ditinjau; riwayat yang ada tetap disimpan",
+          "unavailable": "Sinkronisasi riwayat otomatis untuk sementara tidak tersedia"
+        }
       }
     }
   },

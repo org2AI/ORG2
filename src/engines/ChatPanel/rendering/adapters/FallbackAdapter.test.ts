@@ -140,7 +140,7 @@ it("does not duplicate output images inside tool cards when the turn owns a gall
         value: {
           isLastGroup: true,
           isLastItemInGroup: false,
-          outputImagesAtEnd: true,
+          outputImagesOwnedByProjection: true,
         },
       },
       createElement(RecipeRenderer, {

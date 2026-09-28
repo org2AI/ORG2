@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "Elemento de trabajo asignado",
       "standaloneProject": "Independiente",
+      "channelMentionSubtitle": "Te mencionaron en un canal",
       "mentionSubtitle": "Mencionado en un comentario",
       "mentionedYou": "te mencionó",
       "threadComments_one": "{{count}} comentario en este hilo",

@@ -19,7 +19,7 @@
 //!   in `agent_sessions` DB)
 //! - Orphan `agent-worktrees/<repo_hash>/<session_id>/` eviction (session
 //!   no longer present in `agent_sessions` DB)
-//! - Orphan temp scratchpad eviction under `/tmp/orgii-{uid}/.../<session_id>/`
+//! - Orphan temp scratchpad eviction under `<ORGII_HOME>/tmp/.../<session_id>/`
 //! - Orphan `session-images/<hash>.{ext}` eviction (aged hash no longer
 //!   referenced by any Rust-agent message or CLI-session image owner)
 //! - Orphan `gateway_bindings` row prune (target session no longer
@@ -101,7 +101,7 @@ pub struct HousekeepingStats {
     /// `~/.orgii/codex-hosted-cli-profiles/` because their owning CLI
     /// session was gone.
     pub codex_hosted_session_profiles_evicted: usize,
-    /// Hosted Kiro proxy HOME dirs removed from `/tmp/orgii-{uid}/kiro-proxy/`.
+    /// Hosted Kiro proxy HOME dirs removed from `<ORGII_HOME>/tmp/kiro-proxy/`.
     pub kiro_proxy_homes_evicted: usize,
     /// Screenshot files removed from `~/.orgii/screenshots/` via TTL sweep.
     pub screenshots_removed: usize,
@@ -116,7 +116,7 @@ pub struct HousekeepingStats {
     /// because their owning session was no longer present in
     /// `agent_sessions`.
     pub agent_worktrees_evicted: usize,
-    /// Per-session temp scratchpad dirs removed from `/tmp/orgii-{uid}/.../`.
+    /// Per-session temp scratchpad dirs removed from `<ORGII_HOME>/tmp/.../`.
     pub scratchpads_evicted: usize,
     /// Session-image files deleted from `~/.orgii/session-images/` because
     /// no surviving Rust-agent or CLI-session owner referenced their filename.
@@ -438,6 +438,36 @@ mod tests {
                 repo.exists(),
                 "repo-hash parent kept even when a child is evicted"
             );
+        });
+    }
+
+    #[test]
+    fn orphan_sweep_stays_in_current_profile() {
+        with_sandbox(|root| {
+            let previous = std::env::var_os("ORGII_TEMP_ROOT");
+            std::env::remove_var("ORGII_TEMP_ROOT");
+            let workspace = Path::new("/workspace");
+            let a = paths::ensure_scratchpad("session-a", workspace).unwrap();
+            std::fs::write(a.join("output.md"), b"A output").unwrap();
+            std::env::set_var("ORGII_HOME", root.join("profile-b"));
+            let b = paths::ensure_scratchpad("session-b", workspace).unwrap();
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(
+                a.parent().unwrap().parent().unwrap(),
+                paths::orgii_temp_root().join("linked-workspace"),
+            )
+            .unwrap();
+            let removed = evict_orphan_scratchpads(&Default::default()).unwrap();
+            assert_eq!(removed, 1);
+            assert!(!b.exists());
+            assert_eq!(std::fs::read(a.join("output.md")).unwrap(), b"A output");
+            assert_eq!(evict_orphan_scratchpads(&Default::default()).unwrap(), 0);
+            std::env::set_var("ORGII_HOME", root);
+            assert_eq!(paths::scratchpad_dir("session-a", workspace), a);
+            match previous {
+                Some(value) => std::env::set_var("ORGII_TEMP_ROOT", value),
+                None => std::env::remove_var("ORGII_TEMP_ROOT"),
+            }
         });
     }
 

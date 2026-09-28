@@ -19,9 +19,15 @@ pub(super) struct PendingBackgroundToolCall {
     pub(super) latest_output: String,
 }
 
+pub(super) struct PendingToolCalls {
+    pub(super) calls: Vec<ImportedToolCall>,
+    /// Derived only from the native response-item ID, never tool arguments.
+    pub(super) materialized_output: bool,
+}
+
 pub(super) fn attach_subagent_activity_to_pending_call(
     payload: &Value,
-    pending_tool_calls: &mut imported_history::PendingCallMap<Vec<ImportedToolCall>>,
+    pending_tool_calls: &mut imported_history::PendingCallMap<PendingToolCalls>,
 ) {
     if payload.get("kind").and_then(Value::as_str) != Some("started") {
         return;
@@ -33,6 +39,7 @@ pub(super) fn attach_subagent_activity_to_pending_call(
         return;
     };
     let Some(call) = calls
+        .calls
         .iter_mut()
         .find(|call| call.canonical_name == "subagent")
     else {

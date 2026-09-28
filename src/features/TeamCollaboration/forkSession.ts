@@ -48,6 +48,10 @@ import {
   org2CloudAccessSettingsAtom,
   withCloudSessionMode,
 } from "@src/features/Org2Cloud/org2CloudAccessSettings";
+import {
+  org2CloudAuthAtom,
+  org2CloudAuthIdentityKey,
+} from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import i18n from "@src/i18n";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
@@ -78,6 +82,7 @@ import {
 import { ForkOperationError } from "./forkSnapshotIntegrity";
 import type { ForkTeammateSessionOptions } from "./forkWorkspaceResolution";
 import {
+  ForkCancelledError,
   pickForkSessionSetup,
   pickMatchingCheckout,
   resolveForkWorkspacePath,
@@ -158,17 +163,40 @@ export async function forkTeammateSession(
   let workspaceRepoPath: string | null;
   let execution = options.execution;
   let usedRememberedSetup = false;
+  const store = isStoreInitialized() ? getInstrumentedStore() : null;
+  const setupAuth = store?.get(org2CloudAuthAtom);
+  const setupIdentity = setupAuth ? org2CloudAuthIdentityKey(setupAuth) : null;
+  const memoryScope = setupIdentity
+    ? {
+        identityKey: setupIdentity,
+        orgId: options.orgId,
+        sourceSessionId: options.remoteSession.sourceSessionId,
+      }
+    : null;
+  const assertSetupIdentity = () => {
+    const current = store?.get(org2CloudAuthAtom);
+    if ((current ? org2CloudAuthIdentityKey(current) : null) !== setupIdentity)
+      throw new ForkCancelledError();
+  };
   if (options.promptForExecution) {
-    // Continuation setup is remembered per repo scope: the dialog appears
+    // Setup is remembered per signed-in identity, organization and repo: the dialog appears
     // the first time (and again after a failed remembered run), every later
     // continuation reuses the confirmed choice silently.
-    const remembered = loadForkSetupMemory(options.remoteSession.repoScopeKey);
+    const remembered = loadForkSetupMemory(
+      options.remoteSession.repoScopeKey,
+      memoryScope
+    );
     const setup =
       remembered ?? (await pickForkSessionSetup(options.remoteSession));
+    assertSetupIdentity();
     if (remembered) {
       usedRememberedSetup = true;
     } else {
-      saveForkSetupMemory(options.remoteSession.repoScopeKey, setup);
+      saveForkSetupMemory(
+        options.remoteSession.repoScopeKey,
+        setup,
+        memoryScope
+      );
     }
     workspaceRepoPath = setup.workspaceRepoPath;
     execution = setup.execution;
@@ -206,14 +234,21 @@ export async function forkTeammateSession(
       execution,
     });
   } catch (error) {
-    if (!usedRememberedSetup || !(error instanceof ForkOperationError)) {
+    if (
+      !usedRememberedSetup ||
+      !(error instanceof ForkOperationError) ||
+      error.kind !== "agent_unavailable"
+    ) {
       throw error;
     }
     // The remembered setup went stale (checkout moved, account or model
     // removed). Drop it and fall back to the dialog once.
-    clearForkSetupMemory(options.remoteSession.repoScopeKey);
+    assertSetupIdentity();
+    clearForkSetupMemory(options.remoteSession.repoScopeKey, memoryScope);
     const setup = await pickForkSessionSetup(options.remoteSession);
-    saveForkSetupMemory(options.remoteSession.repoScopeKey, setup);
+    assertSetupIdentity();
+    usedRememberedSetup = false;
+    saveForkSetupMemory(options.remoteSession.repoScopeKey, setup, memoryScope);
     workspaceRepoPath = setup.workspaceRepoPath;
     execution = setup.execution;
     if (!execution?.agentDefinitionId) throw error;

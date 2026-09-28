@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import RefreshButton from "@src/components/Button/RefreshButton";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import PageNotice from "@src/components/PageNotice";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import {
@@ -11,7 +12,7 @@ import {
   NotificationOff01Icon,
 } from "@src/icons";
 
-import CursorCliUpgradeButton from "./CursorCliUpgradeButton";
+import CliUpgradeButton from "./CliUpgradeButton";
 import type { SessionCreatorChatPanelViewProps } from "./chatPanelViewTypes";
 
 interface ChatPanelCliVersionWarningProps {
@@ -25,6 +26,12 @@ export const ChatPanelCliVersionWarning: React.FC<
   ChatPanelCliVersionWarningProps
 > = ({ cliVersionAlert }) => {
   const { t } = useTranslation(["sessions", "common"]);
+  const installedVersion =
+    cliVersionAlert.installedVersion ??
+    t("creator.cliVersionOutdated.unknownVersion");
+  const latestVersion =
+    cliVersionAlert.latestVersion ??
+    t("creator.cliVersionOutdated.unknownVersion");
   return (
     <div
       className={`mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
@@ -45,27 +52,12 @@ export const ChatPanelCliVersionWarning: React.FC<
         closeAriaLabel={t("common:actions.close")}
         action={
           <div className="flex items-center gap-px">
-            {cliVersionAlert.cliAgentType === "cursor_cli" && (
-              <CursorCliUpgradeButton />
+            {cliVersionAlert.cliAgent && (
+              <CliUpgradeButton
+                key={cliVersionAlert.cliAgent.name}
+                agent={cliVersionAlert.cliAgent}
+              />
             )}
-            <Button
-              variant="tertiary"
-              size="small"
-              icon={
-                <HugeiconsIcon
-                  icon={NotificationOff01Icon}
-                  data-icon="bell-off"
-                  size={14}
-                  strokeWidth={1.8}
-                />
-              }
-              iconOnly
-              disabled={!cliVersionAlert.latestVersion}
-              title={t("creator.cliVersionOutdated.muteUntilNextVersion")}
-              aria-label={t("creator.cliVersionOutdated.muteUntilNextVersion")}
-              data-testid="session-creator-cli-version-mute"
-              onClick={cliVersionAlert.onMuteUntilNextVersion}
-            />
             <RefreshButton
               iconOnly
               label={t("creator.cliVersionOutdated.refresh", {
@@ -75,23 +67,35 @@ export const ChatPanelCliVersionWarning: React.FC<
               onRefresh={cliVersionAlert.onRefresh}
               dataTestId="session-creator-cli-version-refresh"
             />
+            <ToolbarTooltip
+              label={t("creator.cliVersionOutdated.muteUntilNextVersion")}
+            >
+              <Button
+                variant="tertiary"
+                size="small"
+                icon={
+                  <HugeiconsIcon
+                    icon={NotificationOff01Icon}
+                    data-icon="bell-off"
+                    size={14}
+                    strokeWidth={1.8}
+                  />
+                }
+                iconOnly
+                disabled={!cliVersionAlert.latestVersion}
+                aria-label={t(
+                  "creator.cliVersionOutdated.muteUntilNextVersion"
+                )}
+                data-testid="session-creator-cli-version-mute"
+                onClick={cliVersionAlert.onMuteUntilNextVersion}
+              />
+            </ToolbarTooltip>
           </div>
         }
         title={t("creator.cliVersionOutdated.title", {
           cli: cliVersionAlert.cliDisplayName,
         })}
-        subtitle={
-          <span className="break-all">
-            {t("creator.cliVersionOutdated.versions", {
-              installed:
-                cliVersionAlert.installedVersion ??
-                t("creator.cliVersionOutdated.unknownVersion"),
-              latest:
-                cliVersionAlert.latestVersion ??
-                t("creator.cliVersionOutdated.unknownVersion"),
-            })}
-          </span>
-        }
+        titleSuffix={`(${installedVersion} > ${latestVersion})`}
       />
     </div>
   );

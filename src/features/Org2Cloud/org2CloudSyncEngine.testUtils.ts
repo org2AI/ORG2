@@ -2,6 +2,7 @@ import { vi } from "vitest";
 
 import type { CollabOutboxPushItem } from "@src/api/http/project";
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
+import { rpc } from "@src/api/tauri/rpc";
 import Message from "@src/components/Message";
 import {
   loadLocalCanonicalConversationSnapshot,
@@ -335,6 +336,12 @@ export function notifySessionEvents(sessionId: string): void {
 }
 
 export function createEngineFixture() {
+  // This fixture has no persisted continuation attachments. Model the actual
+  // empty journal response rather than accidentally testing missing Tauri IPC.
+  vi.spyOn(rpc.cloudFileOutbox, "claim").mockResolvedValue({
+    job: null,
+    retryAt: null,
+  });
   const store = createInstrumentedStore();
   const client = makeClient();
   const projectsClient = makeProjectsClient();

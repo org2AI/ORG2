@@ -1,5 +1,7 @@
 import {
+  CODEX_RESERVE_MODEL,
   extractGptModelTier,
+  isCodexReserveModel,
   isModelVariantSuffixToken,
   stripCursorHostedModelPrefix,
   withCursorHostedModelPrefix,
@@ -171,6 +173,11 @@ function parseSuffixOnlyFamilyVariant(
 
 function parseGptVariant(model: string): ModelVariantMetadata | undefined {
   const lower = model.toLowerCase();
+  if (isCodexReserveModel(lower) && lower !== CODEX_RESERVE_MODEL) {
+    return buildVariant(model, CODEX_RESERVE_MODEL, [
+      lower.slice(CODEX_RESERVE_MODEL.length + 1),
+    ]);
+  }
   const baseMatch = lower.match(GPT_BASE_PATTERN);
   if (!baseMatch) return undefined;
 

@@ -3,6 +3,8 @@ import {
   type ConversationSenderStamp,
 } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import { scopedNativeSourceEventIdOf } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
+import { nativeSourceEventId } from "@src/engines/SessionCore/conversations/nativeSourceEventIdentity";
+import { nativeTerminalDiagnosticTurnId } from "@src/engines/SessionCore/conversations/nativeTerminalDiagnostic";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { stripCopyEventNamespace } from "@src/features/TeamCollaboration/copyEventId";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
@@ -148,6 +150,9 @@ export function sourceEventIdOf(event: SessionEvent): string {
   // provider-local values are intentionally ignored by the helper.
   const nativeSourceId = scopedNativeSourceEventIdOf(event);
   if (nativeSourceId) return nativeSourceId;
+  // Terminal receipts keep the same authority across the native replay and
+  // conversation plane. Scope positional provider IDs before publication.
+  if (nativeTerminalDiagnosticTurnId(event)) return nativeSourceEventId(event);
   const id = peelCopyEventNamespaces(event);
   return materializedEventIdentity(id)?.sourceEventId ?? id;
 }

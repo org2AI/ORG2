@@ -6,7 +6,7 @@
  * The active list pages through the data source's live feed; the archived
  * list pages by cursor through `listArchivedPage`.
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 
@@ -50,12 +50,42 @@ export function useTeamInboxPagination({
     useState<TeamInboxUnreadCounts | null>(
       () => initialPage?.unreadCounts ?? null
     );
-  const [loadState, setLoadState] = useState<LoadState>(() =>
+  const [pageLoadState, setPageLoadState] = useState<LoadState>(() =>
     initialPage
       ? loadStateForPage(initialPage, issueMessage)
       : { status: "loading", message: null }
   );
   const dataSourceScopeKey = dataSource.scopeKey ?? dataSource;
+  // A successful background read does not mean the user's write succeeded.
+  // Keep action feedback separate from page hydration and bound to its scope.
+  const [actionFailure, setActionFailure] = useState<{
+    scopeKey: string | TeamInboxDataSource;
+    state: LoadState;
+  } | null>(null);
+  const actionScope = useRef<string | TeamInboxDataSource | null>(
+    dataSourceScopeKey
+  );
+  useEffect(() => {
+    actionScope.current = dataSourceScopeKey;
+    return () => {
+      actionScope.current = null;
+    };
+  }, [dataSourceScopeKey]);
+  const reportActionState = useCallback(
+    (state: LoadState) => {
+      if (actionScope.current !== dataSourceScopeKey) return;
+      setActionFailure(
+        state.status === "error" || state.status === "warning"
+          ? { scopeKey: dataSourceScopeKey, state }
+          : null
+      );
+    },
+    [dataSourceScopeKey]
+  );
+  const loadState =
+    actionFailure?.scopeKey === dataSourceScopeKey
+      ? actionFailure.state
+      : pageLoadState;
   const [completedDataSourceScopeKey, setCompletedDataSourceScopeKey] =
     useState<string | TeamInboxDataSource | null>(() =>
       initialPage &&
@@ -105,7 +135,7 @@ export function useTeamInboxPagination({
         if (nextLoadState.status !== "loading") {
           setCompletedDataSourceScopeKey(dataSourceScopeKey);
         }
-        setLoadState((current) =>
+        setPageLoadState((current) =>
           current.status === nextLoadState.status &&
           current.message === nextLoadState.message
             ? current
@@ -115,7 +145,7 @@ export function useTeamInboxPagination({
       .catch((reason: unknown) => {
         if (abortController.signal.aborted) return;
         setCompletedDataSourceScopeKey(dataSourceScopeKey);
-        setLoadState({
+        setPageLoadState({
           status: "error",
           message:
             reason instanceof Error
@@ -169,7 +199,7 @@ export function useTeamInboxPagination({
         })
         .catch(() => {
           if (abortController.signal.aborted) return;
-          setLoadState({
+          setPageLoadState({
             status: "error",
             message: t("teamInbox.errors.loadMore"),
           });
@@ -194,7 +224,7 @@ export function useTeamInboxPagination({
         }
       })
       .catch(() => {
-        setLoadState({
+        setPageLoadState({
           status: "error",
           message: t("teamInbox.errors.loadMore"),
         });
@@ -205,8 +235,9 @@ export function useTeamInboxPagination({
   };
 
   const handleRefresh = () => {
+    setActionFailure(null);
     if (listMode === "active") onRefreshPullRequests?.();
-    setLoadState({ status: "loading", message: null });
+    setPageLoadState({ status: "loading", message: null });
     if (listMode === "archived" || !dataSource.refresh) {
       setReloadRevision((value) => value + 1);
       return;
@@ -219,7 +250,7 @@ export function useTeamInboxPagination({
         }
       })
       .catch(() => {
-        setLoadState({
+        setPageLoadState({
           status: "error",
           message: t("teamInbox.errors.refresh"),
         });
@@ -228,10 +259,11 @@ export function useTeamInboxPagination({
 
   /** Crossing the active/archived boundary invalidates in-flight paging. */
   const resetForModeSwitch = () => {
+    setActionFailure(null);
     loadMoreAbortRef.current?.abort();
     loadMoreAbortRef.current = null;
     setLoadingMore(false);
-    setLoadState({ status: "loading", message: null });
+    setPageLoadState({ status: "loading", message: null });
   };
 
   return {
@@ -240,7 +272,7 @@ export function useTeamInboxPagination({
     itemsMode,
     authoritativeUnreadCounts,
     loadState,
-    setLoadState,
+    setLoadState: reportActionState,
     initialLoading: completedDataSourceScopeKey !== dataSourceScopeKey,
     reloadRevision,
     hasMore,

@@ -113,7 +113,12 @@
       "resetsAvailable_one": "リセット可能回数：{{count}}回",
       "resetsAvailable_few": "リセット可能回数：{{count}}回",
       "resetsAvailable_many": "リセット可能回数：{{count}}回",
-      "resetsAvailable_other": "リセット可能回数：{{count}}回"
+      "resetsAvailable_other": "リセット可能回数：{{count}}回",
+      "resetsExpire": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_one": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_few": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_many": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_other": "{{count}}回分のリセットが{{date}}に期限切れ"
     },
     "health": {
       "cloudListingInvalid": "クラウドリスティング無効",
@@ -1319,7 +1324,7 @@
     "deleteOrgTitle": "チームを削除しますか？",
     "deleteOrgMessage": "\"{{name}}\" は完全に削除されます。この操作は元に戻せません。",
     "cliUpdateAlerts": {
-      "label": "CLI の更新を通知",
+      "label": "CLI 更新通知",
       "description": "CLI のバージョンを確認し、更新がある場合に通知します。オフにするとチェックを無効にします"
     },
     "cliManagedConfig": {

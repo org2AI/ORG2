@@ -14,7 +14,7 @@ import {
 
 import type { QueuedMessage } from "@src/store/ui/messageQueueAtom";
 
-import QueuedMessages from "./QueuedMessages";
+import QueuedMessages, { QUEUE_TRAY_REVEAL_DELAY_MS } from "./QueuedMessages";
 
 const { setEditTargetSpy } = vi.hoisted(() => ({
   setEditTargetSpy: vi.fn(),
@@ -91,6 +91,7 @@ describe("QueuedMessages edit seeding", () => {
   });
 
   beforeEach(() => {
+    vi.useFakeTimers();
     setEditTargetSpy.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -99,7 +100,9 @@ describe("QueuedMessages edit seeding", () => {
 
   afterEach(() => {
     act(() => root.unmount());
+    expect(vi.getTimerCount()).toBe(0);
     container.remove();
+    vi.useRealTimers();
   });
 
   afterAll(() => {
@@ -118,6 +121,7 @@ describe("QueuedMessages edit seeding", () => {
         })
       )
     );
+    act(() => vi.advanceTimersByTime(QUEUE_TRAY_REVEAL_DELAY_MS));
 
     const editButton = container.querySelector<HTMLButtonElement>(
       'button[title="start-edit"]'
@@ -149,6 +153,7 @@ describe("QueuedMessages edit seeding", () => {
         })
       )
     );
+    act(() => vi.advanceTimersByTime(QUEUE_TRAY_REVEAL_DELAY_MS));
 
     expect(
       container.querySelector('[data-testid="queued-messages-tray"]')
@@ -161,5 +166,40 @@ describe("QueuedMessages edit seeding", () => {
     expect(tray?.textContent).toBe(
       "canvas [skill:/canvas] build a timer".repeat(2)
     );
+  });
+
+  it("does not mount the tray for a queue row drained during the reveal grace period", () => {
+    const props = {
+      onCancel: vi.fn(),
+      onSendNow: vi.fn(),
+      onReorder: vi.fn(),
+    };
+    act(() =>
+      root.render(
+        createElement(QueuedMessages, {
+          ...props,
+          messages: [queuedCanvasMessage()],
+        })
+      )
+    );
+
+    expect(
+      container.querySelector('[data-testid="queued-messages-tray"]')
+    ).toBeNull();
+
+    act(() =>
+      root.render(
+        createElement(QueuedMessages, {
+          ...props,
+          messages: [],
+        })
+      )
+    );
+    act(() => vi.advanceTimersByTime(QUEUE_TRAY_REVEAL_DELAY_MS));
+
+    expect(
+      container.querySelector('[data-testid="queued-messages-tray"]')
+    ).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

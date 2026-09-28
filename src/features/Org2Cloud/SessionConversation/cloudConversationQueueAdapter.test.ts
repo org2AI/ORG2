@@ -23,6 +23,7 @@ afterEach(() => vi.unstubAllGlobals());
 const mocks = vi.hoisted(() => ({
   refreshAuth: vi.fn(),
   syncFiles: vi.fn(),
+  enqueueFiles: vi.fn(),
   listOrgSessions: vi.fn(),
   capabilities: vi.fn(),
   pushEvents: vi.fn(),
@@ -61,6 +62,9 @@ vi.mock(
 
 vi.mock("../syncSessionSharedFiles", () => ({
   syncSessionSharedFiles: mocks.syncFiles,
+}));
+vi.mock("../conversationFileOutbox", () => ({
+  enqueueConversationSharedFiles: mocks.enqueueFiles,
 }));
 
 vi.mock("@src/api/tauri/cloudDevice", () => ({
@@ -173,6 +177,7 @@ beforeEach(() => {
     lineage: { version: 1, queueMessageId: message.id, superseded: [] },
   }));
   mocks.syncFiles.mockReset();
+  mocks.enqueueFiles.mockReset().mockResolvedValue(undefined);
   mocks.runConversationTurn.mockReset();
   mocks.refreshAuth.mockImplementation(async (auth) => ({
     status: "ready",
@@ -729,7 +734,7 @@ describe("dispatchQueuedCloudConversation coordination", () => {
     ["agent", "lookup"],
     ["agent", "upload"],
   ])(
-    "retains admitted recovery for %s file %s HTTP 503",
+    "keeps input dependency but isolates output delivery for %s file %s HTTP 503",
     async (stage, operation) => {
       enableTurnCoordination();
       vi.stubGlobal(
@@ -770,13 +775,25 @@ describe("dispatchQueuedCloudConversation coordination", () => {
         await params.publishTail("turn-1", [ASSISTANT_TAIL_EVENT]);
         return { runnerSessionId: "runner", terminalStatus: "completed" };
       });
-      await expect(
-        dispatchQueuedCloudConversation(readyStore(), MESSAGE, ROOT, {
+      const dispatch = dispatchQueuedCloudConversation(
+        readyStore(),
+        MESSAGE,
+        ROOT,
+        {
           onAccepted: vi.fn(),
-        })
-      ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+        }
+      );
+      if (stage === "agent") {
+        await expect(dispatch).resolves.toBeUndefined();
+        expect(mocks.enqueueFiles).toHaveBeenCalledOnce();
+        expect(mocks.finishTurn).toHaveBeenCalledOnce();
+      } else {
+        await expect(dispatch).rejects.toBeInstanceOf(
+          QueuedConversationRecoveryPendingError
+        );
+        expect(mocks.finishTurn).not.toHaveBeenCalled();
+      }
       expect(mocks.admitTurn).toHaveBeenCalledOnce();
-      expect(mocks.finishTurn).not.toHaveBeenCalled();
       expect(mocks.runConversationTurn).toHaveBeenCalledTimes(
         stage === "agent" ? 1 : 0
       );
@@ -788,8 +805,12 @@ describe("dispatchQueuedCloudConversation coordination", () => {
   it("publishes the provider tail before finishing the Cloud ledger row", async () => {
     enableTurnCoordination();
     const order: string[] = [];
+    mocks.enqueueFiles.mockImplementation(async () => {
+      order.push("journal");
+    });
     mocks.syncFiles.mockImplementation(async ({ events }) => {
-      if (events.includes(ASSISTANT_TAIL_EVENT)) order.push("files");
+      if (events.includes(ASSISTANT_TAIL_EVENT)) await new Promise(() => {});
+      return true;
     });
     mocks.pushEvents.mockImplementation(async () => {
       order.push("publish");
@@ -814,7 +835,27 @@ describe("dispatchQueuedCloudConversation coordination", () => {
       onAccepted: vi.fn(),
     });
 
-    expect(order).toEqual(["publish", "files", "finish"]);
+    expect(order).toEqual(["publish", "journal", "finish"]);
+    expect(mocks.syncFiles).toHaveBeenCalledTimes(1); // Inputs only.
+  });
+
+  it("retains publication recovery when the local attachment journal cannot be saved", async () => {
+    enableTurnCoordination();
+    mocks.enqueueFiles.mockRejectedValueOnce(new Error("disk full"));
+    mocks.runConversationTurn.mockImplementationOnce(async (params) => {
+      await params.onBeforeTurnDispatch?.("runner");
+      await params.onTurnAccepted?.("runner");
+      await params.publishTail("turn-1", [ASSISTANT_TAIL_EVENT]);
+      return { runnerSessionId: "runner", terminalStatus: "completed" };
+    });
+    await expect(
+      dispatchQueuedCloudConversation(readyStore(), MESSAGE, ROOT, {
+        onAccepted: vi.fn(),
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+    expect(mocks.pushEvents).toHaveBeenCalledOnce();
+    expect(mocks.finishTurn).not.toHaveBeenCalled();
+    expect(mocks.runConversationTurn).toHaveBeenCalledOnce();
   });
 
   it("owns one bounded renewal timer and clears it when the turn finishes", async () => {

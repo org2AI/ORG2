@@ -13,7 +13,7 @@ import {
 import { createLogger } from "@src/hooks/logger";
 import type { ActivityChunk } from "@src/types/session/session";
 
-import type { RawSessionEvent } from "../../types";
+import type { EventHandlerCallbacks, RawSessionEvent } from "../../types";
 import { makeToolCallEvent } from "../shared/eventFactories";
 import {
   appendBoundedToolCallArgs,
@@ -34,6 +34,7 @@ const MAX_FINALIZED_STREAM_IDS = 256;
 
 interface CliActivityHandlerDeps {
   sessionId: string;
+  onStreamingDelta: EventHandlerCallbacks["onStreamingDelta"];
   setStreamingMode: (active: boolean) => void;
   /** Register a normalization + EventStore write with the lifecycle barrier. */
   persistObservedEvent: (operation: Promise<unknown>) => void;
@@ -54,6 +55,7 @@ export interface CliActivityHandlers {
 
 export function createCliActivityHandlers({
   sessionId,
+  onStreamingDelta,
   setStreamingMode,
   persistObservedEvent,
   onActivityObserved,
@@ -69,6 +71,7 @@ export function createCliActivityHandlers({
   let thinkStreamId = "";
   let thinkStartedAt = "";
   let thinkTurnIntentId: string | undefined;
+  let liveKind: "message" | "thinking" | undefined;
   const finalizedStreamEventIds = new Set<string>();
   const toolCallDeltaBuffers = new Map<
     number,
@@ -76,6 +79,7 @@ export function createCliActivityHandlers({
   >();
 
   function clearMessageStream(): void {
+    clearLiveStream("message");
     msgContent = "";
     msgStreamId = "";
     msgStartedAt = "";
@@ -83,10 +87,31 @@ export function createCliActivityHandlers({
   }
 
   function clearThinkingStream(): void {
+    clearLiveStream("thinking");
     thinkContent = "";
     thinkStreamId = "";
     thinkStartedAt = "";
     thinkTurnIntentId = undefined;
+  }
+
+  function clearLiveStream(kind: "message" | "thinking"): void {
+    if (liveKind !== kind) return;
+    liveKind = undefined;
+    onStreamingDelta?.({ isStreaming: false, isThinking: false, content: "" });
+  }
+
+  function publishLiveStream(
+    kind: "message" | "thinking",
+    content: string
+  ): void {
+    liveKind = kind;
+    // Workstation Messages reads the shared, session-scoped live buffer;
+    // EventStore deltas alone are intentionally absent from its final rows.
+    onStreamingDelta?.({
+      isStreaming: true,
+      isThinking: kind === "thinking",
+      content,
+    });
   }
 
   function clearToolCallDeltaBuffers(): void {
@@ -205,6 +230,7 @@ export function createCliActivityHandlers({
       }
       msgTurnIntentId ??= turnIntentId;
       msgContent = capStreamContent(mergeStreamingText(msgContent, deltaText));
+      publishLiveStream("message", msgContent);
       persistObservedEvent(
         eventStoreProxy.upsert(
           withTurnIntentId(
@@ -238,6 +264,7 @@ export function createCliActivityHandlers({
       thinkContent = capStreamContent(
         mergeStreamingText(thinkContent, deltaText)
       );
+      publishLiveStream("thinking", thinkContent);
       persistObservedEvent(
         eventStoreProxy.upsert(
           withTurnIntentId(

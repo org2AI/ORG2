@@ -1,7 +1,7 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::Value;
 
-use crate::types::{QuotaInfo, UsageItem};
+use crate::types::{QuotaInfo, QuotaResetExpiry, UsageItem};
 
 pub(crate) const SESSION_USAGE_TYPE: &str = "session";
 pub(crate) const WEEKLY_USAGE_TYPE: &str = "weekly";
@@ -34,6 +34,27 @@ impl QuotaWindow {
 pub(crate) fn unix_seconds_to_rfc3339(seconds: i64) -> Option<String> {
     DateTime::<Utc>::from_timestamp(seconds, 0)
         .map(|date| date.to_rfc3339_opts(SecondsFormat::Secs, true))
+}
+
+/// Merges `(expiry, count)` pairs into per-timestamp groups, earliest first.
+pub(crate) fn group_reset_expiries(
+    mut expiries: Vec<(DateTime<Utc>, u64)>,
+) -> Vec<QuotaResetExpiry> {
+    expiries.sort_by_key(|(expires_at, _)| *expires_at);
+    let mut groups: Vec<(DateTime<Utc>, u64)> = Vec::new();
+    for (expires_at, count) in expiries {
+        match groups.last_mut() {
+            Some((last, total)) if *last == expires_at => *total = total.saturating_add(count),
+            _ => groups.push((expires_at, count)),
+        }
+    }
+    groups
+        .into_iter()
+        .map(|(expires_at, count)| QuotaResetExpiry {
+            count,
+            expires_at: expires_at.to_rfc3339_opts(SecondsFormat::Secs, true),
+        })
+        .collect()
 }
 
 pub(crate) fn normalize_reset_time(value: &str) -> Option<String> {

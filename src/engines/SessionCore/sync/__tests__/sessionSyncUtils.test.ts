@@ -203,6 +203,78 @@ describe("loadPersistedHistory", () => {
     expect(cacheAdapterMock.loadInitialTurnWindow).not.toHaveBeenCalled();
   });
 
+  it("cold-loads finalized interrupted output beside failed-delivery sidecars without extra reads", async () => {
+    const sessionId = "cliagent-cold-partial";
+    const user = {
+      id: "native-user",
+      chunk_id: "native-user",
+      uiCanonical: "user_message",
+      displayText: "continue",
+      displayStatus: "completed",
+      activityStatus: "agent",
+      sessionId,
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayVariant: "message",
+      createdAt: "2026-09-24T00:00:00Z",
+      args: {},
+      result: {
+        turnIntentId: "accepted",
+        message: { role: "user", content: "continue" },
+      },
+    } as SessionEvent;
+    const aborted = {
+      ...user,
+      id: "abort",
+      source: "system",
+      actionType: "task_failed",
+      functionName: "task_failed",
+      result: {},
+      displayVariant: "tool_call",
+    } as SessionEvent;
+    const partial = {
+      ...user,
+      id: `stream-msg-${sessionId}-1-final`,
+      source: "assistant",
+      actionType: "assistant",
+      functionName: "assistant",
+      isDelta: false,
+      result: { turnIntentId: "accepted", observation: "durable partial" },
+    } as SessionEvent;
+    const failed = {
+      ...user,
+      id: "queued-user:rejected:",
+      createdAt: "2026-09-24T00:01:00Z",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "failed",
+        turnIntentId: "rejected",
+        message: { role: "user", content: "retry" },
+      },
+    } as SessionEvent;
+    cacheAdapterMock.getSessionMetadata.mockResolvedValue({ eventCount: 2 });
+    cacheAdapterMock.loadEvents.mockResolvedValue([partial, failed]);
+    const adapter = makeAdapter("cli", [user, aborted]);
+    const result = await loadPersistedHistory(
+      adapter,
+      sessionId,
+      new AbortController().signal
+    );
+    expect(result).toEqual([user, aborted, partial, failed]);
+    expect(adapter.loadHistory).toHaveBeenCalledOnce();
+    expect(cacheAdapterMock.loadEvents).toHaveBeenCalledOnce();
+    expect(cacheAdapterMock.loadInitialTurnWindow).not.toHaveBeenCalled();
+    // Repeat the real cold-load entry point, not terminal reconciliation.
+    expect(
+      await loadPersistedHistory(
+        adapter,
+        sessionId,
+        new AbortController().signal
+      )
+    ).toEqual(result);
+  });
+
   it("rehydrates a failed CLI user turn beside native history after restart", async () => {
     const nativeHistory = [
       {

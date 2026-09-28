@@ -29,6 +29,7 @@ import * as p from "./procedures";
 export const procedures = {
   validation: p.validation,
   settings: p.settings,
+  serviceAuth: p.serviceAuth,
   terminal: p.terminal,
   diff: p.diff,
   gateway: p.gateway,
@@ -48,6 +49,7 @@ export const procedures = {
   flow: p.flow,
   humanSession: p.humanSession,
   cli: p.cli,
+  cloudFileOutbox: p.cloudFileOutbox,
 } as const;
 
 // ============================================================================

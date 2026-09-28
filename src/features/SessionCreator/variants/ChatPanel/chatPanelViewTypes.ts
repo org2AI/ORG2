@@ -9,6 +9,7 @@ import type React from "react";
 import type { DispatchCategory } from "@src/api/tauri/session";
 import type { CliAgentType } from "@src/api/types/keys";
 import type { ComposerInputRef } from "@src/components/ComposerInput";
+import type { AvailableAgent } from "@src/config/cliAgents/types";
 import type { CreatorComposerPosition } from "@src/config/sessionCreatorConfig";
 import type { ScrollNavState } from "@src/engines/ChatPanel/ChatHistory";
 import type { SessionLaunchWorkItemContext } from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/types";
@@ -38,7 +39,7 @@ interface CategoryPickerProps {
 }
 
 interface CliVersionAlert {
-  cliAgentType?: string | null;
+  cliAgent?: AvailableAgent;
   cliDisplayName: string | undefined;
   installedVersion: string | undefined;
   latestVersion: string | undefined;

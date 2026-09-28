@@ -1,15 +1,23 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::providers::quota_windows::{normalize_reset_time, quota_from_windows, QuotaWindow};
-use crate::types::QuotaInfo;
+use crate::providers::quota_windows::{
+    group_reset_expiries, normalize_reset_time, quota_from_windows, QuotaWindow,
+};
+use crate::types::{QuotaInfo, QuotaResetCredits};
 
 const OAUTH_USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
+// Claude Code sends these to opt into the banked limit-reset program
+// (`cedar_ember`) and to skip the spend breakdown the quota view never reads.
+const OAUTH_USAGE_QUERY: [(&str, &str); 2] = [("cedar_ember", "1"), ("skip_spend", "1")];
 const OAUTH_PROFILE_URL: &str = "https://api.anthropic.com/api/oauth/profile";
 const OAUTH_BETA_HEADER: &str = "oauth-2025-04-20";
-const CLAUDE_CODE_USER_AGENT: &str = "claude-code/2.1.0";
+// The usage API only reports limit-reset grants to the Claude Code CLI surface;
+// other user agents get `"eligible": false, "ineligible_reason": "surface"`.
+const CLAUDE_CODE_USER_AGENT: &str = "claude-cli/2.1.280 (external, cli)";
 const DEFAULT_TIMEOUT_SECS: u64 = 10;
 
 #[derive(Debug, Deserialize)]
@@ -22,6 +30,9 @@ struct OAuthUsageWindow {
 struct OAuthUsageResponse {
     five_hour: Option<OAuthUsageWindow>,
     seven_day: Option<OAuthUsageWindow>,
+    // Parsed leniently so a change to the reset-grant schema cannot fail the
+    // usage windows.
+    cedar_ember: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -111,6 +122,7 @@ impl ClaudeCodeQuotaFetcher {
         let response = self
             .client
             .get(OAUTH_USAGE_URL)
+            .query(&OAUTH_USAGE_QUERY)
             .header("Authorization", format!("Bearer {access_token}"))
             .header("anthropic-beta", OAUTH_BETA_HEADER)
             .header("User-Agent", CLAUDE_CODE_USER_AGENT)
@@ -185,10 +197,10 @@ impl Default for ClaudeCodeQuotaFetcher {
 fn parse_oauth_usage_response(body: &str) -> Result<QuotaInfo, String> {
     let response: OAuthUsageResponse = serde_json::from_str(body)
         .map_err(|err| format!("Claude Code OAuth usage parse failed: {err}"))?;
-    Ok(quota_from_usage_response(response))
+    Ok(quota_from_usage_response(response, Utc::now()))
 }
 
-fn quota_from_usage_response(response: OAuthUsageResponse) -> QuotaInfo {
+fn quota_from_usage_response(response: OAuthUsageResponse, now: DateTime<Utc>) -> QuotaInfo {
     let mut windows = Vec::new();
 
     if let Some(window) = response.five_hour {
@@ -209,7 +221,72 @@ fn quota_from_usage_response(response: OAuthUsageResponse) -> QuotaInfo {
         }
     }
 
-    quota_from_windows("claude_code", "oauth_usage", windows)
+    let mut quota = quota_from_windows("claude_code", "oauth_usage", windows);
+    if let Some(credits) = response
+        .cedar_ember
+        .as_ref()
+        .and_then(|program| limit_reset_credits(program, now))
+    {
+        quota.set_reset_credits(credits);
+    }
+    quota
+}
+
+/// Summarizes banked limit resets. Returns `None` when the account is
+/// ineligible or the program is absent: unknown is not zero.
+fn limit_reset_credits(
+    program: &serde_json::Value,
+    now: DateTime<Utc>,
+) -> Option<QuotaResetCredits> {
+    let eligible = program.get("eligible").and_then(serde_json::Value::as_bool);
+    if eligible == Some(false) {
+        return None;
+    }
+    let grants = match program.get("grants").and_then(serde_json::Value::as_array) {
+        Some(grants) => grants.as_slice(),
+        None if eligible == Some(true) => &[],
+        None => return None,
+    };
+
+    let mut available: u64 = 0;
+    let mut expiries = Vec::new();
+    for grant in grants {
+        let resets_left = grant
+            .get("resets_left")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        let paused = grant
+            .get("paused")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        let starts_at = grant_time(grant, "starts_at");
+        let ends_at = grant_time(grant, "ends_at");
+        // The count is `resets_left` across live grants, not the grant count.
+        if resets_left == 0
+            || paused
+            || starts_at.is_some_and(|starts| starts > now)
+            || ends_at.is_some_and(|ends| ends <= now)
+        {
+            continue;
+        }
+        available = available.saturating_add(resets_left);
+        if let Some(ends) = ends_at {
+            expiries.push((ends, resets_left));
+        }
+    }
+
+    Some(QuotaResetCredits {
+        available,
+        expirations: group_reset_expiries(expiries),
+    })
+}
+
+fn grant_time(grant: &serde_json::Value, key: &str) -> Option<DateTime<Utc>> {
+    grant
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+        .map(|value| value.with_timezone(&Utc))
 }
 
 fn parse_oauth_profile_metadata(body: &str) -> Result<HashMap<String, String>, String> {

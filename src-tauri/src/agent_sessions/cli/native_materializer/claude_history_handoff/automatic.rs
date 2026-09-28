@@ -90,48 +90,10 @@ fn identity(value: &Value) -> Result<(&str, &str, &str), Status> {
     Ok((id, desktop, cwd))
 }
 
-// Closed schema: recognize local controls to discard, never copy them.
+// Construct only the native registration fields we own. Unrecognized source
+// catalog fields remain in that profile and never become target configuration.
 fn registration_row(source: &Value) -> Result<Value, Status> {
-    const KNOWN: &[&str] = &[
-        "sessionId",
-        "cliSessionId",
-        "cwd",
-        "originCwd",
-        "title",
-        "titleSource",
-        "createdAt",
-        "lastFocusedAt",
-        "lastActivityAt",
-        "model",
-        "isArchived",
-        "completedTurns",
-        "permissionMode",
-        "remoteMcpServersConfig",
-        "alwaysAllowedReasons",
-        "sessionPermissionUpdates",
-        "classifierSummaryEnabled",
-        "orgiiMaterialization",
-        "cuAllowedApps",
-        // Observed Claude 3P metadata, recognized only to discard. These
-        // runtime/tool/launch controls never cross into the primary profile.
-        "cliBinaryPin",
-        "enabledMcpTools",
-        "lastSpawnRootDetected",
-        "latestUserFrameAt",
-        "promptAppendSnapshot",
-        "remoteControlAutoEligible",
-        "reportFindingsCard",
-        "spawnSeed",
-        "titleTurn",
-        "toolSurfaceSnapshot",
-    ];
     let (id, desktop, cwd) = identity(source)?;
-    if source
-        .as_object()
-        .is_none_or(|object| object.keys().any(|key| !KNOWN.contains(&key.as_str())))
-    {
-        return Err(Status::Unsupported);
-    }
     if source.get("isArchived").is_some_and(|v| v != false) {
         return Err(Status::Conflict);
     }
@@ -276,6 +238,28 @@ pub(super) fn run_at_automatic(
                     {
                         return Err(Status::Conflict);
                     }
+                    let (_, _, cwd) = identity(&source)?;
+                    let relative = PathBuf::from("projects")
+                        .join(sanitize_claude_project_name(Path::new(cwd)))
+                        .join(format!("{id}.jsonl"));
+                    let scope = pair_scope(
+                        profile,
+                        owner,
+                        &account,
+                        &local_account,
+                        &source,
+                        target,
+                        &path,
+                    )?;
+                    if storage::registration_pending(
+                        &roots.primary.join(&relative),
+                        &roots.package.join(&relative),
+                        &roots.state,
+                        id,
+                        &scope,
+                    )? {
+                        return Ok(Some(((*target).clone(), registration_row(&source)?)));
+                    }
                     return Ok(None);
                 }
                 // No authoritative active-org setting exists in the known
@@ -294,7 +278,7 @@ pub(super) fn run_at_automatic(
                     eligible.insert(id.to_owned());
                 }
                 Ok(Some((target, output))) => candidates.push((path, source, target, output)),
-                Err(status) => failures.push(failed_item(id, &source, status)),
+                Err(status) => failures.push(failed_item(id, status)),
             }
             if eligible.len() + candidates.len() + failures.len() > MAX_PAIRS {
                 return Err(Status::Limit);
@@ -366,14 +350,12 @@ pub(super) fn run_at_automatic(
                     | Status::WriterUnknown
                     | Status::Limit),
                 ) => return Err(status),
-                Err(status) => failures.push(failed_item(id, &source, status)),
+                Err(status) => failures.push(failed_item(id, status)),
             }
         }
         report = run_filtered_at(
             profile,
             owner,
-            None,
-            Mode::Sync,
             &check_owner,
             &check_writers,
             roots,
@@ -405,15 +387,9 @@ pub(super) fn run_at_automatic(
     report
 }
 
-fn failed_item(id: &str, row: &Value, status: Status) -> Item {
+fn failed_item(id: &str, status: Status) -> Item {
     Item {
         session_id: id.to_owned(),
-        title: row["title"]
-            .as_str()
-            .unwrap_or("Claude conversation")
-            .chars()
-            .take(200)
-            .collect(),
         status,
     }
 }

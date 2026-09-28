@@ -21,6 +21,7 @@ const CloudCapabilitiesWireSchema = z.object({
   storageSegments: z.boolean().nullish().catch(undefined),
   homeEndpoints: z.boolean().nullish().catch(undefined),
   teamInboxMentions: z.boolean().nullish().catch(undefined),
+  channelInboxMentions: z.boolean().nullish().catch(undefined),
   memberRuntime: z.boolean().nullish().catch(undefined),
   sessionTurnIndex: z.boolean().nullish().catch(undefined),
   offlineSync: z.boolean().nullish().catch(undefined),
@@ -38,6 +39,8 @@ export interface CloudCapabilities {
   storageSegments: boolean;
   homeEndpoints: boolean;
   teamInboxMentions: boolean;
+  /** Unified channel/message Inbox v2; absent on older deployments. */
+  channelInboxMentions?: boolean;
   /** 0010 member-runtime sharing tables/RPCs are present. */
   memberRuntime: boolean;
   /** 0012 per-round turn-index table/RPCs are present. */
@@ -128,6 +131,9 @@ async function probeCloudCapabilities(
       conversationEvents: parsed.data.conversationEvents ?? false,
       conversationEventsIdempotency:
         parsed.data.conversationEventsIdempotency ?? false,
+      ...(parsed.data.channelInboxMentions
+        ? { channelInboxMentions: true }
+        : {}),
       ...(parsed.data.sharedSessionFiles ? { sharedSessionFiles: true } : {}),
       conversationTurnCoordination:
         parsed.data.conversationTurnCoordination ?? false,

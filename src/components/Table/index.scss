@@ -172,9 +172,15 @@
   // PR/issue and work-item tables — while remaining opaque over scrolling data.
   --settings-table-surface: var(--color-primary-container);
   --settings-table-body-surface: var(--settings-table-surface);
-  // Sticky cells paint their own opaque layer, so every row paint path must
-  // resolve hover from the same token. Page-list tables override this below.
-  --settings-table-row-hover-surface: var(--settings-table-body-surface);
+  --settings-table-pinned-cell-surface: var(--settings-table-body-surface);
+  // Sticky cells paint their own opaque layer, so keep the softer hover
+  // surface opaque and shared across the row. Page-list tables override it.
+  --settings-table-hover-base-surface: var(--settings-table-body-surface);
+  --settings-table-row-hover-surface: color-mix(
+    in srgb,
+    var(--color-fill-2) 60%,
+    var(--settings-table-hover-base-surface)
+  );
   --settings-table-cover-fade-size: 56px;
 
   &.table-settings-pane-body {
@@ -451,7 +457,7 @@
     .table-thead tr > .table-th:last-child,
     .table-row > .table-td:last-child {
       position: relative;
-      background: var(--settings-table-body-surface);
+      background: var(--settings-table-pinned-cell-surface);
 
       &::before {
         position: absolute;
@@ -466,11 +472,11 @@
           transparent 0%,
           color-mix(
               in srgb,
-              var(--settings-table-body-surface) 90%,
+              var(--settings-table-pinned-cell-surface) 90%,
               transparent
             )
             50%,
-          var(--settings-table-body-surface) 100%
+          var(--settings-table-pinned-cell-surface) 100%
         );
         transition: opacity 120ms ease;
         content: "";
@@ -526,15 +532,9 @@
     height: 1px; // allow child flex container to use h-full
   }
 
-  // An expandable settings row toggles from anywhere on the row, so hovering
-  // the row tints its disclosure chevron. This is independent of the row
-  // background hover (SettingsTable leaves `hover` off by default) and follows
-  // the same post-toggle suppression. Unlayered, so it outranks the Button's
-  // own `text-text-2` / `hover:text-text-1` utilities.
-  .table-row:not(.table-row-hover-suppressed):hover
-    > .table-expand-cell
-    .table-expand-button {
-    color: var(--color-primary-6);
+  .table-row[tabindex="0"]:focus-visible {
+    outline: 2px solid var(--color-primary-6);
+    outline-offset: -2px;
   }
 
   .table-row,
@@ -547,13 +547,18 @@
   }
 
   &.table-hover .table-row,
-  &.table-hover .table-expanded-row,
-  &.table-clickable .table-row,
-  &.table-clickable .table-expanded-row {
+  &.table-clickable .table-row {
     &:hover,
     &:hover > .table-td {
       background: var(--settings-table-row-hover-surface);
     }
+  }
+
+  &.table-hover .table-expanded-row:hover,
+  &.table-hover .table-expanded-row:hover > .table-td,
+  &.table-clickable .table-expanded-row:hover,
+  &.table-clickable .table-expanded-row:hover > .table-td {
+    background: var(--settings-table-body-surface);
   }
 
   &.table-expanded-no-hover .table-expanded-row:hover,
@@ -705,6 +710,8 @@
 .settings-table-root-transparent .table-settings {
   --settings-table-surface: transparent;
   --settings-table-body-surface: transparent;
+  --settings-table-hover-base-surface: var(--color-bg-2);
+  --settings-table-pinned-cell-surface: var(--color-bg-2);
 }
 
 .settings-table-root-transparent {
@@ -725,18 +732,6 @@
   background: transparent;
 }
 
-.settings-table-root-transparent .table-settings.table-hover .table-row:hover,
-.settings-table-root-transparent
-  .table-settings.table-hover
-  .table-expanded-row:hover,
-.settings-table-root-transparent
-  .table-settings.table-hover
-  .table-row:hover
-  > .table-td,
-.settings-table-root-transparent
-  .table-settings.table-hover
-  .table-expanded-row:hover
-  > .table-td,
 .settings-table-root-transparent
   .table-settings.table-clickable
   .table-row:hover,
@@ -745,6 +740,14 @@
   .table-row:hover
   > .table-td {
   background: transparent;
+}
+
+.settings-table-root-transparent .table-settings.table-hover .table-row:hover,
+.settings-table-root-transparent
+  .table-settings.table-hover
+  .table-row:hover
+  > .table-td {
+  background: var(--settings-table-row-hover-surface);
 }
 
 // Full-bleed page lists sit directly on the page surface, but a frozen first

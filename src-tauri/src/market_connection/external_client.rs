@@ -10,7 +10,7 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
         return Err("Opening Market clients is not available on this platform yet".into());
     }
     let lease = super::owner::require()?;
-    super::native_app_launch::verify_installed(&agent).await?;
+    let resolved_client = super::native_compatibility::for_operation(&agent).await?;
     if key.starts_with("market-app:") {
         let catalog = super::app_catalog::Catalog::parse(&key, &agent)?;
         catalog.resolve(&model)?;
@@ -47,7 +47,13 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
     }
     #[cfg(target_os = "macos")]
     if agent == "codex" {
-        super::codex_history::before_open(lease.clone()).await?;
+        super::codex_history::before_open(
+            lease.clone(),
+            resolved_client
+                .clone()
+                .ok_or("Missing native App identity")?,
+        )
+        .await?;
     }
     let barrier = super::source::operation_barrier(&lease).await?;
     // A saved isolated profile can outlive the process that applied it. Its
@@ -67,9 +73,14 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
                 &model,
                 || {
                     let activation_owner = lease.clone();
-                    super::native_app_launch::open(&agent, &profile, move || {
-                        activation_owner.check()
-                    })
+                    super::native_app_launch::open(
+                        resolved_client
+                            .as_ref()
+                            .ok_or("Missing native App identity")?,
+                        &agent,
+                        &profile,
+                        move || activation_owner.check(),
+                    )
                 },
             );
         }

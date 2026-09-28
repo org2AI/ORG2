@@ -1,7 +1,12 @@
 import type { TFunction } from "i18next";
 
+import type { QuotaResetCredits } from "@src/api/types/keyVault";
 import { CLI_AGENT } from "@src/api/types/keys";
 import type { UsageItem } from "@src/api/types/keys";
+import {
+  CODEX_RESERVE_LABEL,
+  CODEX_RESERVE_MODEL,
+} from "@src/util/modelNameGrammar";
 
 import type { KeyVaultAccount } from "./types";
 
@@ -43,6 +48,8 @@ export interface AccountQuotaCard {
   accountName: string;
   accountPlan?: string | null;
   quotaMessage?: string | null;
+  /** Hover detail for `quotaMessage`, one entry per reset expiry. */
+  quotaMessageDetails?: string[];
   modelType: KeyVaultAccount["modelType"];
   metrics: AccountQuotaMetric[];
 }
@@ -490,23 +497,66 @@ export function getQuotaUsageLabel(
   return usageType.replace(/_/g, " ");
 }
 
-function getResetCreditsLabel(
-  account: KeyVaultAccount,
-  tIntegrations: TFunction<"integrations">
-): string | null {
-  if (account.modelType !== CLI_AGENT.CODEX) return null;
-  // Adapt the existing backend's reset-credit message, including cached legacy summaries.
-  const message = account.quotaInfo?.named_message;
-  const match = message?.match(
+function resolveResetCredits(
+  account: KeyVaultAccount
+): QuotaResetCredits | null {
+  if (
+    account.modelType !== CLI_AGENT.CODEX &&
+    account.modelType !== CLI_AGENT.CLAUDE_CODE
+  ) {
+    return null;
+  }
+  const credits = account.quotaInfo?.reset_credits;
+  if (credits && Number.isSafeInteger(credits.available)) {
+    return { ...credits, expirations: credits.expirations ?? [] };
+  }
+  // Quotas cached before `reset_credits` existed carry only the summary message.
+  const match = account.quotaInfo?.named_message?.match(
     /^Reset credits(?: available)?: (\d+)(?=$|[ /,(])/
   );
   if (!match) return null;
-  const count = Number(match[1]);
-  if (!Number.isSafeInteger(count)) return null;
-  return tIntegrations("keyVault.quota.resetsAvailable", {
-    count,
-    defaultValue: `${count} ${count === 1 ? "reset" : "resets"} available`,
+  const available = Number(match[1]);
+  return Number.isSafeInteger(available)
+    ? { available, expirations: [] }
+    : null;
+}
+
+function getResetCreditsMessage(
+  account: KeyVaultAccount,
+  tIntegrations: TFunction<"integrations">
+): Pick<AccountQuotaCard, "quotaMessage" | "quotaMessageDetails"> {
+  const credits = resolveResetCredits(account);
+  if (!credits) return { quotaMessage: null, quotaMessageDetails: [] };
+  const expiryLines = credits.expirations.flatMap(({ count, expires_at }) => {
+    const date = formatQuotaResetTime(expires_at)?.full;
+    return date
+      ? [tIntegrations("keyVault.quota.resetsExpire", { count, date })]
+      : [];
   });
+  return {
+    quotaMessage: tIntegrations("keyVault.quota.resetsAvailable", {
+      count: credits.available,
+    }),
+    quotaMessageDetails: expiryLines,
+  };
+}
+
+/** Model-scoped pools stay separate from ordinary account quota. Missing means unknown. */
+export function buildModelQuotaMetrics(
+  quota: KeyVaultAccount["quotaInfo"],
+  tIntegrations: TFunction<"integrations">
+): AccountQuotaPercentageMetric[] {
+  return (quota?.model_quotas ?? []).flatMap((pool) =>
+    pool.usage_items
+      .filter((item) => item.enabled)
+      .map((item) => ({
+        kind: "percentage" as const,
+        key: `${pool.limit_id}:${item.usage_type}`,
+        label: `${pool.limit_id === CODEX_RESERVE_MODEL && pool.model === "gpt-5.6-luna" ? CODEX_RESERVE_LABEL : pool.limit_id} · ${getQuotaUsageLabel(CLI_AGENT.CODEX, item.usage_type, tIntegrations)}`,
+        remainingPercent: item.remaining_percentage,
+        resetTime: item.reset_time,
+      }))
+  );
 }
 
 export function collectAccountQuotaCards(
@@ -530,6 +580,27 @@ export function collectAccountQuotaCards(
             tIntegrations
           )
         : [];
+    const modelMetrics = buildModelQuotaMetrics(
+      account.quotaInfo,
+      tIntegrations
+    );
+    // A separate pool must not hide a legacy ordinary overall meter.
+    const ordinaryPercent = resolveKnownRemainingPercent(
+      account.quotaInfo.remaining_percentage
+    );
+    if (
+      modelMetrics.length > 0 &&
+      metrics.length === 0 &&
+      ordinaryPercent !== null
+    ) {
+      metrics.push({
+        kind: "percentage",
+        key: "overall",
+        label: tIntegrations("keyVault.quota.quotaUsage"),
+        remainingPercent: ordinaryPercent,
+      });
+    }
+    metrics.push(...modelMetrics);
     const balanceValue = resolveAccountQuotaBalanceValue(account.quotaInfo);
     if (balanceValue !== null) {
       metrics.unshift({
@@ -549,7 +620,7 @@ export function collectAccountQuotaCards(
         id: account.id,
         accountName: accountLabels.accountName,
         accountPlan: accountLabels.accountPlan,
-        quotaMessage: getResetCreditsLabel(account, tIntegrations),
+        ...getResetCreditsMessage(account, tIntegrations),
         modelType: account.modelType,
         metrics: [
           {
@@ -567,7 +638,7 @@ export function collectAccountQuotaCards(
       id: account.id,
       accountName: accountLabels.accountName,
       accountPlan: accountLabels.accountPlan,
-      quotaMessage: getResetCreditsLabel(account, tIntegrations),
+      ...getResetCreditsMessage(account, tIntegrations),
       modelType: account.modelType,
       metrics,
     });

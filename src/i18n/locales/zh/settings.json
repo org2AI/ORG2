@@ -1114,11 +1114,12 @@
     "marketApps": {
       "isolatedStorage": "最近 50 条对话会自动同步。已在 Codex 中打开的对话，请退出并重新打开 Codex 以接收最新消息。主 App 和 CLI 的配置保持独立",
       "isolatedClaudeStorage": "退出 Claude Desktop 和 Claude Code 后，最近 50 条对话会自动同步",
+      "historyPolicy": "两边都发生变化时，后写入的一份会覆盖另一份；被覆盖的消息无法恢复",
       "loading": "正在加载 ORG2 Market 套餐…",
       "loadFailed": "无法加载 ORG2 Market 套餐",
       "nonePurchased": "暂时没有可用的 ORG2 Market 套餐",
       "checking": "正在检查应用…",
-      "unavailable": "当前安装版本暂不可用",
+      "unavailable": "此 App 连接暂不可用",
       "notInstalled": "尚未安装",
       "original": "正在使用应用原有配置",
       "open": "打开应用",
@@ -1128,7 +1129,6 @@
       "actionFailed": "无法更新此应用连接",
       "openFailed": "无法打开此应用",
       "restoreRequired": "请先恢复此应用的原始设置，然后重新选择套餐并应用连接",
-      "versionUnverified": "当前 ORG2 版本尚未验证此桌面应用版本的独立连接兼容性，请更新 ORG2 后重试",
       "workspaceNumber": "服务 {{index}} / {{count}}",
       "openTerminal": "打开终端",
       "terminalOpened": "已打开终端",
@@ -1138,10 +1138,21 @@
       "defaultModel": "默认模型",
       "packageLimit": "最多选择 8 个套餐",
       "historySync": {
+        "observing": "自动历史同步正在监听变化",
         "active": "历史同步运行中 · 已共享 {{shared}} 条对话",
         "attention": "历史同步运行中 · 已共享 {{shared}} 条 · {{conflicts}} 条需要处理",
         "paused": "历史同步已暂停：{{reason}}",
-        "idle": "历史同步空闲"
+        "idle": "历史同步空闲",
+        "reasons": {
+          "compatibility": "尚未验证此应用历史格式的兼容性",
+          "changed": "应用已更新，需要重新验证历史兼容性",
+          "route": "无法确认目标模型和提供商",
+          "checking": "正在检查对话历史",
+          "waiting": "退出 Claude Desktop 和 Claude Code 后会自动同步历史，重新打开 Claude Desktop 即可查看",
+          "namespace": "首次使用：打开 Claude Desktop 完成初始化，再退出并重新打开以载入历史",
+          "attention": "部分对话需要处理，已有历史已保留",
+          "unavailable": "自动历史同步暂时不可用"
+        }
       }
     }
   },

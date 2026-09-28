@@ -113,7 +113,12 @@
       "resetsAvailable_one": "{{count}} Zurücksetzung verfügbar",
       "resetsAvailable_few": "{{count}} Zurücksetzungen verfügbar",
       "resetsAvailable_many": "{{count}} Zurücksetzungen verfügbar",
-      "resetsAvailable_other": "{{count}} Zurücksetzungen verfügbar"
+      "resetsAvailable_other": "{{count}} Zurücksetzungen verfügbar",
+      "resetsExpire": "{{count}} Zurücksetzungen laufen am {{date}} ab",
+      "resetsExpire_one": "{{count}} Zurücksetzung läuft am {{date}} ab",
+      "resetsExpire_few": "{{count}} Zurücksetzungen laufen am {{date}} ab",
+      "resetsExpire_many": "{{count}} Zurücksetzungen laufen am {{date}} ab",
+      "resetsExpire_other": "{{count}} Zurücksetzungen laufen am {{date}} ab"
     },
     "health": {
       "cloudListingInvalid": "Cloud-Angebot ungültig",
@@ -1319,7 +1324,7 @@
     "deleteOrgTitle": "Team löschen?",
     "deleteOrgMessage": "\"{{name}}\" wird dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.",
     "cliUpdateAlerts": {
-      "label": "Auf CLI-Updates hinweisen",
+      "label": "Benachrichtigungen zu CLI-Updates",
       "description": "Prüft CLI-Versionen und weist auf verfügbare Updates hin. Aus deaktiviert die Prüfungen"
     },
     "cliManagedConfig": {

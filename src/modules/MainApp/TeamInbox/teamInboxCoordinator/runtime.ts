@@ -69,9 +69,10 @@ export interface TeamInboxCoordinatorDependencies {
   setMentionRead(
     accessToken: string,
     orgId: string,
-    commentId: string,
+    sourceId: string,
     read: boolean,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    sourceKind?: "session_comment" | "channel_message"
   ): Promise<TeamInboxReadMutation>;
   markAllMentionsRead(
     accessToken: string,

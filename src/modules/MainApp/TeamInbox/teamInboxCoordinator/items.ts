@@ -66,31 +66,55 @@ export function mapMentionsToItems(
   mentions: readonly TeamInboxMention[],
   activeCloudOrgId: string
 ): TeamInboxItem[] {
-  return mentions.map((mention) => ({
-    id: `cloud-comment:${activeCloudOrgId}:${mention.comment.id}`,
-    kind: "comment_mention" as const,
-    source: "cloud" as const,
-    occurredAt: mention.createdAt,
-    readAt: mention.readAt,
-    actor: {
-      id: mention.author.userId,
-      displayName: mention.author.displayName ?? mention.author.userId,
-    },
-    target: {
-      kind: "session_comment" as const,
-      orgId: activeCloudOrgId,
-      sessionId: mention.session.id,
-      sessionTitle: mention.session.title ?? mention.session.id,
-      commentId: mention.comment.id,
-      threadId: mention.comment.parentId ?? mention.comment.id,
-      anchor: mention.comment.id,
-    },
-    payload: {
-      commentBody: mention.body,
-      commentCount: mention.commentCount,
-      threadCommentCount: mention.threadCount,
-    },
-  }));
+  return mentions.map(
+    (mention): TeamInboxItem =>
+      "channel" in mention
+        ? {
+            id: `cloud-channel-message:${activeCloudOrgId}:${mention.message.id}`,
+            kind: "comment_mention",
+            source: "cloud",
+            occurredAt: mention.createdAt,
+            readAt: mention.readAt,
+            actor: {
+              id: mention.author.userId,
+              displayName: mention.author.displayName ?? mention.author.userId,
+            },
+            target: {
+              kind: "channel_message",
+              orgId: activeCloudOrgId,
+              channelId: mention.channel.id,
+              channelName: mention.channel.name,
+              visibility: mention.channel.visibility,
+              messageId: mention.message.id,
+            },
+            payload: { commentBody: mention.body, commentCount: 0 },
+          }
+        : {
+            id: `cloud-comment:${activeCloudOrgId}:${mention.comment.id}`,
+            kind: "comment_mention" as const,
+            source: "cloud" as const,
+            occurredAt: mention.createdAt,
+            readAt: mention.readAt,
+            actor: {
+              id: mention.author.userId,
+              displayName: mention.author.displayName ?? mention.author.userId,
+            },
+            target: {
+              kind: "session_comment" as const,
+              orgId: activeCloudOrgId,
+              sessionId: mention.session.id,
+              sessionTitle: mention.session.title ?? mention.session.id,
+              commentId: mention.comment.id,
+              threadId: mention.comment.parentId ?? mention.comment.id,
+              anchor: mention.comment.id,
+            },
+            payload: {
+              commentBody: mention.body,
+              commentCount: mention.commentCount,
+              threadCommentCount: mention.threadCount,
+            },
+          }
+  );
 }
 
 export function resolveTeamInboxMemberNames(

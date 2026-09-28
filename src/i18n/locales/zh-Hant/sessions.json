@@ -654,7 +654,7 @@
       "positionDown": "下方",
       "showQuickActions": "快捷操作",
       "showSkills": "釘選 Skills",
-      "showCliUpdate": "CLI 更新",
+      "showCliUpdate": "CLI 版本更新提醒",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新建會話"
@@ -2006,10 +2006,12 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} 有新版本",
-      "versions": "目前版本：{{installed}} · 最新版本：{{latest}}",
       "upgrade": "在終端機升級",
-      "upgradeHint": "在獨立終端機升級 Cursor 命令列工具，完成後點擊重新檢查",
-      "upgradeTerminal": "升級 Cursor 命令列工具",
+      "upgradeDocs": "查看官方文件",
+      "upgradeChooseMethod": "選擇原來的安裝方式",
+      "upgradeNative": "工具內建更新器",
+      "upgradeHint": "在獨立終端機升級 {{cli}} 命令列工具，完成後點擊重新檢查",
+      "upgradeTerminal": "升級 {{cli}} 命令列工具",
       "upgradeStarted": "已在終端機啟動升級，完成後點擊重新檢查",
       "upgradeFailed": "無法開啟升級終端機，請重試",
       "muteUntilNextVersion": "下一版本前不再提醒",
@@ -2677,15 +2679,21 @@
     "teamChatMode": "團隊聊天",
     "promptTooltip": "傳送給 agent",
     "teamChatTooltip": "傳訊息給隊友 — 不會觸發 agent",
+    "workspaceResolving": "正在尋找符合的本機工作區，請稍後再試",
+    "workspaceRequiredTitle": "開啟符合的工作區",
+    "workspaceRequiredBody": "要讓 Agent 繼續此共享對話，請先開啟該儲存庫的本機工作區",
+    "openWorkspace": "開啟工作區",
     "imagesUnsupported": "團隊聊天訊息不能包含圖片",
     "participantsTooltip": "對話參與者與討論訊息",
     "mentionGroup": "隊友"
   },
   "sharedFile": {
+    "resolvingOrigin": "共享檔案的來源資訊仍在載入，請稍後重試。",
     "downloaded": "已儲存至下載資料夾",
     "downloadError": "無法儲存至下載資料夾",
     "title": "共享檔案",
-    "error": "無法開啟檔案，請檢查帳號、伺服器及對話存取權限後重新開啟連結",
+    "error": "無法開啟此檔案。請重試，或檢查網路、帳號、伺服器及工作階段存取權限。",
+    "notUploaded": "此檔案尚未上傳至此共用工作階段，需要傳送端完成上傳。你可以重試以檢查上傳結果。",
     "downloadPreview": "下載檔案以查看內容",
     "download": "下載",
     "loading": "正在載入共享檔案…"

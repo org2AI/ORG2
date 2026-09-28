@@ -11,6 +11,7 @@ mod json_rpc;
 mod model_discovery;
 mod process_tree;
 mod quota;
+pub mod reserve;
 mod validator;
 
 pub(crate) use id_token::extract_account_id_from_id_token;

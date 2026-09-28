@@ -18,6 +18,11 @@
 import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 
 import { groupModels } from "./modelGrouping";
+import {
+  CODEX_RESERVE_LABEL,
+  CODEX_RESERVE_MODEL,
+  isCodexReserveModel,
+} from "./modelNameGrammar";
 import { formatTierModelLabel } from "./modelTiers";
 import { formatReasoningLevel, parseModelVariant } from "./modelVariants";
 
@@ -76,6 +81,13 @@ function formatClaudeModelName(cleanedModel: string): string | undefined {
 
 export function formatModelName(model: string, agentType?: string): string {
   if (!model) return model;
+  if (isCodexReserveModel(model)) {
+    const variant = parseModelVariant(model);
+    return model === CODEX_RESERVE_MODEL
+      ? CODEX_RESERVE_LABEL
+      : `${CODEX_RESERVE_LABEL} ${formatReasoningLevel(variant?.reasoning)}`;
+  }
+
   // A routing tier names no model, so it only earns a product label once the
   // owner is known to be Cursor ("default" → "Auto (Cursor picks)"). Without
   // that hint "default" stays the raw id: title-casing it to "Default" would

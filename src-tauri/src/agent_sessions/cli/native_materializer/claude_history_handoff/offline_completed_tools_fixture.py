@@ -7,11 +7,12 @@ import os
 from pathlib import Path
 import re
 import shlex
-import signal
-import subprocess
 import tempfile
 import threading
 import uuid
+from offline_fixture_capture import Capture, run_cli
+
+capture = Capture()
 
 CLI = os.environ.get('ORG2_CLAUDE_CLI', '/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe')
 SANDBOX = '(version 1)(allow default)(deny network-outbound)(allow network-outbound (remote ip "localhost:*"))'
@@ -72,14 +73,9 @@ def run_case(kind):
             add('assistant', message={'role': 'assistant', 'type': 'message', 'id': 'msg_old_done', 'model': 'claude-sonnet-4-6',
                 'content': [{'type': 'text', 'text': 'Calibration baseline'}], 'stop_reason': 'end_turn', 'usage': {'input_tokens': 1, 'output_tokens': 1}})
         rows.append({'type': 'last-prompt', 'sessionId': session, 'leafUuid': parent, 'lastPrompt': 'fixture'})
-        supplied = os.environ.get('ORG2_PROJECTED_TOOL_FIXTURE')
-        if supplied and kind == 'success':
-            rows = [json.loads(raw) for raw in Path(supplied).read_text().splitlines() if raw]
-            session = rows[0]['sessionId']
-            for row in rows:
-                if 'cwd' in row: row['cwd'] = str(cwd)
-            print('rust_completed_tool_projection_fixture', True)
-        (project / (session + '.jsonl')).write_text(''.join(json.dumps(row) + '\n' for row in rows))
+        transcript = project / (session + '.jsonl')
+        transcript.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+        captured = capture.begin(kind, session, transcript)
         requests = []
 
         class Handler(http.server.BaseHTTPRequestHandler):
@@ -122,15 +118,14 @@ def run_case(kind):
                 '--model', 'claude-sonnet-4-6', '--output-format', 'json', '-p', 'Reply fixture only; do not use tools.']
         runs = 1 if kind == 'calibration' else 2
         for _ in range(runs):
-            proc = subprocess.Popen(args, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
-            try:
-                out, err = proc.communicate(timeout=30)
-            except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
-                out, err = proc.communicate()
-                raise AssertionError('fixture timed out')
+            transcript, home, env = capture.handoff(captured, transcript, home, cwd, env)
+            proc = run_cli(args, cwd=cwd, env=env)
+            out = err = proc.stdout.encode()
+            if proc.returncode != 0 and b'sandbox-exec:' in err:
+                raise RuntimeError(err.decode(errors='replace')[:500])
             assert proc.returncode == 0, err.decode(errors='replace')[:500]
             assert b'OFFLINE_FIXTURE_OK' in out, out.decode(errors='replace')[:500]
+            capture.snapshot(captured, transcript)
         events = hook_log.read_text().splitlines() if hook_log.exists() else []
         if kind == 'calibration':
             assert len(requests) == 2 and events == ['Read'], (len(requests), events)
@@ -152,5 +147,10 @@ def run_case(kind):
         server.shutdown()
 
 
-for case in ['calibration', 'success', 'error', 'parallel', 'text_blocks', 'bash', 'edit', 'write', 'glob', 'grep']:
-    run_case(case)
+def main():
+    for case in ['calibration', 'success', 'error', 'parallel', 'text_blocks', 'bash', 'edit', 'write', 'glob', 'grep']:
+        run_case(case)
+
+
+if __name__ == '__main__':
+    raise SystemExit(capture.run(main))

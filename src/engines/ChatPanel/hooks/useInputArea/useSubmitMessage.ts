@@ -59,7 +59,10 @@ import {
 } from "./submissionSnapshot";
 import type { UseSubmitMessageOptions } from "./submitMessageOptions";
 import type { CiteCodeSnapshot, SubmitMessageOptions } from "./types";
-import { SubmitRetainedDeliveryError } from "./types";
+import {
+  SubmitHandledByDialogError,
+  SubmitRetainedDeliveryError,
+} from "./types";
 import { useSubmitAttemptLock } from "./useSubmitAttemptLock";
 
 // Re-exported for existing consumers/tests; the implementation moved to the
@@ -367,13 +370,15 @@ export function useSubmitMessage({
             }
           }
 
-          const reason = isAgentOrgFinalizingInputError(err)
-            ? t("groupChat.finalizingBanner.body")
-            : err instanceof Error
-              ? err.message
-              : String(err);
-          const baseMsg = t("chat.failedToSendMessage");
-          Message.error(reason ? `${baseMsg}: ${reason}` : baseMsg);
+          if (!(err instanceof SubmitHandledByDialogError)) {
+            const reason = isAgentOrgFinalizingInputError(err)
+              ? t("groupChat.finalizingBanner.body")
+              : err instanceof Error
+                ? err.message
+                : String(err);
+            const baseMsg = t("chat.failedToSendMessage");
+            Message.error(reason ? `${baseMsg}: ${reason}` : baseMsg);
+          }
         }
       } finally {
         submitInFlightKeyRef.current = null;

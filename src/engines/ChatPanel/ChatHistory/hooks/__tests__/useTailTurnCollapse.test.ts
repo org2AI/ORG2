@@ -216,6 +216,38 @@ describe("useTailTurnPhase streaming lifecycle", () => {
     expect(render()).toBe("running");
   });
 
+  it("reopens a prematurely completed accepted turn when real streaming output arrives", () => {
+    store.set(sessionRuntimeStatusAtom, "idle");
+    expect(render()).toBe("complete");
+    act(() => store.set(sessionRuntimeStatusAtom, "running"));
+    options = {
+      ...options,
+      chatHistory: [
+        ...options.chatHistory,
+        event({
+          id: "live-assistant-sdeagent-one",
+          isDelta: true,
+        }),
+      ],
+    };
+    expect(render()).toBe("complete");
+    options = {
+      ...options,
+      chatHistory: [
+        ...options.chatHistory,
+        event({
+          id: "stream-msg-ts-sdeagent-one-current",
+          isDelta: true,
+          displayStatus: "running",
+          result: { content: "Growing reply" },
+        }),
+      ],
+    };
+    expect(render()).toBe("running");
+    act(() => store.set(sessionRuntimeStatusAtom, "idle"));
+    expect(container.textContent).toBe("complete");
+  });
+
   it("does not share completion between sessions or restore an old latch on return", () => {
     store.set(sessionRuntimeStatusAtom, "idle");
     expect(render()).toBe("complete");

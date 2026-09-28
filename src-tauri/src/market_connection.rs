@@ -13,12 +13,16 @@ pub(crate) mod codex_history;
 mod configure_catalog;
 #[cfg(feature = "market-connect")]
 mod external_client;
+#[cfg(all(feature = "market-connect", target_os = "macos"))]
+pub(crate) mod history_status;
+#[cfg(feature = "market-connect")]
+mod native_admission;
 #[cfg(feature = "market-connect")]
 mod native_app_launch;
 #[cfg(feature = "market-connect")]
-mod native_provider;
+pub(crate) mod native_compatibility;
 #[cfg(feature = "market-connect")]
-mod native_admission;
+mod native_provider;
 #[cfg(feature = "market-connect")]
 mod owner;
 #[cfg(feature = "market-connect")]
@@ -46,10 +50,14 @@ fn history_serial() -> &'static tokio::sync::Mutex<()> {
     SERIAL.get_or_init(Default::default)
 }
 
-/// Settings reads the automatic Codex history state through the connection view.
+/// The existing connection card reads either adapter without starting work.
 #[cfg(all(feature = "market-connect", target_os = "macos"))]
-pub(crate) fn codex_history_status() -> Option<codex_history::HistorySyncView> {
-    Some(codex_history::status())
+pub(crate) fn history_status(agent: &str) -> Option<history_status::HistorySyncView> {
+    match agent {
+        "codex" => Some(codex_history::status()),
+        "claude_desktop" => Some(claude_history::status()),
+        _ => None,
+    }
 }
 
 pub(crate) fn stop_history_sync() {
@@ -356,7 +364,7 @@ pub async fn market_connection_configure_profile(
         validate_external_profile_request(&target, &agent, &model)?;
         let lease = owner::require()?;
         lease.matches(&identity_user_id)?;
-        native_app_launch::verify_installed(&agent).await?;
+        let resolved_client = native_compatibility::for_operation(&agent).await?;
         let selection = source::prepare_session(
             market_connect::ConnectionMetadata {
                 identity_user_id,
@@ -380,6 +388,9 @@ pub async fn market_connection_configure_profile(
             &model,
             now,
         )?;
+        if let Some(client) = &resolved_client {
+            client.ensure_current()?;
+        }
         let native_app = lease.native_app(&agent)?;
         let status = if agent == "claude_desktop" {
             let entry = entries
@@ -419,7 +430,7 @@ pub async fn market_connection_configure_profile(
                 models,
                 expected_hashes,
                 native_app,
-                lease.operation(),
+                native_compatibility::authorize(lease.operation(), resolved_client.clone()),
             )
             .await?
         } else {
@@ -429,7 +440,7 @@ pub async fn market_connection_configure_profile(
                 model,
                 expected_hashes,
                 native_app,
-                lease.operation(),
+                native_compatibility::authorize(lease.operation(), resolved_client.clone()),
             )
             .await?
         };

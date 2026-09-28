@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "Zugewiesenes Arbeitselement",
       "standaloneProject": "Eigenständig",
+      "channelMentionSubtitle": "In einem Kanal erwähnt",
       "mentionSubtitle": "In einem Kommentar erwähnt",
       "mentionedYou": "hat dich erwähnt",
       "threadComments_one": "{{count}} Kommentar in diesem Thread",

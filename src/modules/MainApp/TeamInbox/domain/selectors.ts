@@ -112,7 +112,9 @@ function searchableText(item: TeamInboxItem): string[] {
     return [
       item.target.kind === "session_comment"
         ? item.target.sessionTitle
-        : item.target.workItemTitle,
+        : item.target.kind === "channel_message"
+          ? `#${item.target.channelName}`
+          : item.target.workItemTitle,
       item.payload.commentBody,
       item.payload.context ?? "",
       item.actor.displayName,
@@ -194,6 +196,16 @@ export function filterItemKind(
 export function toTeamInboxNavigationIntent(
   item: TeamInboxItem
 ): TeamInboxNavigationIntent {
+  if (item.target.kind === "channel_message") {
+    return {
+      kind: "open_channel_message",
+      orgId: item.target.orgId,
+      channelId: item.target.channelId,
+      channelName: item.target.channelName,
+      visibility: item.target.visibility,
+      messageId: item.target.messageId,
+    };
+  }
   if (item.target.kind === "session_comment") {
     return {
       kind: "open_session_comment",

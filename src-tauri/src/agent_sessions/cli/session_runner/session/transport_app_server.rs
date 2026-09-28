@@ -65,6 +65,7 @@ pub(super) async fn run_codex_app_server_branch(
     let turn = codex_app_server::CodexAppServerTurn {
         session_id: session_id.clone(),
         user_input,
+        turn_intent_id: turn_intent_id.map(str::to_owned),
         developer_instructions,
         working_dir: working_dir.to_string(),
         project_id,
@@ -177,7 +178,8 @@ pub(super) async fn run_codex_app_server_branch(
             cli_session_id_out = Some(result.thread_id);
             codex_app_server_turn_ok = is_successful_turn_status(&result.turn_status);
             if let Some(ref usage) = result.usage {
-                let round_model = usage.model.as_deref().or(model);
+                let round_model =
+                    super::super::command::codex_usage_model(model, usage.model.as_deref());
                 if let Err(err) = session_persistence::token_usage::insert_token_usage_record(
                     &session_id,
                     "code",

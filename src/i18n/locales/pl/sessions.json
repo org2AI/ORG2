@@ -654,7 +654,7 @@
       "positionDown": "Dół",
       "showQuickActions": "Szybkie akcje",
       "showSkills": "Przypięte umiejętności",
-      "showCliUpdate": "Aktualizacje CLI",
+      "showCliUpdate": "Powiadomienia o aktualizacjach CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Nowa sesja"
@@ -2025,10 +2025,12 @@
     },
     "cliVersionOutdated": {
       "title": "Dostępna aktualizacja {{cli}}",
-      "versions": "Obecna: {{installed}} · Najnowsza: {{latest}}",
       "upgrade": "Aktualizuj w terminalu",
-      "upgradeHint": "Aktualizuje Cursor CLI w osobnym terminalu. Po zakończeniu sprawdź wersję ponownie.",
-      "upgradeTerminal": "Aktualizacja Cursor CLI",
+      "upgradeDocs": "Oficjalna dokumentacja",
+      "upgradeChooseMethod": "Wybierz pierwotny sposób instalacji",
+      "upgradeNative": "Wbudowana aktualizacja",
+      "upgradeHint": "Aktualizuje {{cli}} CLI w osobnym terminalu. Po zakończeniu sprawdź wersję ponownie.",
+      "upgradeTerminal": "Aktualizacja {{cli}} CLI",
       "upgradeStarted": "Rozpoczęto aktualizację w terminalu. Po zakończeniu sprawdź wersję ponownie.",
       "upgradeFailed": "Nie udało się otworzyć terminala aktualizacji. Spróbuj ponownie.",
       "muteUntilNextVersion": "Bez alertu do następnej wersji",
@@ -2659,6 +2661,10 @@
     "teamChatMode": "Czat zespołu",
     "promptTooltip": "Wyślij do Agenta",
     "teamChatTooltip": "Napisz do członków zespołu — nie wywołuje Agenta",
+    "workspaceResolving": "Trwa wyszukiwanie pasującego lokalnego obszaru roboczego. Spróbuj ponownie za chwilę.",
+    "workspaceRequiredTitle": "Otwórz pasujący obszar roboczy",
+    "workspaceRequiredBody": "Aby agent mógł kontynuować tę udostępnioną rozmowę, otwórz lokalną kopię repozytorium.",
+    "openWorkspace": "Otwórz obszar roboczy",
     "imagesUnsupported": "Wiadomości czatu zespołu nie mogą zawierać obrazów",
     "participantsTooltip": "Uczestnicy rozmowy i wiadomości dyskusji",
     "mentionGroup": "Członkowie zespołu"
@@ -2682,10 +2688,12 @@
     "limit": "Wyświetlanie do 128 kont"
   },
   "sharedFile": {
+    "resolvingOrigin": "Źródło udostępnionego pliku jest nadal ładowane. Spróbuj ponownie za chwilę.",
     "downloaded": "Zapisano w folderze Pobrane",
     "downloadError": "Nie można zapisać w folderze Pobrane",
     "title": "Udostępniony plik",
-    "error": "Nie można otworzyć tego pliku. Sprawdź konto, serwer i dostęp do sesji, a następnie ponownie otwórz link.",
+    "error": "Nie można otworzyć tego pliku. Spróbuj ponownie lub sprawdź połączenie, konto, serwer i dostęp do sesji.",
+    "notUploaded": "Ten plik nie został jeszcze przesłany do udostępnionej sesji. Urządzenie nadawcy musi zakończyć przesyłanie; spróbuj ponownie, aby sprawdzić.",
     "downloadPreview": "Pobierz ten plik, aby wyświetlić jego zawartość",
     "download": "Pobierz",
     "loading": "Ładowanie udostępnionego pliku…"

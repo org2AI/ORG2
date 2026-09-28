@@ -215,11 +215,58 @@ export function recordEmptyFailedAttempt(
   };
 }
 
+/** Repair legacy failed-send projections only from sender-local native retry proof.
+ * Cloud publication alone is not evidence of provider acceptance. No audit row
+ * is deleted; a read projection restores the prompt and explicit retry owner.
+ */
+export function restoreAcceptedRetryUsers(
+  events: readonly SessionEvent[],
+  lineageEvents: readonly SessionEvent[] = events
+): SessionEvent[] {
+  const accepted = new Map<string, string>();
+  for (const event of lineageEvents) {
+    const lineage = retryLineageOf(event);
+    if (lineage?.failed) {
+      accepted.set(
+        `${event.sessionId}\0${lineage.failed.turnIntentId}`,
+        lineage.queueMessageId
+      );
+    }
+  }
+  if (accepted.size === 0) return events as SessionEvent[];
+  return events.map((event) => {
+    if (
+      event.source !== "user" ||
+      event.result?.syntheticUserInput !== true ||
+      event.result.deliveryStatus !== "failed" ||
+      typeof event.result.queueMessageId !== "string" ||
+      accepted.get(
+        `${event.sessionId}\0${conversationTurnIdOf(event) ?? ""}`
+      ) !== event.result.queueMessageId
+    )
+      return event;
+    const { deliveryError, ...result } = event.result;
+    return {
+      ...event,
+      displayStatus: "completed",
+      result: {
+        ...result,
+        deliveryStatus: "sent",
+        executionError:
+          typeof deliveryError === "string"
+            ? deliveryError
+            : "Agent request failed",
+      },
+    } as SessionEvent;
+  });
+}
+
 export function effectiveQueuedRetryEvents(
   events: readonly SessionEvent[],
   lineageEvents: readonly SessionEvent[] = events,
   preserveAuditBoundaries = false
 ): SessionEvent[] {
+  events = restoreAcceptedRetryUsers(events, lineageEvents);
   const links = lineageEvents.flatMap((event) =>
     (retryLineageOf(event)?.superseded ?? []).map((attempt) => ({
       ...attempt,

@@ -9,6 +9,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 import FileDropdown from "./FileDropdown";
+import { buildFileBreadcrumbPathSegments } from "./breadcrumbPathSegments";
 
 export interface BreadcrumbFileHeaderProps {
   /** Full file path to display */
@@ -94,7 +95,7 @@ const BreadcrumbFileHeader: React.FC<BreadcrumbFileHeaderProps> = ({
   const activeTriggerRef = useRef<HTMLSpanElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const pathSegments = useMemo(() => {
+  const pathSegments = useMemo<PathSegment[]>(() => {
     if (!filePath) return [];
 
     if (
@@ -114,10 +115,10 @@ const BreadcrumbFileHeader: React.FC<BreadcrumbFileHeaderProps> = ({
     const parts =
       displaySegments && displaySegments.length > 0
         ? [...displaySegments]
-        : filePath
-            .split("/")
-            .filter(Boolean)
-            .map((label) => ({ label }));
+        : null;
+    if (!parts) {
+      return buildFileBreadcrumbPathSegments(filePath, repoPath);
+    }
     const segments: PathSegment[] = [];
 
     parts.forEach((part, index) => {
@@ -291,7 +292,9 @@ const BreadcrumbFileHeader: React.FC<BreadcrumbFileHeaderProps> = ({
                 visible={true}
                 directoryPath={segment.fullPath}
                 repoPath={repoPath}
-                currentFilePath={filePath}
+                currentFilePath={
+                  pathSegments[pathSegments.length - 1]?.fullPath ?? filePath
+                }
                 onFileSelect={handleFileSelect}
                 onClose={handleCloseDropdown}
                 triggerRef={activeTriggerRef}

@@ -38,13 +38,11 @@ export function useCloudRemoteSessionMenuItems({
   tCommon,
   openTeamSessionAtDestination,
   hideRemoteSession,
-  runFork,
   findRow,
 }: {
   t: TFunction;
   tCommon: TFunction;
   openTeamSessionAtDestination: CloudSessionOpenHandlers["openTeamSessionAtDestination"];
-  runFork: (row: RemoteTeammateSessionMetadata) => void;
   hideRemoteSession: (row: RemoteTeammateSessionMetadata) => void;
   findRow: (rowId: string) => RemoteTeammateSessionMetadata | undefined;
 }): CloudRemoteSessionMenuItems {
@@ -73,7 +71,6 @@ export function useCloudRemoteSessionMenuItems({
         isPinned,
         labels: {
           openIn: tCommon("actions.openIn"),
-          fork: t("cloud.orgPanel.fork"),
           openInNewTab: tCommon("actions.openTargetNewTab"),
           openInNewWindow: tCommon("actions.openTargetNewWindow"),
           openInMyStation: tCommon("actions.openTargetMyStation"),
@@ -88,7 +85,6 @@ export function useCloudRemoteSessionMenuItems({
           openTeamSessionAtDestination(row, "new-window"),
         onOpenInMyStation: () =>
           openTeamSessionAtDestination(row, "my-station"),
-        onFork: () => runFork(row),
         onCopyUrl: () => {
           void copyText(buildCloudSessionReference(row))
             .then(() => {
@@ -104,7 +100,6 @@ export function useCloudRemoteSessionMenuItems({
     },
     [
       hideRemoteSession,
-      runFork,
       openTeamSessionAtDestination,
       pinnedRemoteSessionIds,
       t,

@@ -114,7 +114,12 @@
       "resetsAvailable_one": "{{count}}个可用重置",
       "resetsAvailable_few": "{{count}}个可用重置",
       "resetsAvailable_many": "{{count}}个可用重置",
-      "resetsAvailable_other": "{{count}}个可用重置"
+      "resetsAvailable_other": "{{count}}个可用重置",
+      "resetsExpire": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_one": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_few": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_many": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_other": "{{count}}个重置将于{{date}}过期"
     },
     "health": {
       "cloudListingInvalid": "云端列表无效",
@@ -1076,7 +1081,7 @@
   },
   "agentOrgs": {
     "cliUpdateAlerts": {
-      "label": "提醒 CLI 更新",
+      "label": "CLI 版本更新提醒",
       "description": "检查 CLI 版本并在有更新时提醒。关闭后不再检查"
     },
     "scope": "适用仓库",

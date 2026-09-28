@@ -12,6 +12,7 @@ import AgentMessageBlock from "@src/engines/ChatPanel/blocks/AgentMessageBlock";
 import { readTruncatedResponseTurn } from "@src/engines/ChatPanel/blocks/AgentMessageBlock/useAgentMessageExpansion";
 import LlmUsageBadge from "@src/engines/ChatPanel/blocks/ToolCallBlock/LlmUsageBadge";
 import { ChatLoadingBlock } from "@src/engines/ChatPanel/blocks/primitives";
+import { CONVERSATION_ARTIFACT_ORIGIN_ARG } from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
 import {
   LLM_USAGE_ARGS_KEY,
   type LlmUsageMetadata,
@@ -22,6 +23,7 @@ import {
   chatRequiresItemIndex,
   getChatComponent,
 } from "@src/engines/SessionCore/rendering/registry/events";
+import { SharedSessionEventFilesProvider } from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { createLogger } from "@src/hooks/logger";
 import { getRegistryEventType } from "@src/util/data/activityData/activityNormalizers";
 import {
@@ -113,6 +115,12 @@ function arePropsEqual(
     return false;
   }
 
+  if (prevEvent.repoPath !== nextEvent.repoPath) return false;
+  if (
+    prevEvent.args?.[CONVERSATION_ARTIFACT_ORIGIN_ARG] !==
+    nextEvent.args?.[CONVERSATION_ARTIFACT_ORIGIN_ARG]
+  )
+    return false;
   const prevArgs = prevEvent.args;
   const nextArgs = nextEvent.args;
   if (prevArgs?.streamContent !== nextArgs?.streamContent) return false;
@@ -350,7 +358,9 @@ const ActivityChatItem: React.FC<ActivityChatItemProps> = memo(
     // have focused while scrolling the transcript.
     return (
       <MarkdownWorkspaceRootContext.Provider value={event.repoPath}>
-        <div className="activity-chat-item">{content}</div>
+        <SharedSessionEventFilesProvider event={event}>
+          <div className="activity-chat-item">{content}</div>
+        </SharedSessionEventFilesProvider>
       </MarkdownWorkspaceRootContext.Provider>
     );
   },

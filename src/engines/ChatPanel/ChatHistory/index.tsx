@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from "react";
 
 import ChatLoadingBlock from "../blocks/primitives/ChatLoadingBlock";
+import { resolveTranscriptTopPaddingPx } from "../header/chatPanelHeaderLayout";
 import type { ChatHistoryProps } from "./ChatHistory.types";
 
 export type { ScrollNavState } from "./ChatHistory.types";
@@ -13,7 +14,15 @@ export default function LazyChatHistory(props: ChatHistoryProps) {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-0 flex-1 justify-center p-4">
+        <div
+          className="flex min-h-0 flex-1 justify-center p-4"
+          style={{
+            paddingTop: resolveTranscriptTopPaddingPx(
+              props.chromeTopInset ?? 0,
+              false
+            ),
+          }}
+        >
           <ChatLoadingBlock />
         </div>
       }

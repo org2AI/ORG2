@@ -27,6 +27,7 @@ interface InputAreaPortalsProps {
   slashLoading: boolean;
   currentMode: ComposerModeEntry["id"];
   includeProjectMode?: boolean;
+  showModes?: boolean;
   slashQuery: string;
   onSlashCommandClose: () => void;
   onSlashSelect: (item: SlashItem) => void;
@@ -53,6 +54,7 @@ export const InputAreaPortals: React.FC<InputAreaPortalsProps> = ({
   slashLoading,
   currentMode,
   includeProjectMode,
+  showModes,
   slashQuery,
   onSlashCommandClose,
   onSlashSelect,
@@ -81,6 +83,7 @@ export const InputAreaPortals: React.FC<InputAreaPortalsProps> = ({
         currentMode={currentMode}
         onModeSelect={onContextModeSelect}
         includeProjectMode={includeProjectMode}
+        showModes={showModes}
         repoPath={currentRepoPath || undefined}
         keyboardHandlerRef={contextMenuKeyboardHandlerRef}
       />

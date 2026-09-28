@@ -411,6 +411,15 @@ describe("Button hover intent", () => {
     expect(tertiary.has("btn:text-danger-6")).toBe(true);
     expect(tertiary.has("btn-hover:bg-danger-2")).toBe(true);
 
+    // The brand tone: primary-6 icon/text on a transparent tertiary.
+    const brandTertiary = classesOf({ variant: "tertiary", tone: "primary" });
+    expect(brandTertiary.has("btn:bg-transparent")).toBe(true);
+    expect(brandTertiary.has("btn:text-primary-6")).toBe(true);
+    expect(brandTertiary.has("btn-hover:bg-primary-1")).toBe(true);
+    expect(classesOf({ variant: "primary", tone: "primary" })).toEqual(
+      classesOf({ variant: "primary" })
+    );
+
     // A toned ghost keeps the tone text and never draws a surface.
     const ghost = classesOf({ variant: "ghost", tone: "danger" });
     expect(ghost.has("btn:text-danger-6")).toBe(true);

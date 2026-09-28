@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::Arc;
 
 use agent_core::session::persistence::{
     MaterializedHistoryContent, MaterializedHistoryRole, MaterializedHistorySeed,
@@ -18,6 +18,9 @@ use agent_core::state::AgentAppState;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::Utc;
 use core_types::activity::ActivityChunk;
+use orgtrack_core::sources::codex::app::materialized_tool::{
+    encode_tool_output, MATERIALIZED_TOOL_ID_PREFIX,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -32,8 +35,9 @@ use super::native_ir::{
 #[cfg(test)]
 use super::native_ir::{native_item_semantically_equal, native_items_from_chunks};
 use super::native_store::{
-    append_suffix_atomically, copy_file_atomically, create_file_atomically, lock_claude_transcript,
-    native_transcript_revision, replace_file_link_atomically, write_file_atomically,
+    append_suffix_atomically, copy_file_atomically, create_file_atomically,
+    create_file_atomically_checked, lock_claude_transcript, native_transcript_revision,
+    replace_file_link_atomically, write_file_atomically,
 };
 use super::native_transcript::TRANSCRIPT_SOURCE_NATIVE;
 use super::parsers::codex_app_server as codex_native_catalog;
@@ -41,25 +45,19 @@ use super::persistence;
 
 #[cfg(any(all(target_os = "macos", feature = "market-connect"), test))]
 pub(crate) mod claude_history_handoff;
+mod codex_index;
 #[cfg(any(all(target_os = "macos", feature = "market-connect"), test))]
 pub(crate) mod isolated_claude_history;
 mod storage;
 use storage::NativeStorageOwner;
+mod claude_catalog_scan;
+use claude_catalog_scan::CatalogScan;
 
-const CODEX_NATIVE_PATH_CACHE_MAX_ENTRIES: usize = 512;
 const CLAUDE_PROJECT_INDEX_VERSION: u64 = 1;
 const CLAUDE_DESKTOP_ACCOUNT_SCAN_LIMIT: usize = 64;
 const CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT: usize = 2_048;
 const CLAUDE_DESKTOP_METADATA_SCAN_LIMIT: usize = 10_000;
 const CLAUDE_DESKTOP_METADATA_MAX_BYTES: u64 = 256 * 1024;
-// Codex stores rollouts in a date-sharded directory tree. Resolving the same
-// native UUID by walking that tree on every turn makes a long-running session
-// progressively more expensive even though its path is immutable. Cache only
-// successful resolutions and validate the provider file still exists before
-// reusing one; deletion or profile cleanup naturally falls back to discovery.
-static CODEX_NATIVE_PATH_CACHE: LazyLock<Mutex<HashMap<(String, String), NativeTranscriptPaths>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
 /// Claude's project index is shared by every ORG2 instance that points at the
 /// same native history root. The adjacent advisory lock keeps the complete
 /// read-modify-write transaction ordered across independently launched ORG2
@@ -79,6 +77,15 @@ impl Drop for ClaudeProjectIndexGuard {
 }
 
 fn lock_claude_project_index(index_path: &Path) -> Result<ClaudeProjectIndexGuard, String> {
+    lock_claude_project_index_checked(index_path, false, &|| Ok(()))
+}
+
+fn lock_claude_project_index_checked(
+    index_path: &Path,
+    nonblocking: bool,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<ClaudeProjectIndexGuard, String> {
+    check()?;
     let parent = index_path.parent().ok_or_else(|| {
         format!(
             "Claude project index has no parent directory: {}",
@@ -87,26 +94,37 @@ fn lock_claude_project_index(index_path: &Path) -> Result<ClaudeProjectIndexGuar
     })?;
 
     let lock_path = parent.join(".orgii-sessions-index.lock");
-    let lock_file = fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&lock_path)
-        .map_err(|error| {
-            format!(
-                "open Claude project index lock {}: {error}",
-                lock_path.display()
-            )
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    if nonblocking {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    let lock_file = options.open(&lock_path).map_err(|error| {
+        format!(
+            "open Claude project index lock {}: {error}",
+            lock_path.display()
+        )
+    })?;
+    if nonblocking {
+        lock_file
+            .try_lock()
+            .map_err(|_| "claude_history_writer_busy".to_owned())?;
+    } else {
+        lock_file.lock().map_err(|error| {
+            format!("lock Claude project index {}: {error}", lock_path.display())
         })?;
-    lock_file
-        .lock()
-        .map_err(|error| format!("lock Claude project index {}: {error}", lock_path.display()))?;
+    }
+    check()?;
     Ok(ClaudeProjectIndexGuard { lock_file })
 }
 
 #[derive(Debug, Clone)]
 struct NativeTranscriptPaths {
+    /// Authoritative current row, when a Codex index exists. Reads must use
+    /// this path even before runner bytes are promoted to the native store.
+    indexed_path: Option<PathBuf>,
     /// Durable transcript discovered by the provider's real native App.
     native_path: PathBuf,
     /// Account-profile alias used by ORG2's isolated provider runner.
@@ -242,7 +260,7 @@ fn authoritative_append_suffix(
     let authoritative = authoritative_native_items(session_id)?;
     provider_portable_append_suffix(&authoritative, complete).map_err(|reason| {
         format!(
-            "provider-native transcript is not a semantic prefix of the canonical conversation: native={} canonical={} ({reason})",
+            "provider-native transcript is not a semantic prefix of the canonical conversation: session={session_id} native={} canonical={} ({reason})",
             authoritative.len(),
             complete.len()
         )
@@ -587,6 +605,7 @@ fn claude_native_paths(
         .join(".claude")
         .join(&relative);
     NativeTranscriptPaths {
+        indexed_path: None,
         runner_path: account_id
             .map(|account_id| app_paths::claude_code_cli_profile_dir(account_id).join(relative))
             .unwrap_or_else(|| native_path.clone()),
@@ -624,42 +643,31 @@ fn codex_native_app_sessions_root() -> PathBuf {
 
 fn codex_native_paths_for_relative(account_id: &str, relative: &Path) -> NativeTranscriptPaths {
     NativeTranscriptPaths {
+        indexed_path: None,
         native_path: codex_native_app_sessions_root().join(relative),
         runner_path: codex_profile_sessions_root(account_id).join(relative),
     }
-}
-
-fn cache_codex_native_paths(account_id: &str, native_id: &str, paths: &NativeTranscriptPaths) {
-    let Ok(mut cache) = CODEX_NATIVE_PATH_CACHE.lock() else {
-        return;
-    };
-    let key = (account_id.to_string(), native_id.to_string());
-    if cache.len() >= CODEX_NATIVE_PATH_CACHE_MAX_ENTRIES && !cache.contains_key(&key) {
-        if let Some(evicted) = cache.keys().next().cloned() {
-            cache.remove(&evicted);
-        }
-    }
-    cache.insert(key, paths.clone());
 }
 
 fn existing_codex_native_paths(
     account_id: &str,
     native_id: &str,
 ) -> Result<Option<NativeTranscriptPaths>, String> {
-    let cache_key = (account_id.to_string(), native_id.to_string());
-    if let Some(paths) = CODEX_NATIVE_PATH_CACHE
-        .lock()
-        .ok()
-        .and_then(|cache| cache.get(&cache_key).cloned())
-    {
-        if paths.native_path.is_file() || paths.runner_path.is_file() {
-            return Ok(Some(paths));
-        }
-        if let Ok(mut cache) = CODEX_NATIVE_PATH_CACHE.lock() {
-            cache.remove(&cache_key);
-        }
+    let home = codex_native_app_home();
+    let runner_home = app_paths::codex_cli_profile_dir(account_id);
+    if let Some(path) = codex_index::resolve(&home, Some(&runner_home), native_id)? {
+        let relative = path
+            .strip_prefix(&home)
+            .or_else(|_| path.strip_prefix(&runner_home))
+            .map_err(|_| "Codex index escaped its owner homes")?;
+        return Ok(Some(NativeTranscriptPaths {
+            native_path: home.join(relative),
+            runner_path: runner_home.join(relative),
+            indexed_path: Some(path),
+        }));
     }
-
+    // Only stores without a native SQLite index use legacy suffix discovery.
+    // The index resolver rejects absent rows/invalid paths when an index exists.
     let profile_root = codex_profile_sessions_root(account_id);
     let native_app_root = codex_native_app_sessions_root();
     let found = find_codex_materialization(&native_app_root, native_id)?
@@ -671,16 +679,25 @@ fn existing_codex_native_paths(
             None => return Ok(None),
         },
     };
-    let relative = found.strip_prefix(&root).map_err(|error| {
-        format!(
-            "resolved Codex rollout {} outside scanned root {}: {error}",
-            found.display(),
-            root.display()
-        )
-    })?;
-    let paths = codex_native_paths_for_relative(account_id, relative);
-    cache_codex_native_paths(account_id, native_id, &paths);
-    Ok(Some(paths))
+    let relative = found
+        .strip_prefix(&root)
+        .map_err(|_| "Codex transcript escaped scanned root")?;
+    Ok(Some(codex_native_paths_for_relative(account_id, relative)))
+}
+
+/// An indexed Codex store owns path selection even when its current row/file
+/// cannot be read. Imported caches must not turn that error into stale history.
+pub(super) fn has_indexed_codex_transcript(
+    session: &persistence::CodeSession,
+) -> Result<bool, String> {
+    if session.cli_agent_type.as_deref() != Some("codex") {
+        return Ok(false);
+    }
+    let owner = NativeStorageOwner::for_session(session)?;
+    if !owner.has_codex_store() {
+        return Ok(false);
+    }
+    codex_index::exists(&owner.codex_home()?)
 }
 
 fn registered_codex_native_paths(
@@ -756,6 +773,9 @@ pub(super) fn materialized_cli_transcript_path(
     let Some((agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
+    if let Some(path) = paths.indexed_path {
+        return Ok(Some((agent, path)));
+    }
     let Some(path) = preferred_materialized_transcript_path(&paths)? else {
         return Ok(None);
     };
@@ -774,6 +794,11 @@ pub(crate) fn native_app_transcript_path(
     let Some((_agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
+    if let Some(current) = &paths.indexed_path {
+        if !paths_match(current, &paths.native_path) {
+            return Ok(None);
+        }
+    }
     Ok(paths.native_path.is_file().then_some(paths.native_path))
 }
 
@@ -842,6 +867,17 @@ pub(super) fn materialized_cli_transcript_revision(
     let Some((_agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
+    if let Some(path) = &paths.indexed_path {
+        // Retained generations may have identical sizes/mtimes. Include the
+        // indexed physical path without exposing it in the frontend token.
+        let revision = native_transcript_revision(path)?;
+        let identity =
+            serde_json::to_vec(&(native_id, path, revision)).map_err(|error| error.to_string())?;
+        return Ok(Some(format!(
+            "codex-indexed-v1:{:x}",
+            Sha256::digest(identity)
+        )));
+    }
     native_candidate_revision(&paths, native_id)
 }
 
@@ -1633,16 +1669,49 @@ fn backfill_claude_desktop_catalog_into(
     target_dir: &Path,
     inherit_model: bool,
     selection: ClaudeDesktopBackfill,
+    prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
+) -> Result<usize, String> {
+    backfill_claude_desktop_catalog_into_checked(
+        official_root,
+        target_dir,
+        inherit_model,
+        selection,
+        &CatalogScan::standard(),
+        &|| Ok(()),
+        prepare_transcript,
+    )
+}
+
+fn backfill_claude_desktop_catalog_into_checked(
+    official_root: &Path,
+    target_dir: &Path,
+    inherit_model: bool,
+    selection: ClaudeDesktopBackfill,
+    scan: &CatalogScan,
+    check: &impl Fn() -> Result<(), String>,
     mut prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
 ) -> Result<usize, String> {
-    let Some(official_account) = claude_desktop_active_account_id(official_root) else {
+    scan.check(check)?;
+    let Some(config) = official_root.parent().map(|home| home.join("config.json")) else {
+        return Ok(0);
+    };
+    let Some(account) = scan.row(&config, check)? else {
+        return Ok(0);
+    };
+    let Some(official_account) = account["lastKnownAccountUuid"]
+        .as_str()
+        .filter(|id| Uuid::parse_str(id).is_ok())
+    else {
+        if scan.strict() {
+            return Err("claude_history_catalog_unverified".into());
+        }
         return Ok(0);
     };
     // Sessions the gateway profile already lists, under any file name.
     let mut listed = HashSet::new();
     let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
-    for path in bounded_directory_paths(target_dir, &mut metadata_budget) {
-        if let Some(native_id) = claude_desktop_row(&path).and_then(|row| {
+    for path in scan.entries(target_dir, &mut metadata_budget, check)? {
+        if let Some(native_id) = scan.row(&path, check)?.and_then(|row| {
             let native_id = row["cliSessionId"].as_str()?;
             Uuid::parse_str(native_id).ok()?;
             Some(native_id.to_string())
@@ -1654,17 +1723,26 @@ fn backfill_claude_desktop_catalog_into(
     let mut project_budget = CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT;
     let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
     let mut rows = Vec::new();
-    'projects: for project_dir in
-        bounded_directory_paths(&official_root.join(official_account), &mut project_budget)
-            .into_iter()
-            .filter(|path| path.is_dir())
-    {
-        for path in bounded_directory_paths(&project_dir, &mut metadata_budget) {
-            if let Some(row) = claude_desktop_row(&path) {
+    'projects: for project_dir in scan.entries(
+        &official_root.join(official_account),
+        &mut project_budget,
+        check,
+    )? {
+        scan.check(check)?;
+        if scan.strict()
+            && fs::symlink_metadata(&project_dir).is_ok_and(|m| m.file_type().is_symlink())
+        {
+            return Err("claude_history_catalog_changed".into());
+        }
+        if !project_dir.is_dir() {
+            continue;
+        }
+        for path in scan.entries(&project_dir, &mut metadata_budget, check)? {
+            if let Some(row) = scan.row(&path, check)? {
                 rows.push(row);
             }
         }
-        if metadata_budget == 0 {
+        if metadata_budget == 0 && !scan.strict() {
             break 'projects;
         }
     }
@@ -1682,6 +1760,7 @@ fn backfill_claude_desktop_catalog_into(
 
     let mut added = 0usize;
     for row in rows {
+        scan.check(check)?;
         if added >= insert_budget {
             break;
         }
@@ -1723,16 +1802,30 @@ fn backfill_claude_desktop_catalog_into(
         inherited.insert("sessionPermissionUpdates".to_string(), json!([]));
         inherited.insert("classifierSummaryEnabled".to_string(), json!(true));
         inherited.insert("orgiiMaterialization".to_string(), json!(true));
-        let _guard = lock_claude_project_index(&target)?;
+        let publication_check = || scan.check(check);
+        let _guard = lock_claude_project_index_checked(&target, scan.strict(), &publication_check)?;
         if target.exists() {
             continue;
         }
-        if !insert_json(&target, &Value::Object(inherited))? {
+        if !create_file_atomically_checked(
+            &target,
+            "Claude Desktop discovery row",
+            &publication_check,
+            |file| {
+                publication_check()?;
+                serde_json::to_writer_pretty(&mut *file, &Value::Object(inherited))
+                    .map_err(|_| "Cannot serialize Claude discovery row")?;
+                std::io::Write::write_all(file, b"\n")
+                    .map_err(|_| "Cannot serialize Claude discovery row")?;
+                publication_check()
+            },
+        )? {
             continue;
         }
         listed.insert(native_id.to_string());
         added += 1;
     }
+    scan.check(check)?;
     Ok(added)
 }
 
@@ -2243,25 +2336,6 @@ fn ensure_claude_native_metadata(
     append_suffix_atomically(path, &serialize_jsonl(&metadata)?)
 }
 
-/// Codex exit codes for a tool output ORG2 injects. A `function_call_output`
-/// carries text, so the only failure channel the Codex rollout has is the
-/// exec envelope its own shell tools emit. Writing the bare output instead
-/// tells the resumed model a killed or failed command succeeded.
-const CODEX_TOOL_FAILURE_EXIT_CODE: i64 = 1;
-const CODEX_TOOL_INTERRUPT_EXIT_CODE: i64 = 130;
-
-fn codex_function_call_output(output: &str, is_error: bool, interrupted: bool) -> Value {
-    if !is_error && !interrupted {
-        return Value::String(output.to_string());
-    }
-    let exit_code = if interrupted {
-        CODEX_TOOL_INTERRUPT_EXIT_CODE
-    } else {
-        CODEX_TOOL_FAILURE_EXIT_CODE
-    };
-    Value::String(json!({"exit_code": exit_code, "output": output}).to_string())
-}
-
 fn codex_response_items(items: &[NativeConversationItem]) -> Vec<Value> {
     let mut projected = Vec::with_capacity(items.len());
     for item in items {
@@ -2304,7 +2378,7 @@ fn codex_response_items(items: &[NativeConversationItem]) -> Vec<Value> {
                 ..
             } => projected.push(json!({
                 "type": "function_call",
-                "id": format!("fc_{}", stable_uuid("orgii-codex-function-item", "", id).replace('-', "")),
+                "id": format!("{MATERIALIZED_TOOL_ID_PREFIX}{}", stable_uuid("orgii-codex-function-item", "", id).replace('-', "")),
                 "name": name,
                 "arguments": arguments,
                 "call_id": call_id
@@ -2318,7 +2392,7 @@ fn codex_response_items(items: &[NativeConversationItem]) -> Vec<Value> {
             } => projected.push(json!({
                 "type": "function_call_output",
                 "call_id": call_id,
-                "output": codex_function_call_output(output, *is_error, *interrupted)
+                "output": encode_tool_output(output, *is_error, *interrupted)
             })),
             NativeConversationItem::ContextSummary { id, summary, .. } => projected.push(json!({
                 "type": "message",
@@ -2371,6 +2445,7 @@ fn find_codex_materialization(root: &Path, native_id: &str) -> Result<Option<Pat
     let suffix = format!("-{native_id}.jsonl");
     let mut pending = vec![root.to_path_buf()];
     let mut visited = 0usize;
+    let mut found = None;
     while let Some(directory) = pending.pop() {
         let entries = match fs::read_dir(&directory) {
             Ok(entries) => entries,
@@ -2409,12 +2484,13 @@ fn find_codex_materialization(root: &Path, native_id: &str) -> Result<Option<Pat
                     .file_name()
                     .and_then(|name| name.to_str())
                     .is_some_and(|name| name.ends_with(&suffix))
+                && found.replace(path).is_some()
             {
-                return Ok(Some(path));
+                return Err("Ambiguous Codex transcript without a native index".into());
             }
         }
     }
-    Ok(None)
+    Ok(found)
 }
 
 fn discard_cli_materialization(session_id: &str, native_id: &str) -> Result<bool, String> {
@@ -2595,7 +2671,6 @@ fn materialize_cli(
                     return Err(error);
                 }
             };
-            owner.cache_codex(&registered.id, &paths);
             if let Err(error) = replace_runner_link(&paths.native_path, &paths.runner_path) {
                 let _ = codex_native_catalog::archive_thread(
                     owner.catalog_profile(),
@@ -3233,7 +3308,7 @@ pub(super) async fn converge_bound_native_transcript_and_schedule_catalog(
 }
 
 #[cfg(test)]
-fn publish_bound_native_transcript(session_id: &str) -> Result<bool, String> {
+pub(super) fn publish_bound_native_transcript(session_id: &str) -> Result<bool, String> {
     let Some(refresh) = converge_bound_native_transcript(session_id)? else {
         return Ok(false);
     };
@@ -3423,6 +3498,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("native-revision-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
         let paths = super::NativeTranscriptPaths {
+            indexed_path: None,
             native_path: root.join("native.jsonl"),
             runner_path: root.join("runner.jsonl"),
         };
@@ -3525,6 +3601,152 @@ mod tests {
             interrupted,
             created_at: "2026-09-02T00:00:02Z".to_string(),
         }
+    }
+
+    #[test]
+    fn indexed_fresh_account_history_reads_current_then_promotes_without_stale_fallback() {
+        let sandbox = test_env::sandbox();
+        let account = "fresh-indexed-owner";
+        let session_id = "fresh-indexed-session";
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        create_native_session(session_id, "codex", Some(account), sandbox.path());
+        persistence::update_cli_session_id_for_account(session_id, Some(account), native_id)
+            .unwrap();
+        let session = persistence::get_session(session_id).unwrap().unwrap();
+        let home = codex_native_app_home();
+        fs::create_dir_all(&home).unwrap();
+        let db = rusqlite::Connection::open(home.join("state_5.sqlite")).unwrap();
+        db.execute_batch("CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT)")
+            .unwrap();
+        let relative = Path::new("sessions/2026/09/24/current.jsonl");
+        let runner = app_paths::codex_cli_profile_dir(account).join(relative);
+        let native = home.join(relative);
+        fs::create_dir_all(runner.parent().unwrap()).unwrap();
+        let raw = format!("{{\"type\":\"session_meta\",\"payload\":{{\"id\":\"{native_id}\"}}}}\n");
+        fs::write(&runner, &raw).unwrap();
+        db.execute(
+            "INSERT INTO threads VALUES (?1, ?2)",
+            [native_id, runner.to_str().unwrap()],
+        )
+        .unwrap();
+        let read = || {
+            materialized_cli_transcript_path(&session, native_id)
+                .unwrap()
+                .unwrap()
+                .1
+        };
+        assert_eq!(read(), runner);
+        let before = materialized_cli_transcript_revision(&session, native_id).unwrap();
+        assert!(native_app_transcript_path(&session, native_id)
+            .unwrap()
+            .is_none());
+        let paths = existing_codex_native_paths(account, native_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(paths.native_path, native);
+        assert!(ensure_durable_runner_alias(&paths, native_id).unwrap());
+        assert_eq!(fs::read(&native).unwrap(), raw.as_bytes());
+        assert!(paths_match(&native, &runner));
+        // The index still names the runner alias until native catalog refresh.
+        // Both that window and the subsequent rebound row resolve current bytes.
+        assert_eq!(read(), native);
+        assert_eq!(
+            native_app_transcript_path(&session, native_id).unwrap(),
+            Some(native.clone())
+        );
+        db.execute(
+            "UPDATE threads SET rollout_path=?1",
+            [native.to_str().unwrap()],
+        )
+        .unwrap();
+        assert_eq!(read(), native);
+        assert!(!ensure_durable_runner_alias(
+            &existing_codex_native_paths(account, native_id)
+                .unwrap()
+                .unwrap(),
+            native_id
+        )
+        .unwrap());
+        let next = home.join("sessions/2026/09/24/next-generation.jsonl");
+        fs::write(&next, &raw).unwrap();
+        db.execute(
+            "UPDATE threads SET rollout_path=?1",
+            [next.to_str().unwrap()],
+        )
+        .unwrap();
+        assert_eq!(read(), next);
+        assert_ne!(
+            before,
+            materialized_cli_transcript_revision(&session, native_id).unwrap()
+        );
+        fs::remove_file(&next).unwrap();
+        assert!(materialized_cli_transcript_path(&session, native_id).is_err());
+        assert!(materialized_cli_transcript_revision(&session, native_id).is_err());
+        assert_eq!(fs::read(&native).unwrap(), raw.as_bytes());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn indexed_account_history_rejects_other_accounts_and_escaping_links() {
+        let sandbox = test_env::sandbox();
+        let account = "indexed-owner";
+        let session_id = "indexed-owner-session";
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        create_native_session(session_id, "codex", Some(account), sandbox.path());
+        let session = persistence::get_session(session_id).unwrap().unwrap();
+        let home = codex_native_app_home();
+        fs::create_dir_all(&home).unwrap();
+        let db = rusqlite::Connection::open(home.join("state_5.sqlite")).unwrap();
+        db.execute_batch("CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT)")
+            .unwrap();
+        let foreign =
+            app_paths::codex_cli_profile_dir("other-owner").join("sessions/foreign.jsonl");
+        fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+        fs::write(&foreign, "{}\n").unwrap();
+        let alias = app_paths::codex_cli_profile_dir(account).join("sessions/alias.jsonl");
+        fs::create_dir_all(alias.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&foreign, &alias).unwrap();
+        db.execute(
+            "INSERT INTO threads VALUES (?1, ?2)",
+            [native_id, foreign.to_str().unwrap()],
+        )
+        .unwrap();
+        for path in [&foreign, &alias] {
+            db.execute(
+                "UPDATE threads SET rollout_path=?1",
+                [path.to_str().unwrap()],
+            )
+            .unwrap();
+            assert!(materialized_cli_transcript_path(&session, native_id).is_err());
+            assert!(materialized_cli_transcript_revision(&session, native_id).is_err());
+            assert!(existing_codex_native_paths(account, native_id).is_err());
+        }
+        // Managed sessions never gain the account-home allowance.
+        let managed_id = "indexed-managed-session";
+        create_native_session_with_source(
+            managed_id,
+            "codex",
+            None,
+            sandbox.path(),
+            Some("test:workspace"),
+        );
+        let managed = persistence::get_session(managed_id).unwrap().unwrap();
+        let managed_home = NativeStorageOwner::for_session(&managed)
+            .unwrap()
+            .codex_home()
+            .unwrap();
+        fs::create_dir_all(&managed_home).unwrap();
+        let managed_db = rusqlite::Connection::open(managed_home.join("state_5.sqlite")).unwrap();
+        managed_db
+            .execute_batch("CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT)")
+            .unwrap();
+        managed_db
+            .execute(
+                "INSERT INTO threads VALUES (?1, ?2)",
+                [native_id, foreign.to_str().unwrap()],
+            )
+            .unwrap();
+        assert!(materialized_cli_transcript_path(&managed, native_id).is_err());
     }
 
     #[test]
@@ -3978,6 +4200,117 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires installed Codex, Python 3 and macOS sandbox-exec; loopback model only"]
+    fn native_tool_output_rpc_round_trip() {
+        let temp = tempfile::tempdir().unwrap();
+        let native_path = temp.path().join("native-rollout.jsonl");
+        let mut items = vec![message("orgii_evt_probe", "user", "Read fixture files")];
+        for (index, output) in [
+            "{\"output\":\"literal\",\"session_id\":1}",
+            "Script failed\nExit code: 1\n",
+            "Script running with cell ID example\n",
+            "\t中文 😀\r\n  ",
+            "",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let id = format!("call_probe_{index}");
+            items.push(tool_call(&id, "read_file", "{\"path\":\"fixture\"}"));
+            items.push(tool_result(&id, "read_file", output, index == 1, false));
+        }
+        let script = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/agent_sessions/cli/native_materializer/opaque_tool_native_probe.py");
+        let mut child = std::process::Command::new("python3")
+            .arg(script)
+            .arg(&native_path)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        serde_json::to_writer(child.stdin.take().unwrap(), &codex_response_items(&items)).unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+        let native = native_items_from_provider_path("probe", "codex", &native_path).unwrap();
+        let suffix = provider_portable_append_suffix(&items, &native).unwrap();
+        assert_eq!(
+            suffix.len(),
+            4,
+            "two native user/assistant turns after the exact injected prefix"
+        );
+    }
+
+    #[test]
+    fn opaque_tool_results_round_trip_through_both_native_writers() {
+        let sandbox = test_env::sandbox();
+        let outputs = [
+            "{\"output\":\"literal file body\",\"session_id\":123}",
+            "Script failed\nExit code: 1\n",
+            "Script running with cell ID example\n",
+            "\t leading\r\n中文 😀\ntrailing  \n",
+            "",
+            "{}",
+        ];
+        let mut items = vec![message("orgii_evt_opaque_user", "user", "read these files")];
+        for (index, output) in outputs.iter().enumerate() {
+            for (status, is_error, interrupted) in [
+                ("ok", false, false),
+                ("failed", true, false),
+                ("stopped", true, true),
+            ] {
+                let id = format!("call_{index}_{status}");
+                items.push(tool_call(&id, "read_file", "{\"path\":\"fixture.json\"}"));
+                items.push(tool_result(&id, "read_file", output, is_error, interrupted));
+            }
+        }
+        for provider in ["codex", "claude_code"] {
+            let path = sandbox.path().join(format!("{provider}-opaque.jsonl"));
+            let records = if provider == "codex" {
+                codex_response_items(&items)
+                    .into_iter()
+                    .map(|payload| {
+                        json!({
+                            "type":"response_item", "payload":payload,
+                            "timestamp":"2026-09-24T00:00:00Z"
+                        })
+                    })
+                    .collect()
+            } else {
+                claude_records("opaque-native", Path::new("/repo"), &items).unwrap()
+            };
+            atomic_jsonl(&path, &records).unwrap();
+            let original = fs::read(&path).unwrap();
+            for _ in 0..2 {
+                let native = native_items_from_provider_path("opaque", provider, &path).unwrap();
+                assert!(provider_portable_append_suffix(&native, &items)
+                    .unwrap()
+                    .is_empty());
+                let mut continued = items.clone();
+                continued.push(message("orgii_evt_opaque_next", "user", "continue"));
+                assert_eq!(
+                    provider_portable_append_suffix(&native, &continued).unwrap(),
+                    continued[items.len()..]
+                );
+                if let NativeConversationItem::ToolResult { output, .. } = &mut continued[2] {
+                    output.push('!');
+                }
+                assert!(
+                    provider_portable_append_suffix(&native, &continued).is_err(),
+                    "real divergence must still fail closed"
+                );
+            }
+            assert_eq!(fs::read(&path).unwrap(), original);
+        }
+    }
+
+    #[test]
     fn failed_codex_tool_output_round_trips_as_a_failed_tool() {
         let sandbox = test_env::sandbox();
         let path = sandbox.path().join("rollout-failed-tool.jsonl");
@@ -3992,7 +4325,10 @@ mod tests {
             tool_result("call_ok", "list_files", "README.md", false, false),
         ];
         let projected = codex_response_items(&items);
-        assert_eq!(projected[3]["output"], "README.md");
+        assert_eq!(
+            projected[3]["output"],
+            encode_tool_output("README.md", false, false)
+        );
 
         let rollout = projected
             .iter()
@@ -4817,8 +5153,7 @@ mod tests {
     }
 
     #[test]
-    fn isolated_market_first_launch_prepares_history_without_vendor_startup() {
-        use base64::engine::general_purpose::STANDARD;
+    fn isolated_market_first_launch_never_fabricates_vendor_history_identity() {
         let sandbox = test_env::sandbox();
         let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
         let (_, official_project, _, standard_project) =
@@ -4838,30 +5173,14 @@ mod tests {
         .to_string();
         fs::write(&source, &bytes).unwrap();
         profile.prepare_launch_directories().unwrap();
-        isolated_claude_history::prepare_before_launch(&profile).unwrap();
-        let identity = fs::read(profile.home().join("ant-did")).unwrap();
-        let account = String::from_utf8(STANDARD.decode(&identity).unwrap()).unwrap();
-        let row = profile
-            .home()
-            .join("claude-code-sessions")
-            .join(account)
-            .join("00000000-0000-4000-8000-000000000001")
-            .join(format!("local_{id}.json"));
-        let imported: Value = serde_json::from_slice(&fs::read(&row).unwrap()).unwrap();
-        assert_eq!(imported["permissionMode"], "default");
-        assert!(!profile.home().join("config.json").exists());
-        assert!(!standard_project.join(format!("local_{id}.json")).exists());
-        assert_eq!(fs::read_to_string(&source).unwrap(), bytes);
-        isolated_claude_history::prepare_before_launch(&profile).unwrap();
-        assert_eq!(fs::read(profile.home().join("ant-did")).unwrap(), identity);
-        assert_eq!(
-            fs::read_dir(row.parent().unwrap())
-                .unwrap()
-                .flatten()
-                .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
-                .count(),
-            1
-        );
+        for _ in 0..2 {
+            assert!(!isolated_claude_history::import(&profile).unwrap());
+            assert!(!profile.home().join("ant-did").exists());
+            assert!(!profile.home().join("config.json").exists());
+            assert!(!profile.home().join("claude-code-sessions").exists());
+            assert!(!standard_project.join(format!("local_{id}.json")).exists());
+            assert_eq!(fs::read_to_string(&source).unwrap(), bytes);
+        }
     }
 
     #[test]
@@ -5137,8 +5456,14 @@ mod tests {
         assert_eq!(added, window);
         let first = listed(&target);
         assert_eq!(first.len(), window);
-        assert!(!first.contains(&ids[0]), "oldest conversation must stay behind");
-        assert!(!first.contains(&ids[window + 1]), "archived newest must not count");
+        assert!(
+            !first.contains(&ids[0]),
+            "oldest conversation must stay behind"
+        );
+        assert!(
+            !first.contains(&ids[window + 1]),
+            "archived newest must not count"
+        );
         assert!((1..=window).all(|index| first.contains(&ids[index])));
         let again = backfill_claude_desktop_catalog_into(
             &official_root,
@@ -5552,6 +5877,7 @@ mod tests {
     fn divergent_native_and_runner_transcripts_fail_closed() {
         let sandbox = test_env::sandbox();
         let paths = NativeTranscriptPaths {
+            indexed_path: None,
             native_path: sandbox.path().join("native.jsonl"),
             runner_path: sandbox.path().join("runner.jsonl"),
         };
@@ -5651,11 +5977,6 @@ mod tests {
             .expect("create legacy Codex transcript parent");
         fs::write(&legacy_path, b"{}\n").expect("write legacy Codex transcript");
 
-        let cache_key = (account_id.to_string(), native_id.to_string());
-        CODEX_NATIVE_PATH_CACHE
-            .lock()
-            .expect("lock Codex native path cache")
-            .remove(&cache_key);
         let resolved = existing_codex_native_paths(account_id, native_id)
             .expect("scan Codex native roots")
             .expect("cold lookup should retain an existing native-App rollout");
@@ -5668,6 +5989,49 @@ mod tests {
                 .join("03")
                 .join(format!("rollout-2026-09-03T00-00-00-{native_id}.jsonl"))
         );
+    }
+
+    #[test]
+    fn legacy_codex_discovery_rejects_ambiguous_files_after_a_successful_read() {
+        let sandbox = test_env::sandbox();
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        let root = codex_native_app_sessions_root();
+        fs::create_dir_all(&root).unwrap();
+        let first = root.join(format!("rollout-first-{native_id}.jsonl"));
+        let second = root.join(format!("rollout-second-{native_id}.jsonl"));
+        fs::write(&first, b"{}\n").unwrap();
+        assert_eq!(
+            existing_codex_native_paths("legacy", native_id)
+                .unwrap()
+                .unwrap()
+                .native_path,
+            first
+        );
+        fs::write(&second, b"{}\n").unwrap();
+        for _ in 0..2 {
+            assert!(existing_codex_native_paths("legacy", native_id)
+                .unwrap_err()
+                .contains("Ambiguous"));
+        }
+        let session_id = "cliagent-managed-ambiguous-history";
+        create_native_session_with_source(
+            session_id,
+            "codex",
+            None,
+            sandbox.path(),
+            Some("test:workspace"),
+        );
+        let session = persistence::get_session(session_id).unwrap().unwrap();
+        let owner = NativeStorageOwner::for_session(&session).unwrap();
+        let managed = owner.codex_home().unwrap().join("sessions");
+        fs::create_dir_all(&managed).unwrap();
+        fs::write(managed.join(first.file_name().unwrap()), b"{}\n").unwrap();
+        assert!(owner.existing_codex(native_id).unwrap().is_some());
+        fs::write(managed.join(second.file_name().unwrap()), b"{}\n").unwrap();
+        assert!(owner
+            .existing_codex(native_id)
+            .unwrap_err()
+            .contains("Ambiguous"));
     }
 
     #[tokio::test(flavor = "current_thread")]

@@ -71,12 +71,12 @@ export function useHarnessConnection(agentName: ConnectionHarness) {
     const requestGeneration = generation;
     listeners.add(reload);
     window.addEventListener("focus", focus);
-    // The Codex history observer finishes its first pass after the page loaded;
+    // Automatic history may finish its first pass after the page loaded;
     // it announces state changes instead of the page polling for them.
     let active = true;
     let stopStateChanged: UnlistenFn | null = null;
-    listen("codex-history-state-changed", () => {
-      if (active) reload();
+    listen<string>("native-history-state-changed", ({ payload }) => {
+      if (active && payload === agentName && !document.hidden) reload();
     })
       .then((stop) => {
         if (active) stopStateChanged = stop;
@@ -90,7 +90,7 @@ export function useHarnessConnection(agentName: ConnectionHarness) {
       window.removeEventListener("focus", focus);
       stopStateChanged?.();
     };
-  }, [load]);
+  }, [agentName, load]);
   const reload = useCallback(() => {
     setError(null);
     return load(false);

@@ -11,6 +11,7 @@ import {
   reconcileNativeTranscript,
   recoverNativeTranscriptAfterMismatch,
 } from "@src/engines/SessionCore/sync/nativeTranscriptReconcile";
+import { mergeLocalHistoryProjection } from "@src/engines/SessionCore/sync/sessionSyncUtils";
 import { createLogger } from "@src/hooks/logger";
 
 import {
@@ -43,14 +44,19 @@ const log = createLogger("localConversationContinuation");
 export async function hydrateSynchronizedConversationProjection(
   sessionId: string,
   before: readonly SessionEvent[],
-  after: readonly SessionEvent[]
+  after: readonly SessionEvent[],
+  preparedUserEvent: SessionEvent
 ): Promise<void> {
   if (before.length === after.length && sameEventPrefix(before, after)) return;
-  if (sameEventPrefix(before, after)) {
-    await eventStoreProxy.mergeEvents(after.slice(before.length), sessionId);
-    return;
-  }
-  await eventStoreProxy.set([...after], sessionId);
+  // This boundary runs under the queue's preparation ownership, before the
+  // provider starts. A native suffix may be a rematerialized copy of output
+  // already recovered from the interrupted cache under a different row id.
+  // Appending it would duplicate that reply after the prepared user message.
+  // Replace the verified native projection, retain local failure/lineage
+  // sidecars, and keep the exact pending user row last for dispatch to update.
+  const projected = await eventStoreProxy.getEvents(sessionId);
+  const history = mergeLocalHistoryProjection(after, projected, sessionId);
+  await eventStoreProxy.set([...history, preparedUserEvent], sessionId);
 }
 
 function sameEventPrefix(

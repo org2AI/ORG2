@@ -60,6 +60,7 @@ const RESULT_RENDER_KEYS = [
   // These fields also determine the payload captured by Retry/Edit handlers.
   "queueMessageId",
   "deliveryOwnerRetired",
+  "executionError",
   "deliveryStatus",
   "deliveryError",
   "turnIntentId",

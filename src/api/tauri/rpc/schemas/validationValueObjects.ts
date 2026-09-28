@@ -28,9 +28,24 @@ export const UsageItemSchema = z.object({
   reset_time: z.string().nullable().optional(),
 });
 
+export const ModelQuotaInfoSchema = z.object({
+  model: z.string(),
+  limit_id: z.string(),
+  allowed: z.boolean().nullable(),
+  limit_reached: z.boolean().nullable(),
+  usage_items: z.array(UsageItemSchema),
+});
+
 export const QuotaBalanceSchema = z.object({
   amount: z.number(),
   currency: z.string(),
+});
+
+export const QuotaResetCreditsSchema = z.object({
+  available: z.number(),
+  expirations: z
+    .array(z.object({ count: z.number(), expires_at: z.string() }))
+    .default([]),
 });
 
 export const QuotaInfoSchema = z.object({
@@ -45,7 +60,9 @@ export const QuotaInfoSchema = z.object({
   is_unlimited: z.boolean(),
   quota_source: z.string().nullable(),
   usage_items: z.array(UsageItemSchema),
+  model_quotas: z.array(ModelQuotaInfoSchema).optional(),
   balance: QuotaBalanceSchema.nullable().optional(),
+  reset_credits: QuotaResetCreditsSchema.nullable().optional(),
   auto_message: z.string().nullable(),
   named_message: z.string().nullable(),
 });

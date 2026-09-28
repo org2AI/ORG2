@@ -112,7 +112,7 @@ export interface SettingsTableProps<RowData> {
   noPx?: boolean;
   /** Row click handler. Non-interactive row clicks also toggle expandable rows; buttons, links, and inputs are ignored. */
   onRowClick?: (row: RowData) => void;
-  /** Enable row hover highlight. Default: false */
+  /** Enable row hover highlight. Default: true */
   hover?: boolean;
   /** Optional class or function for row styling (e.g. selected highlight) */
   rowClassName?: string | ((row: RowData, index: number) => string);
@@ -168,7 +168,7 @@ export default function SettingsTable<RowData>({
   headerBorder = false,
   noPx = false,
   onRowClick,
-  hover = false,
+  hover = true,
   rowClassName,
   rowDataTestId,
   rowDataAttributes,

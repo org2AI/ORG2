@@ -43,6 +43,7 @@ pub(super) async fn detect_cursor_keys() -> Vec<DetectedKey> {
                         quota_source: quota.quota_source.clone(),
                         is_unlimited: Some(quota.is_unlimited),
                         usage_items: quota.usage_items.clone(),
+                        model_quotas: quota.model_quotas.clone(),
                         auto_message: quota.auto_message.clone(),
                         named_message: quota.named_message.clone(),
                     });

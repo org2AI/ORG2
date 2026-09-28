@@ -59,7 +59,7 @@ export interface OptimizedChatItem {
   consolidatedParts?: number;
   /** Internal layout-only row used to keep a collapsed turn measurable. */
   structuralOnly?: boolean;
-  /** Turn-owned gallery, attached to the final visible row after collapse. */
+  /** Item-owned gallery, retained at the producing row across turn collapse. */
   outputImages?: string[];
   /** Thread selector synthetic data */
   threadSelectorData?: {

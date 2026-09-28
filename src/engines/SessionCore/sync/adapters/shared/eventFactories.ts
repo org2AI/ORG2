@@ -299,6 +299,8 @@ export function createSyntheticUserEvent(
     /** Frontend delivery state for an optimistic user turn. */
     deliveryStatus?: "pending" | "sent" | "failed";
     deliveryError?: string;
+    /** Accepted prompt with a terminal execution failure and explicit retry. */
+    executionError?: string;
     queueMessageId?: string;
     /** Terminal delivery transferred retry ownership to this durable row. */
     deliveryOwnerRetired?: boolean;
@@ -334,6 +336,9 @@ export function createSyntheticUserEvent(
       ...(deliveryStatus ? { deliveryStatus } : {}),
       ...(options?.deliveryError
         ? { deliveryError: options.deliveryError }
+        : {}),
+      ...(options?.executionError
+        ? { executionError: options.executionError }
         : {}),
       ...(options?.queueMessageId
         ? { queueMessageId: options.queueMessageId }

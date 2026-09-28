@@ -3,52 +3,19 @@
 //! This is the counterpart to `agent_core::scratchpad_usage` (behavioral).
 //! Here we go one level deeper: after asking the agent to write something to
 //! its scratchpad, we reach directly into
-//! `/tmp/orgii-{uid}/{sanitized-project}/{session_id}/scratchpad/` and verify
+//! `<ORGII_HOME>/tmp/{sanitized-project}/{session_id}/scratchpad/` and verify
 //! that real files actually landed on disk.
 //!
 //! Mirrors `app_paths::scratchpad_dir()` layout exactly.
 
 use std::path::{Path, PathBuf};
 
+use app_paths::scratchpad_dir;
+
 use crate::config::Config;
 use crate::harness;
 
 use super::tmp_workspace_path;
-
-fn sanitize_workspace_path(workspace_path: &Path) -> String {
-    let raw = workspace_path.to_string_lossy();
-    raw.chars()
-        .map(|ch| match ch {
-            '/' | '\\' | ':' | '\0' => '_',
-            other => other,
-        })
-        .collect::<String>()
-        .trim_start_matches('_')
-        .to_string()
-}
-
-fn orgii_temp_root() -> PathBuf {
-    let base = std::env::temp_dir();
-    let resolved = base.canonicalize().unwrap_or(base);
-
-    #[cfg(unix)]
-    {
-        let uid = unsafe { libc::getuid() };
-        resolved.join(format!("orgii-{}", uid))
-    }
-
-    #[cfg(not(unix))]
-    {
-        resolved.join("orgii")
-    }
-}
-
-fn scratchpad_dir(session_id: &str, workspace_path: &Path) -> PathBuf {
-    orgii_temp_root()
-        .join(sanitize_workspace_path(workspace_path))
-        .join(session_id)
-        .join("scratchpad")
-}
 
 pub async fn scratchpad_filesystem_check(cfg: &Config) -> bool {
     let session_id = format!("{}-scratchpad-fs", cfg.session_prefix);

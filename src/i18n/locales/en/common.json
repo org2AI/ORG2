@@ -2355,6 +2355,7 @@
     "detail": {
       "assignedSubtitle": "Assigned work item",
       "standaloneProject": "Standalone",
+      "channelMentionSubtitle": "Mentioned in a channel",
       "mentionSubtitle": "Mentioned in a comment",
       "mentionedYou": "mentioned you",
       "threadComments_one": "{{count}} comment in this thread",

@@ -644,7 +644,7 @@
       "positionDown": "Unten",
       "showQuickActions": "Schnellaktionen",
       "showSkills": "Angeheftete Skills",
-      "showCliUpdate": "CLI-Updates",
+      "showCliUpdate": "Benachrichtigungen zu CLI-Updates",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Neue Sitzung"
@@ -1996,10 +1996,12 @@
     },
     "cliVersionOutdated": {
       "title": "Update für {{cli}} verfügbar",
-      "versions": "Aktuell: {{installed}} · Neueste: {{latest}}",
       "upgrade": "Im Terminal aktualisieren",
-      "upgradeHint": "Aktualisiert Cursor CLI in einem separaten Terminal. Danach die Version erneut prüfen.",
-      "upgradeTerminal": "Cursor CLI aktualisieren",
+      "upgradeDocs": "Offizielle Dokumentation",
+      "upgradeChooseMethod": "Ursprüngliche Installationsart wählen",
+      "upgradeNative": "Integriertes Update",
+      "upgradeHint": "Aktualisiert {{cli}} CLI in einem separaten Terminal. Danach die Version erneut prüfen.",
+      "upgradeTerminal": "{{cli}} CLI aktualisieren",
       "upgradeStarted": "Update im Terminal gestartet. Danach die Version erneut prüfen.",
       "upgradeFailed": "Update-Terminal konnte nicht geöffnet werden. Bitte erneut versuchen.",
       "muteUntilNextVersion": "Kein Hinweis bis zur nächsten Version",
@@ -2649,6 +2651,10 @@
     "teamChatMode": "Team-Chat",
     "promptTooltip": "An den Agent senden",
     "teamChatTooltip": "Nachricht an Teammitglieder — löst den Agent nicht aus",
+    "workspaceResolving": "Lokaler Arbeitsbereich wird gesucht. Bitte gleich erneut versuchen.",
+    "workspaceRequiredTitle": "Passenden Arbeitsbereich öffnen",
+    "workspaceRequiredBody": "Um diese geteilte Unterhaltung mit einem Agenten fortzusetzen, öffnen Sie einen lokalen Checkout des Repositorys.",
+    "openWorkspace": "Arbeitsbereich öffnen",
     "imagesUnsupported": "Team-Chat-Nachrichten können keine Bilder enthalten",
     "participantsTooltip": "Teilnehmer der Unterhaltung und Diskussionsnachrichten",
     "mentionGroup": "Teammitglieder"
@@ -2672,10 +2678,12 @@
     "limit": "Es werden bis zu 128 Konten angezeigt"
   },
   "sharedFile": {
+    "resolvingOrigin": "Die Herkunft der geteilten Datei wird noch geladen. Bitte versuche es gleich erneut.",
     "downloaded": "Im Download-Ordner gespeichert",
     "downloadError": "Speichern im Download-Ordner nicht möglich",
     "title": "Geteilte Datei",
-    "error": "Diese Datei kann nicht geöffnet werden. Prüfe dein Konto, den Server und den Sitzungszugriff und öffne den Link erneut.",
+    "error": "Diese Datei kann nicht geöffnet werden. Versuche es erneut oder prüfe Verbindung, Konto, Server und Sitzungszugriff.",
+    "notUploaded": "Diese Datei wurde noch nicht in diese geteilte Sitzung hochgeladen. Das Gerät des Absenders muss den Upload abschließen. Versuche es erneut, um den Status zu prüfen.",
     "downloadPreview": "Lade diese Datei herunter, um ihren Inhalt anzuzeigen",
     "download": "Herunterladen",
     "loading": "Geteilte Datei wird geladen…"

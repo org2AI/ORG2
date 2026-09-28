@@ -16,6 +16,7 @@ import {
   getQuotaBgColorClass,
   getQuotaTextColorClass,
 } from "@src/components/QuotaBar";
+import Tooltip from "@src/components/Tooltip";
 import { SECTION_GAP_CLASSES } from "@src/components/layout/Section";
 import { RuntimeSectionHeader } from "@src/features/RuntimeDataSource/RuntimeSectionHeader";
 import { useKeyVault } from "@src/hooks/keyVault";
@@ -61,7 +62,30 @@ function StartPageQuotaCard({
           </div>
           <div className="truncate text-xs leading-5 text-text-3">
             {entry.accountPlan ?? "-"}
-            {entry.quotaMessage ? ` · ${entry.quotaMessage}` : ""}
+            {entry.quotaMessage ? " · " : null}
+            {entry.quotaMessage && entry.quotaMessageDetails?.length ? (
+              <Tooltip
+                content={
+                  <div className="flex flex-col gap-0.5">
+                    {entry.quotaMessageDetails.map((line) => (
+                      <div key={line}>{line}</div>
+                    ))}
+                  </div>
+                }
+                position="bottom"
+                mouseEnterDelay={500}
+              >
+                {/* Empty title suppresses the card header's native tooltip. */}
+                <span
+                  title=""
+                  className="cursor-help underline decoration-text-3 decoration-dotted underline-offset-4"
+                >
+                  {entry.quotaMessage}
+                </span>
+              </Tooltip>
+            ) : (
+              entry.quotaMessage
+            )}
           </div>
         </div>
       </div>

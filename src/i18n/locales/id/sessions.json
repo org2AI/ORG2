@@ -645,7 +645,7 @@
       "positionDown": "Bawah",
       "showQuickActions": "Tindakan cepat",
       "showSkills": "Skill yang disematkan",
-      "showCliUpdate": "Pembaruan CLI",
+      "showCliUpdate": "Notifikasi pembaruan CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Sesi baru"
@@ -1921,10 +1921,12 @@
     },
     "cliVersionOutdated": {
       "title": "Pembaruan {{cli}} tersedia",
-      "versions": "Saat ini: {{installed}} · Terbaru: {{latest}}",
       "upgrade": "Perbarui di terminal",
-      "upgradeHint": "Memperbarui Cursor CLI di terminal terpisah. Periksa ulang versi setelah selesai.",
-      "upgradeTerminal": "Perbarui Cursor CLI",
+      "upgradeDocs": "Dokumentasi resmi",
+      "upgradeChooseMethod": "Pilih cara instalasi awal",
+      "upgradeNative": "Pembaruan bawaan",
+      "upgradeHint": "Memperbarui {{cli}} CLI di terminal terpisah. Periksa ulang versi setelah selesai.",
+      "upgradeTerminal": "Perbarui {{cli}} CLI",
       "upgradeStarted": "Pembaruan dimulai di terminal. Periksa ulang versi setelah selesai.",
       "upgradeFailed": "Tidak dapat membuka terminal pembaruan. Coba lagi.",
       "muteUntilNextVersion": "Jangan ingatkan hingga versi berikutnya",
@@ -2638,6 +2640,10 @@
     "teamChatMode": "Chat tim",
     "promptTooltip": "Kirim ke agen",
     "teamChatTooltip": "Kirim pesan ke rekan tim — tidak memberi prompt ke agen",
+    "workspaceResolving": "Mencari ruang kerja lokal yang cocok. Coba lagi sebentar lagi.",
+    "workspaceRequiredTitle": "Buka ruang kerja yang cocok",
+    "workspaceRequiredBody": "Agar agen dapat melanjutkan percakapan bersama ini, buka salinan lokal repositorinya.",
+    "openWorkspace": "Buka ruang kerja",
     "imagesUnsupported": "Pesan chat tim tidak dapat menyertakan gambar",
     "participantsTooltip": "Peserta percakapan dan pesan diskusi",
     "mentionGroup": "Rekan tim"
@@ -2671,10 +2677,12 @@
     "limit": "Menampilkan hingga 128 akun"
   },
   "sharedFile": {
+    "resolvingOrigin": "Sumber berkas bersama masih dimuat. Coba lagi sebentar lagi.",
     "downloaded": "Disimpan ke Unduhan",
     "downloadError": "Tidak dapat menyimpan ke Unduhan",
     "title": "File bersama",
-    "error": "Tidak dapat membuka file ini. Periksa akses akun, server, dan sesi Anda, lalu buka kembali tautannya.",
+    "error": "File ini tidak dapat dibuka. Coba lagi atau periksa koneksi, akun, server, dan akses sesi.",
+    "notUploaded": "File ini belum diunggah ke sesi bersama ini. Perangkat pengirim perlu menyelesaikan unggahan; coba lagi untuk memeriksa.",
     "downloadPreview": "Unduh file ini untuk melihat isinya",
     "download": "Unduh",
     "loading": "Memuat file bersama…"

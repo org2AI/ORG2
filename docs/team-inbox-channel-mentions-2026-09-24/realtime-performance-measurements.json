@@ -1,0 +1,535 @@
+[
+  {
+    "label": "healthy-visible-idle",
+    "seconds": 59.9,
+    "start": 1790312942.046387,
+    "end": 1790313001.955538,
+    "processes": [
+      {
+        "process": "org2",
+        "cpuPercent": 0.001,
+        "startFootprintMiB": 77.4,
+        "endFootprintMiB": 77.5,
+        "peakFootprintMiB": 77.6,
+        "endRssMiB": 115.0,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.009,
+        "startFootprintMiB": 24.5,
+        "endFootprintMiB": 24.7,
+        "peakFootprintMiB": 24.7,
+        "endRssMiB": 24.4,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.001,
+        "startFootprintMiB": 18.1,
+        "endFootprintMiB": 18.2,
+        "peakFootprintMiB": 18.3,
+        "endRssMiB": 16.0,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.014,
+        "startFootprintMiB": 452.2,
+        "endFootprintMiB": 454.0,
+        "peakFootprintMiB": 454.3,
+        "endRssMiB": 144.7,
+        "instance": "B"
+      },
+      {
+        "process": "org2",
+        "cpuPercent": 0.001,
+        "startFootprintMiB": 84.8,
+        "endFootprintMiB": 84.9,
+        "peakFootprintMiB": 84.9,
+        "endRssMiB": 160.8,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.009,
+        "startFootprintMiB": 21.6,
+        "endFootprintMiB": 21.7,
+        "peakFootprintMiB": 21.7,
+        "endRssMiB": 26.7,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.001,
+        "startFootprintMiB": 18.0,
+        "endFootprintMiB": 18.0,
+        "peakFootprintMiB": 18.1,
+        "endRssMiB": 15.9,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.014,
+        "startFootprintMiB": 248.0,
+        "endFootprintMiB": 265.7,
+        "peakFootprintMiB": 265.9,
+        "endRssMiB": 168.1,
+        "instance": "A"
+      }
+    ],
+    "requests": {},
+    "websocket": {
+      "ws-up": 6,
+      "ws-down": 6
+    }
+  },
+  {
+    "label": "hidden-idle",
+    "seconds": 65.1,
+    "start": 1790313022.6760309,
+    "end": 1790313087.7547479,
+    "processes": [
+      {
+        "process": "org2",
+        "cpuPercent": 0.001,
+        "startFootprintMiB": 77.6,
+        "endFootprintMiB": 77.7,
+        "peakFootprintMiB": 77.7,
+        "endRssMiB": 115.5,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.007,
+        "startFootprintMiB": 24.7,
+        "endFootprintMiB": 24.7,
+        "peakFootprintMiB": 24.8,
+        "endRssMiB": 18.5,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.0,
+        "startFootprintMiB": 18.2,
+        "endFootprintMiB": 18.1,
+        "peakFootprintMiB": 18.2,
+        "endRssMiB": 13.5,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.012,
+        "startFootprintMiB": 454.3,
+        "endFootprintMiB": 454.3,
+        "peakFootprintMiB": 454.3,
+        "endRssMiB": 35.4,
+        "instance": "B"
+      },
+      {
+        "process": "org2",
+        "cpuPercent": 0.001,
+        "startFootprintMiB": 85.4,
+        "endFootprintMiB": 85.5,
+        "peakFootprintMiB": 85.6,
+        "endRssMiB": 165.4,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.007,
+        "startFootprintMiB": 21.7,
+        "endFootprintMiB": 21.7,
+        "peakFootprintMiB": 21.8,
+        "endRssMiB": 25.3,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.0,
+        "startFootprintMiB": 18.1,
+        "endFootprintMiB": 17.9,
+        "peakFootprintMiB": 18.1,
+        "endRssMiB": 13.7,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.012,
+        "startFootprintMiB": 271.9,
+        "endFootprintMiB": 271.6,
+        "peakFootprintMiB": 271.9,
+        "endRssMiB": 84.3,
+        "instance": "A"
+      }
+    ],
+    "requests": {},
+    "websocket": {}
+  },
+  {
+    "label": "hidden-burst-return",
+    "seconds": 90.2,
+    "start": 1790313092.494522,
+    "end": 1790313182.646933,
+    "processes": [
+      {
+        "process": "org2",
+        "cpuPercent": 0.003,
+        "startFootprintMiB": 77.6,
+        "endFootprintMiB": 77.7,
+        "peakFootprintMiB": 77.8,
+        "endRssMiB": 119.4,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.011,
+        "startFootprintMiB": 24.7,
+        "endFootprintMiB": 24.7,
+        "peakFootprintMiB": 141.5,
+        "endRssMiB": 21.2,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.002,
+        "startFootprintMiB": 18.1,
+        "endFootprintMiB": 18.2,
+        "peakFootprintMiB": 19.1,
+        "endRssMiB": 16.2,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.03,
+        "startFootprintMiB": 454.3,
+        "endFootprintMiB": 298.1,
+        "peakFootprintMiB": 499.0,
+        "endRssMiB": 247.6,
+        "instance": "B"
+      },
+      {
+        "process": "org2",
+        "cpuPercent": 0.009,
+        "startFootprintMiB": 85.5,
+        "endFootprintMiB": 85.8,
+        "peakFootprintMiB": 85.9,
+        "endRssMiB": 174.5,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.011,
+        "startFootprintMiB": 21.7,
+        "endFootprintMiB": 29.7,
+        "peakFootprintMiB": 144.0,
+        "endRssMiB": 34.5,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.002,
+        "startFootprintMiB": 17.9,
+        "endFootprintMiB": 18.0,
+        "peakFootprintMiB": 18.8,
+        "endRssMiB": 18.3,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.039,
+        "startFootprintMiB": 271.7,
+        "endFootprintMiB": 324.9,
+        "peakFootprintMiB": 355.4,
+        "endRssMiB": 190.2,
+        "instance": "A"
+      }
+    ],
+    "requests": {
+      "/rest/v1/rpc/cloud_post_channel_message": 20,
+      "/rest/v1/rpc/list_my_orgs": 2,
+      "/rest/v1/rpc/cloud_list_org_sessions": 4,
+      "/rest/v1/rpc/cloud_list_channels": 4,
+      "/rest/v1/rpc/cloud_list_org_collab_state": 2,
+      "/rest/v1/rpc/list_org_members": 2,
+      "/rest/v1/rpc/cloud_list_team_inbox_mentions_v2": 2,
+      "/rest/v1/rpc/cloud_set_team_inbox_mention_read_v2": 1
+    },
+    "websocket": {
+      "ws-open": 2,
+      "ws-up": 7,
+      "ws-down": 8,
+      "ws-close": 2
+    }
+  },
+  {
+    "label": "detail-open-close",
+    "seconds": 75.1,
+    "start": 1790313337.162432,
+    "end": 1790313412.227052,
+    "processes": [
+      {
+        "process": "org2",
+        "cpuPercent": 0.01,
+        "startFootprintMiB": 77.7,
+        "endFootprintMiB": 78.1,
+        "peakFootprintMiB": 78.2,
+        "endRssMiB": 117.9,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.019,
+        "startFootprintMiB": 24.7,
+        "endFootprintMiB": 24.7,
+        "peakFootprintMiB": 145.3,
+        "endRssMiB": 17.3,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.007,
+        "startFootprintMiB": 18.3,
+        "endFootprintMiB": 18.2,
+        "peakFootprintMiB": 19.3,
+        "endRssMiB": 13.9,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.052,
+        "startFootprintMiB": 377.5,
+        "endFootprintMiB": 492.0,
+        "peakFootprintMiB": 545.6,
+        "endRssMiB": 81.2,
+        "instance": "B"
+      },
+      {
+        "process": "org2",
+        "cpuPercent": 0.027,
+        "startFootprintMiB": 85.9,
+        "endFootprintMiB": 84.2,
+        "peakFootprintMiB": 86.6,
+        "endRssMiB": 160.2,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.031,
+        "startFootprintMiB": 21.9,
+        "endFootprintMiB": 133.9,
+        "peakFootprintMiB": 154.8,
+        "endRssMiB": 36.6,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.007,
+        "startFootprintMiB": 18.2,
+        "endFootprintMiB": 18.0,
+        "peakFootprintMiB": 19.0,
+        "endRssMiB": 15.4,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.172,
+        "startFootprintMiB": 284.4,
+        "endFootprintMiB": 483.4,
+        "peakFootprintMiB": 483.4,
+        "endRssMiB": 194.6,
+        "instance": "A"
+      }
+    ],
+    "requests": {
+      "/rest/v1/rpc/cloud_list_channels": 12,
+      "/rest/v1/rpc/list_my_orgs": 8,
+      "/rest/v1/rpc/cloud_list_org_sessions": 12,
+      "/rest/v1/rpc/cloud_list_org_collab_state": 8,
+      "/rest/v1/rpc/list_org_members": 8,
+      "/rest/v1/rpc/cloud_list_team_inbox_mentions_v2": 8
+    },
+    "websocket": {
+      "ws-open": 8,
+      "ws-up": 36,
+      "ws-down": 45,
+      "ws-close": 8
+    }
+  },
+  {
+    "label": "post-close-idle",
+    "seconds": 75.1,
+    "start": 1790313425.6272562,
+    "end": 1790313500.742273,
+    "processes": [
+      {
+        "process": "org2",
+        "cpuPercent": 0.001,
+        "startFootprintMiB": 78.1,
+        "endFootprintMiB": 78.0,
+        "peakFootprintMiB": 78.1,
+        "endRssMiB": 115.1,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.012,
+        "startFootprintMiB": 24.7,
+        "endFootprintMiB": 24.7,
+        "peakFootprintMiB": 24.7,
+        "endRssMiB": 16.7,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.0,
+        "startFootprintMiB": 18.1,
+        "endFootprintMiB": 18.1,
+        "peakFootprintMiB": 18.2,
+        "endRssMiB": 12.0,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.017,
+        "startFootprintMiB": 492.0,
+        "endFootprintMiB": 492.0,
+        "peakFootprintMiB": 492.0,
+        "endRssMiB": 16.7,
+        "instance": "B"
+      },
+      {
+        "process": "org2",
+        "cpuPercent": 0.002,
+        "startFootprintMiB": 84.3,
+        "endFootprintMiB": 84.3,
+        "peakFootprintMiB": 84.4,
+        "endRssMiB": 162.2,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.012,
+        "startFootprintMiB": 21.9,
+        "endFootprintMiB": 22.0,
+        "peakFootprintMiB": 22.0,
+        "endRssMiB": 23.5,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.0,
+        "startFootprintMiB": 18.0,
+        "endFootprintMiB": 18.0,
+        "peakFootprintMiB": 18.1,
+        "endRssMiB": 13.2,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.017,
+        "startFootprintMiB": 478.6,
+        "endFootprintMiB": 479.8,
+        "peakFootprintMiB": 479.8,
+        "endRssMiB": 35.0,
+        "instance": "A"
+      }
+    ],
+    "requests": {},
+    "websocket": {}
+  },
+  {
+    "label": "second-detail-cycles",
+    "seconds": 80.0,
+    "start": 1790313525.840498,
+    "end": 1790313605.8242729,
+    "processes": [
+      {
+        "process": "org2",
+        "cpuPercent": 0.011,
+        "startFootprintMiB": 78.2,
+        "endFootprintMiB": 78.2,
+        "peakFootprintMiB": 78.4,
+        "endRssMiB": 102.7,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.019,
+        "startFootprintMiB": 140.1,
+        "endFootprintMiB": 141.3,
+        "peakFootprintMiB": 147.3,
+        "endRssMiB": 26.7,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.008,
+        "startFootprintMiB": 18.9,
+        "endFootprintMiB": 19.2,
+        "peakFootprintMiB": 19.4,
+        "endRssMiB": 17.8,
+        "instance": "B"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.067,
+        "startFootprintMiB": 574.2,
+        "endFootprintMiB": 369.5,
+        "peakFootprintMiB": 626.4,
+        "endRssMiB": 177.7,
+        "instance": "B"
+      },
+      {
+        "process": "org2",
+        "cpuPercent": 0.028,
+        "startFootprintMiB": 84.5,
+        "endFootprintMiB": 84.5,
+        "peakFootprintMiB": 84.7,
+        "endRssMiB": 109.3,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.GPU",
+        "cpuPercent": 0.028,
+        "startFootprintMiB": 141.5,
+        "endFootprintMiB": 144.8,
+        "peakFootprintMiB": 155.4,
+        "endRssMiB": 32.4,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.Networking",
+        "cpuPercent": 0.008,
+        "startFootprintMiB": 18.7,
+        "endFootprintMiB": 18.9,
+        "peakFootprintMiB": 19.2,
+        "endRssMiB": 18.0,
+        "instance": "A"
+      },
+      {
+        "process": "com.apple.WebKit.WebContent",
+        "cpuPercent": 0.145,
+        "startFootprintMiB": 561.5,
+        "endFootprintMiB": 443.4,
+        "peakFootprintMiB": 619.8,
+        "endRssMiB": 179.5,
+        "instance": "A"
+      }
+    ],
+    "requests": {
+      "/rest/v1/rpc/list_my_orgs": 7,
+      "/rest/v1/rpc/cloud_list_org_collab_state": 10,
+      "/rest/v1/rpc/cloud_list_channels": 14,
+      "/rest/v1/rpc/list_org_members": 10,
+      "/rest/v1/rpc/cloud_list_org_sessions": 14,
+      "/rest/v1/rpc/cloud_list_team_inbox_mentions_v2": 10
+    },
+    "websocket": {
+      "ws-up": 50,
+      "ws-down": 49,
+      "ws-close": 10,
+      "ws-open": 10
+    }
+  }
+]

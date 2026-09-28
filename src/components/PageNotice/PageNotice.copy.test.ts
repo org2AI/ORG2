@@ -59,6 +59,7 @@ describe("PageNotice copy", () => {
           PageNotice,
           {
             title: "Send failed",
+            titleSuffix: "(retry 2 of 3)",
             subtitle: "Try again later",
             action: { label: "Retry", onClick: retry },
           },
@@ -71,7 +72,7 @@ describe("PageNotice copy", () => {
     expect(buttons[1].textContent).toBe("Retry");
     await act(async () => buttons[0].click());
     expect(copyText).toHaveBeenCalledWith(
-      "Send failed\n\nFirst line\nSecond line\n\nTry again later"
+      "Send failed (retry 2 of 3)\n\nFirst line\nSecond line\n\nTry again later"
     );
     expect(retry).not.toHaveBeenCalled();
     expect(Message.success).toHaveBeenCalledWith("status.copied");

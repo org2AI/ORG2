@@ -644,7 +644,7 @@
       "positionDown": "Dưới",
       "showQuickActions": "Thao tác nhanh",
       "showSkills": "Kỹ năng đã ghim",
-      "showCliUpdate": "Bản cập nhật CLI",
+      "showCliUpdate": "Thông báo cập nhật CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Phiên mới"
@@ -1996,10 +1996,12 @@
     },
     "cliVersionOutdated": {
       "title": "Có bản cập nhật cho {{cli}}",
-      "versions": "Hiện tại: {{installed}} · Mới nhất: {{latest}}",
       "upgrade": "Cập nhật trong terminal",
-      "upgradeHint": "Cập nhật Cursor CLI trong terminal riêng. Kiểm tra lại phiên bản khi hoàn tất.",
-      "upgradeTerminal": "Cập nhật Cursor CLI",
+      "upgradeDocs": "Tài liệu chính thức",
+      "upgradeChooseMethod": "Chọn cách cài đặt ban đầu",
+      "upgradeNative": "Trình cập nhật tích hợp",
+      "upgradeHint": "Cập nhật {{cli}} CLI trong terminal riêng. Kiểm tra lại phiên bản khi hoàn tất.",
+      "upgradeTerminal": "Cập nhật {{cli}} CLI",
       "upgradeStarted": "Đã bắt đầu cập nhật trong terminal. Kiểm tra lại phiên bản khi hoàn tất.",
       "upgradeFailed": "Không thể mở terminal cập nhật. Vui lòng thử lại.",
       "muteUntilNextVersion": "Không cảnh báo cho đến phiên bản tiếp theo",
@@ -2649,6 +2651,10 @@
     "teamChatMode": "Trò chuyện nhóm",
     "promptTooltip": "Gửi cho agent",
     "teamChatTooltip": "Nhắn cho đồng đội — không kích hoạt agent",
+    "workspaceResolving": "Đang tìm không gian làm việc cục bộ phù hợp. Hãy thử lại sau giây lát.",
+    "workspaceRequiredTitle": "Mở không gian làm việc phù hợp",
+    "workspaceRequiredBody": "Để agent tiếp tục cuộc trò chuyện chung này, hãy mở bản sao cục bộ của kho mã.",
+    "openWorkspace": "Mở không gian làm việc",
     "imagesUnsupported": "Tin nhắn trò chuyện nhóm không thể chứa hình ảnh",
     "participantsTooltip": "Người tham gia cuộc trò chuyện và tin nhắn thảo luận",
     "mentionGroup": "Đồng đội"
@@ -2672,10 +2678,12 @@
     "limit": "Hiển thị tối đa 128 tài khoản"
   },
   "sharedFile": {
+    "resolvingOrigin": "Nguồn của tệp được chia sẻ vẫn đang tải. Vui lòng thử lại sau giây lát.",
     "downloaded": "Đã lưu vào thư mục Tải xuống",
     "downloadError": "Không thể lưu vào thư mục Tải xuống",
     "title": "Tệp được chia sẻ",
-    "error": "Không thể mở tệp này. Hãy kiểm tra tài khoản, máy chủ và quyền truy cập phiên rồi mở lại liên kết.",
+    "error": "Không thể mở tệp này. Hãy thử lại hoặc kiểm tra kết nối, tài khoản, máy chủ và quyền truy cập phiên.",
+    "notUploaded": "Tệp này chưa được tải lên phiên chia sẻ. Thiết bị của người gửi cần hoàn tất tải lên; hãy thử lại để kiểm tra.",
     "downloadPreview": "Tải tệp này xuống để xem nội dung",
     "download": "Tải xuống",
     "loading": "Đang tải tệp được chia sẻ…"

@@ -168,6 +168,7 @@ const StartEntry: RendererEntry = {
 
 export const REGISTRY: TabContentRegistry = {
   // Code Editor
+  "shared-file": { Component: lazy(() => import("./renderers/sharedFile")) },
   file: FileEntry,
   directory: DirectoryEntry,
   explorer: ExplorerEntry,

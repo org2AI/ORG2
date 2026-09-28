@@ -24,6 +24,28 @@ function event(overrides: Partial<SessionEvent>): SessionEvent {
   } as SessionEvent;
 }
 describe("session artifact discovery", () => {
+  it("never republishes inherited native or cloud rows but still uploads new local answers", () => {
+    const local = event({
+      id: "new-answer",
+      displayVariant: "message",
+      displayText: "[result](/repo/result.txt)",
+    });
+    const native = event({
+      ...local,
+      id: "rebased-answer",
+      args: { __orgiiSourceEventId: "orgii_evt_original" },
+    });
+    const cloud = event({
+      ...local,
+      id: "cloud-answer",
+      args: { __orgiiArtifactOrigin: { uploaderUserId: "guest" } },
+    });
+    const claude = event({ ...local, args: { __orgiiMaterialized: true } });
+    expect(collectSessionSharedFiles([native, cloud, claude])).toEqual([]);
+    expect(collectSessionSharedFiles([native, local, cloud])).toEqual([
+      { path: "/repo/result.txt", revision: "new-answer:now" },
+    ]);
+  });
   it("does not turn an empty extracted file path into the workspace directory", () => {
     expect(
       collectSessionSharedFiles(

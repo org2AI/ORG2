@@ -321,3 +321,21 @@ fn auxiliary_model_aggregator_native_vendor_ids_keep_the_original_wire_name() {
         );
     }
 }
+
+#[test]
+fn codex_reserve_auxiliary_work_stays_in_the_selected_pool() {
+    let mut key = account(ModelType::Codex, "gpt-reserve");
+    key.available_models.push("gpt-5.6-luna".into());
+    key.enabled_models.push("gpt-5.6-luna".into());
+    let spec = find_by_name(provider_id::OPENAI).unwrap();
+    let policy = AuxiliaryModelPolicy::from_account(spec, &key, None, true, false);
+    let reserve = policy.resolve("gpt-reserve-low");
+    let ordinary = policy.resolve("gpt-5.6-luna-low");
+    assert_eq!(reserve.models, vec!["gpt-reserve"]);
+    assert_eq!(ordinary.models, vec!["gpt-5.6-luna"]);
+    assert_ne!(reserve.scope, ordinary.scope);
+    key.enabled_models.retain(|model| model != "gpt-reserve");
+    let policy = AuxiliaryModelPolicy::from_account(spec, &key, None, true, false);
+    assert!(policy.resolve("gpt-reserve").models.is_empty());
+    assert_eq!(policy.resolve("gpt-5.6-luna").models, ordinary.models);
+}

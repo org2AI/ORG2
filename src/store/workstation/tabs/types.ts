@@ -16,6 +16,7 @@
  */
 export type WorkStationTabType =
   // Code Editor tabs
+  | "shared-file" // Ephemeral, authenticated cloud snapshot preview
   | "file"
   | "directory" // GitHub-style directory listing opened from chat/path references
   | "explorer" // Default pinned "home" tab — sidebar shows file tree, main pane shows placeholder
@@ -220,6 +221,7 @@ export function getWorkstationTabOwnership(
   type: WorkStationTabType
 ): WorkstationTabOwnership {
   switch (type) {
+    case "shared-file":
     case "file":
     case "directory":
     case "explorer":

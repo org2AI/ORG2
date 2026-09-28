@@ -5,6 +5,7 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
+import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
 import { Org2CloudSessionSync } from "./org2CloudSessionSync";
 import type { Org2CloudSyncClientDeps } from "./org2CloudSessionSync.types";
 import { AUTH, SCOPE_KEY, SESSION } from "./org2CloudSyncEngine.testUtils";
@@ -71,6 +72,7 @@ describe("Org2CloudSessionSync shrink guard", () => {
   it("never rewrites the cloud copy from a hollow local read, even across passes", async () => {
     const client = makeClient();
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const sync = new Org2CloudSessionSync(() => store, client);
 
     await pushPass(sync, [pushEvent(1), pushEvent(2), pushEvent(3)]);
@@ -90,6 +92,7 @@ describe("Org2CloudSessionSync shrink guard", () => {
   it("still re-anchors a NONZERO shrink after consecutive-pass confirmation", async () => {
     const client = makeClient();
     const store = createStore();
+    store.set(org2CloudAuthAtom, AUTH);
     const sync = new Org2CloudSessionSync(() => store, client);
 
     await pushPass(sync, [pushEvent(1), pushEvent(2), pushEvent(3)]);

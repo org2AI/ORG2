@@ -6,7 +6,10 @@ import {
   ORG2_CLOUD_OFFICIAL_SUPABASE_URL,
   ORG2_CLOUD_POSTGREST_SCHEMA,
 } from "./config";
-import { __CAPABILITIES_INTERNALS } from "./org2CloudCapabilities";
+import {
+  __CAPABILITIES_INTERNALS,
+  getCloudCapabilities,
+} from "./org2CloudCapabilities";
 import { Org2CloudCommentError } from "./org2CloudCommentsClient";
 import {
   listInitialTeamInboxMentions,
@@ -112,6 +115,11 @@ describe("listInitialTeamInboxMentions", () => {
 });
 
 describe("listTeamInboxMentions", () => {
+  beforeEach(async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ teamInboxMentions: true }));
+    await getCloudCapabilities("jwt-viewer");
+    fetchMock.mockClear();
+  });
   it("posts the managed-cloud wire contract without a viewer identity", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
@@ -217,7 +225,7 @@ describe("listTeamInboxMentions", () => {
 
     // The malformed row costs only itself — never surfaced raw, never fatal.
     expect(page.mentions).toHaveLength(1);
-    expect(page.mentions[0].comment.id).toBe("comment-9");
+    expect(page.mentions[0]).toMatchObject({ comment: { id: "comment-9" } });
     expect(page.unreadCount).toBe(1);
   });
 
@@ -280,6 +288,11 @@ describe("listTeamInboxMentions", () => {
 });
 
 describe("Team Inbox read receipts", () => {
+  beforeEach(async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ teamInboxMentions: true }));
+    await getCloudCapabilities("jwt-viewer");
+    fetchMock.mockClear();
+  });
   it("persists a single receipt without sending a viewer id", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
@@ -324,5 +337,83 @@ describe("Team Inbox read receipts", () => {
       `${ORG2_CLOUD_OFFICIAL_SUPABASE_URL}/rest/v1/rpc/cloud_mark_all_team_inbox_mentions_read`
     );
     expect(lastBody()).toEqual({ p_org_id: "org-1" });
+  });
+});
+
+const CHANNEL_MENTION = {
+  kind: "channel_message",
+  message: { id: "22222222-2222-4222-8222-222222222222" },
+  channel: {
+    id: "33333333-3333-4333-8333-333333333333",
+    name: "design",
+    visibility: "private",
+  },
+  author: { userId: "author", displayName: "Author" },
+  body: "Please review",
+  createdAt: "2026-09-24T21:00:00Z",
+  readAt: null,
+};
+
+describe("unified channel Inbox transport", () => {
+  beforeEach(async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ teamInboxMentions: true, channelInboxMentions: true })
+    );
+    await getCloudCapabilities("jwt-viewer");
+    fetchMock.mockClear();
+  });
+  it("parses mixed source pages and keeps the server cursor opaque", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        mentions: [WIRE_MENTION, CHANNEL_MENTION],
+        unreadCount: 2,
+        nextCursor: "date|channel_message|id",
+      })
+    );
+    const page = await listTeamInboxMentions("jwt-viewer", "org-1", null, 25);
+    expect(page.mentions).toEqual([WIRE_MENTION, CHANNEL_MENTION]);
+    expect(page.nextCursor).toBe("date|channel_message|id");
+    expect(lastCall().url).toMatch(/cloud_list_team_inbox_mentions_v2$/);
+  });
+  it("routes typed receipts and mark-all to unified totals without sending a viewer", async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse({ readAt: null, unreadCount: 1 })
+    );
+    await setTeamInboxMentionRead(
+      "jwt-viewer",
+      "org-1",
+      CHANNEL_MENTION.message.id,
+      false,
+      undefined,
+      "channel_message"
+    );
+    expect(lastBody()).toEqual({
+      p_org_id: "org-1",
+      p_source_kind: "channel_message",
+      p_source_id: CHANNEL_MENTION.message.id,
+      p_read: false,
+    });
+    expect(lastCall().url).toMatch(/cloud_set_team_inbox_mention_read_v2$/);
+    await setTeamInboxMentionRead("jwt-viewer", "org-1", "comment-2", true);
+    expect(lastBody().p_source_kind).toBe("session_comment");
+    await markAllTeamInboxMentionsRead("jwt-viewer", "org-1");
+    expect(lastCall().url).toMatch(
+      /cloud_mark_all_team_inbox_mentions_read_v2$/
+    );
+  });
+  it("rejects a channel receipt on an older endpoint instead of treating it as a session comment", async () => {
+    __CAPABILITIES_INTERNALS.reset();
+    fetchMock.mockResolvedValueOnce(jsonResponse({ teamInboxMentions: true }));
+    await expect(
+      setTeamInboxMentionRead(
+        "jwt-viewer",
+        "org-1",
+        CHANNEL_MENTION.message.id,
+        true,
+        undefined,
+        "channel_message"
+      )
+    ).rejects.toThrow("unavailable");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

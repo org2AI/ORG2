@@ -99,10 +99,27 @@ export function useTailTurnPhase({
     !disableTailCollapse && activeId && tailTurnId
       ? `${activeId}:${tailTurnId}`
       : null;
+  // An accepted user row can render before its running status. Do not let
+  // that transient idle snapshot permanently collapse the same turn once
+  // actual provider output arrives. The body-less synthetic typing sentinel
+  // is not evidence: dispatch-before-transcript must keep the old turn closed.
+  const hasLiveOutput = useMemo(() => {
+    for (let index = chatHistory.length - 1; index >= 0; index -= 1) {
+      const event = chatHistory[index];
+      if (event.id === tailTurnId) break;
+      if (event.isDelta === true && !event.id.startsWith("live-assistant-")) {
+        return true;
+      }
+    }
+    return false;
+  }, [chatHistory, tailTurnId]);
   const complete =
     turnKey !== null &&
     !hasLiveChildren &&
-    (!agentWorking || (completion.turnKey === turnKey && completion.complete));
+    (!agentWorking ||
+      (!hasLiveOutput &&
+        completion.turnKey === turnKey &&
+        completion.complete));
 
   // Adjust this component's state only when the input-derived latch changes.
   // No timeout, delayed commit, or clock-based completion heuristic is needed.

@@ -107,6 +107,25 @@ describe("resolveTeamChatAudienceTargets", () => {
     ).toEqual([{ kind: "member", id: "u-ann-lee" }]);
   });
 
+  it.each([
+    "plain human reply",
+    "no @ mention",
+    "@unknown",
+    "name@example.com",
+  ])("does not turn default visibility into mentions for %s", (body) => {
+    expect(
+      resolveTeamChatMentionedUserIds(body, members, undefined, "u-vince")
+    ).toEqual([]);
+    expect(
+      resolveTeamChatMentionedUserIds(
+        body,
+        members,
+        { parts: [{ kind: "text", text: body }] },
+        "u-vince"
+      )
+    ).toEqual([]);
+  });
+
   it("supports typed @all and expands notifications to every other member", () => {
     expect(
       resolveTeamChatAudienceTargets("@all please review", members)

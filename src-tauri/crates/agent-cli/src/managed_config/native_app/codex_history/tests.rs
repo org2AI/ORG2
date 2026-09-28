@@ -3,8 +3,12 @@
 use super::*;
 use rusqlite::Connection;
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use std::cell::Cell;
 use std::io::Write;
+
+mod last_write_wins;
+mod retained_generation;
 
 const THREAD: &str = "01960000-0000-7000-8000-000000000001";
 const OTHER: &str = "01960000-0000-7000-8000-000000000002";
@@ -77,11 +81,36 @@ impl Fixture {
             bytes.extend(serde_json::to_vec(&record).unwrap());
             bytes.push(b'\n');
         }
+        bytes.extend(native_settings_line("permission_profile", 9));
         fs::write(self.rollout(false), &bytes).unwrap();
         Connection::open(self.primary.join("thread_history_1.sqlite"))
             .unwrap()
             .execute(
-                "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1",
+                "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=10",
+                [bytes.len() as i64],
+            )
+            .unwrap();
+        bytes
+    }
+
+    /// Native thread/start + its first completed turn need not emit settings.
+    /// Keep the projection frontier consistent with that genuine empty case.
+    fn seed_without_settings(&self) -> Vec<u8> {
+        let bytes = self
+            .seed()
+            .split_inclusive(|byte| *byte == b'\n')
+            .filter(|line| {
+                let event: serde_json::Value = serde_json::from_slice(line).unwrap();
+                event["payload"]["type"] != "thread_settings_applied"
+            })
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>();
+        fs::write(self.rollout(false), &bytes).unwrap();
+        Connection::open(self.primary.join("thread_history_1.sqlite"))
+            .unwrap()
+            .execute(
+                "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=9",
                 [bytes.len() as i64],
             )
             .unwrap();
@@ -106,7 +135,12 @@ impl Fixture {
     fn assert_recovered(&self, original: &[u8]) {
         self.run(|| Ok(())).unwrap();
         assert!(self.row_visible());
-        let published = fs::read(self.rollout(true)).unwrap();
+        let current = store::list_threads(&self.package, Some(&[THREAD.into()]))
+            .unwrap()
+            .pop()
+            .unwrap()
+            .rollout_path;
+        let published = fs::read(&current).unwrap();
         assert!(published.starts_with(original));
         let settings: serde_json::Value =
             serde_json::from_slice(&published[original.len()..]).unwrap();
@@ -123,7 +157,7 @@ impl Fixture {
         let repeat = self.run(|| Ok(())).unwrap();
         assert_eq!(repeat.copied, 0);
         assert_eq!(repeat.conflicts, 0);
-        assert_eq!(fs::read(self.rollout(true)).unwrap(), published);
+        assert_eq!(fs::read(&current).unwrap(), published);
     }
 }
 
@@ -192,7 +226,7 @@ fn recovery_uses_durable_snapshot_when_source_continues_after_interruption() {
     });
     assert!(injected.get());
     assert!(result.is_err());
-    let continuation = json!({"ordinal":9,"type":"event_msg","payload":{"type":"task_complete","turn_id":"later"}});
+    let continuation = json!({"ordinal":10,"type":"event_msg","payload":{"type":"task_complete","turn_id":"later"}});
     let mut source = fs::OpenOptions::new()
         .append(true)
         .open(fixture.rollout(false))
@@ -200,7 +234,7 @@ fn recovery_uses_durable_snapshot_when_source_continues_after_interruption() {
     writeln!(source, "{continuation}").unwrap();
     source.sync_all().unwrap();
     let current = fs::read(fixture.rollout(false)).unwrap();
-    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=10", [current.len() as i64]).unwrap();
+    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=11", [current.len() as i64]).unwrap();
     fixture.assert_recovered(&current);
 }
 
@@ -237,6 +271,98 @@ fn completed_loaded_source_exports_a_fixed_snapshot_without_releasing_its_writer
 }
 
 #[test]
+fn store_fenced_source_exports_terminal_history_only_at_its_projected_frontier() {
+    let fixture = Fixture::new();
+    let mut raw = fixture.seed();
+    let history = Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap();
+    let mut ordinal = 10;
+    // Real histories retain unsuccessful terminal turns after a later success.
+    // Reproduce both their raw native records and projected status/frontiers.
+    for (turn, status) in [
+        ("old-failure", "failed"),
+        ("old-interruption", "interrupted"),
+        ("latest-success", "completed"),
+    ] {
+        let start = raw.len();
+        let terminal = if status == "interrupted" {
+            json!({"type":"turn_aborted","turn_id":turn,"reason":"interrupted"})
+        } else {
+            json!({"type":"task_complete","turn_id":turn})
+        };
+        let records = [
+            json!({"ordinal":ordinal,"type":"event_msg","payload":{"type":"task_started","turn_id":turn}}),
+            json!({"ordinal":ordinal+1,"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":turn}]}}),
+            json!({"ordinal":ordinal+2,"type":"event_msg","payload":terminal}),
+        ];
+        for record in records {
+            raw.extend(serde_json::to_vec(&record).unwrap());
+            raw.push(b'\n');
+        }
+        history.execute(
+            "INSERT INTO thread_turns (thread_id,turn_id,rollout_ordinal,status,started_at,completed_at,rollout_byte_offset,rollout_end_ordinal,rollout_end_byte_offset) VALUES (?1,?2,?3,?4,1,2,?5,?6,?7)",
+            rusqlite::params![THREAD,turn,ordinal,status,start as i64,ordinal+2,raw.len() as i64],
+        ).unwrap();
+        ordinal += 3;
+    }
+    fs::write(fixture.rollout(false), &raw).unwrap();
+    history.execute(
+        "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=?2",
+        rusqlite::params![raw.len() as i64,ordinal],
+    ).unwrap();
+    let account = tempfile::tempdir().unwrap();
+    let _native = WriterLock::acquire(&account.path().canonicalize().unwrap(), THREAD).unwrap();
+    let _producer = NativeStoreWriter::acquire(&fixture.primary).unwrap();
+    let assert_busy = || {
+        let report = fixture.run(|| Ok(())).unwrap();
+        assert_eq!(report.copied, 0);
+        assert_eq!(report.busy, 1);
+        assert_eq!(report.conflicts, 0);
+        assert!(!fixture.rollout(true).exists());
+        assert_eq!(fs::read(fixture.rollout(false)).unwrap(), raw);
+    };
+    for status in ["inProgress", "futureTerminalStatus"] {
+        history
+            .execute(
+                "UPDATE thread_turns SET status=?1 WHERE turn_id='latest-success'",
+                [status],
+            )
+            .unwrap();
+        assert_busy();
+    }
+    history
+        .execute(
+            "UPDATE thread_turns SET status='completed' WHERE turn_id='latest-success'",
+            [],
+        )
+        .unwrap();
+    history
+        .execute(
+            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1",
+            [raw.len() as i64 - 1],
+        )
+        .unwrap();
+    assert_busy();
+    history.execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=?2", rusqlite::params![raw.len() as i64,ordinal-1]).unwrap();
+    assert_busy();
+    history
+        .execute(
+            "UPDATE thread_history_projection_state SET next_rollout_ordinal=?1",
+            [ordinal],
+        )
+        .unwrap();
+    let report = fixture.run(|| Ok(())).unwrap();
+    assert_eq!((report.copied, report.busy, report.conflicts), (1, 0, 0));
+    assert!(fs::read(fixture.rollout(true)).unwrap().starts_with(&raw));
+    assert_eq!(fs::read(fixture.rollout(false)).unwrap(), raw);
+    assert_eq!(
+        NativeStoreWriter::exclusive(&fixture.primary)
+            .err()
+            .as_deref(),
+        Some("busy")
+    );
+}
+
+#[test]
 fn loaded_noncompleted_unprojected_and_legacy_sources_remain_busy() {
     let fixture = Fixture::new();
     let original = fixture.seed();
@@ -263,11 +389,11 @@ fn loaded_noncompleted_unprojected_and_legacy_sources_remain_busy() {
         )
         .unwrap();
     assert_busy();
-    history.execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=8", [original.len() as i64]).unwrap();
+    history.execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=9", [original.len() as i64]).unwrap();
     assert_busy();
     history
         .execute(
-            "UPDATE thread_history_projection_state SET next_rollout_ordinal=9",
+            "UPDATE thread_history_projection_state SET next_rollout_ordinal=10",
             [],
         )
         .unwrap();
@@ -289,7 +415,7 @@ fn loaded_source_append_during_staging_discards_the_unpublished_copy() {
             entries.filter_map(Result::ok).any(|entry| entry.file_name().to_str().is_some_and(|name| name.starts_with(".tmp")))
         });
         if staging && !appended.replace(true) {
-            let event = json!({"ordinal":9,"type":"event_msg","payload":{"type":"task_started","turn_id":"new-turn"}});
+            let event = json!({"ordinal":10,"type":"event_msg","payload":{"type":"task_started","turn_id":"new-turn"}});
             writeln!(fs::OpenOptions::new().append(true).open(fixture.rollout(false)).unwrap(), "{event}").unwrap();
         }
         Ok(())
@@ -329,7 +455,7 @@ fn a_divergent_pending_target_does_not_block_an_unrelated_thread() {
         })
         .is_err());
     assert!(injected.get());
-    let external = json!({"ordinal":10,"type":"event_msg","payload":{"type":"task_complete","turn_id":"external"}});
+    let external = json!({"ordinal":11,"type":"event_msg","payload":{"type":"task_complete","turn_id":"external"}});
     writeln!(
         fs::OpenOptions::new()
             .append(true)
@@ -346,7 +472,7 @@ fn a_divergent_pending_target_does_not_block_an_unrelated_thread() {
         .into_bytes();
     let other_path = fixture.primary.join(format!("sessions/{OTHER}.jsonl"));
     fs::write(&other_path, &other_bytes).unwrap();
-    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1 WHERE thread_id=?2", rusqlite::params![other_bytes.len() as i64, OTHER]).unwrap();
+    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=10 WHERE thread_id=?2", rusqlite::params![other_bytes.len() as i64, OTHER]).unwrap();
     let report = fixture.run(|| Ok(())).unwrap();
     assert_eq!(report.copied, 1);
     assert!(report.conflicts >= 1);
@@ -360,55 +486,14 @@ fn a_divergent_pending_target_does_not_block_an_unrelated_thread() {
 }
 
 #[test]
-fn divergent_edits_on_both_profiles_preserve_both_originals() {
-    let fixture = Fixture::new();
-    fixture.seed();
-    assert_eq!(fixture.run(|| Ok(())).unwrap().copied, 1);
-    for (is_package, ordinal, title) in [(false, 9, "primary change"), (true, 10, "package change")]
-    {
-        let event = json!({"ordinal":ordinal,"type":"event_msg","payload":{"type":"task_complete","turn_id":title}});
-        writeln!(
-            fs::OpenOptions::new()
-                .append(true)
-                .open(fixture.rollout(is_package))
-                .unwrap(),
-            "{event}"
-        )
-        .unwrap();
-        let home = if is_package {
-            &fixture.package
-        } else {
-            &fixture.primary
-        };
-        Connection::open(home.join("state_5.sqlite"))
-            .unwrap()
-            .execute(
-                "UPDATE threads SET title=?1 WHERE id=?2",
-                rusqlite::params![title, THREAD],
-            )
-            .unwrap();
-    }
-    let primary = fs::read(fixture.rollout(false)).unwrap();
-    let package = fs::read(fixture.rollout(true)).unwrap();
-    let report = fixture.run(|| Ok(())).unwrap();
-    assert_eq!(report.copied, 0);
-    assert_eq!(report.conflicts, 1);
-    assert_eq!(fs::read(fixture.rollout(false)).unwrap(), primary);
-    assert_eq!(fs::read(fixture.rollout(true)).unwrap(), package);
-    assert!(read_ledger(&fixture.journal).unwrap().pending.is_empty());
-}
-
-#[test]
-fn archive_and_unarchive_move_the_catalog_pointer_without_duplicate_discovery() {
+fn archive_and_unarchive_preserve_frozen_generations_and_one_catalog_row() {
     let fixture = Fixture::new();
     fixture.seed();
     fixture.run(|| Ok(())).unwrap();
     let source_archived = fixture
         .primary
         .join(format!("archived_sessions/{THREAD}.jsonl"));
-    let target_archived = fixture
-        .package
-        .join(format!("archived_sessions/{THREAD}.jsonl"));
+    let target_original = fs::read(fixture.rollout(true)).unwrap();
     fs::create_dir_all(source_archived.parent().unwrap()).unwrap();
     fs::rename(fixture.rollout(false), &source_archived).unwrap();
     let state = Connection::open(fixture.primary.join("state_5.sqlite")).unwrap();
@@ -421,13 +506,18 @@ fn archive_and_unarchive_move_the_catalog_pointer_without_duplicate_discovery() 
     let archived = fixture.run(|| Ok(())).unwrap();
     assert_eq!(archived.copied, 1);
     assert_eq!(archived.conflicts, 0);
-    assert!(!fixture.rollout(true).exists());
-    assert!(target_archived.exists());
-    assert_eq!(files::inventory(&fixture.package).unwrap().len(), 1);
+    assert_eq!(fs::read(fixture.rollout(true)).unwrap(), target_original);
     let target = store::list_threads(&fixture.package, None)
         .unwrap()
         .remove(0);
-    assert_eq!(target.rollout_path, target_archived);
+    let target_archived = target.rollout_path;
+    assert!(target_archived.starts_with(fixture.package.join("archived_sessions")));
+    assert_ne!(
+        target_archived.file_name(),
+        fixture.rollout(true).file_name()
+    );
+    let archived_bytes = fs::read(&target_archived).unwrap();
+    assert_eq!(files::inventory(&fixture.package).unwrap().len(), 2);
     fs::rename(&source_archived, fixture.rollout(false)).unwrap();
     state
         .execute(
@@ -439,8 +529,14 @@ fn archive_and_unarchive_move_the_catalog_pointer_without_duplicate_discovery() 
     assert_eq!(restored.copied, 1);
     assert_eq!(restored.conflicts, 0);
     assert!(fixture.rollout(true).exists());
-    assert!(!target_archived.exists());
-    assert_eq!(files::inventory(&fixture.package).unwrap().len(), 1);
+    assert_eq!(fs::read(&target_archived).unwrap(), archived_bytes);
+    assert_eq!(fs::read(fixture.rollout(true)).unwrap(), target_original);
+    assert_eq!(files::inventory(&fixture.package).unwrap().len(), 3);
+    let rows = store::list_threads(&fixture.package, None).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert!(rows[0]
+        .rollout_path
+        .starts_with(fixture.package.join("sessions")));
     assert_eq!(fixture.run(|| Ok(())).unwrap().copied, 0);
 }
 
@@ -451,8 +547,8 @@ fn pending_fork_cannot_publish_when_its_existing_ancestor_disappeared() {
     fixture.run(|| Ok(())).unwrap();
     store::fixture_seed(&fixture.primary, OTHER, OTHER);
     let child = [
-        json!({"ordinal":9,"type":"session_meta","payload":{"id":OTHER,"cwd":"/test","model_provider":"openai","history_mode":"paginated","history_base":{"thread_id":THREAD,"end_byte_offset":original.len(),"end_ordinal_exclusive":9}}}),
-        json!({"ordinal":10,"type":"event_msg","payload":{"type":"task_complete","turn_id":"child"}}),
+        json!({"ordinal":10,"type":"session_meta","payload":{"id":OTHER,"cwd":"/test","model_provider":"openai","history_mode":"paginated","history_base":{"thread_id":THREAD,"end_byte_offset":original.len(),"end_ordinal_exclusive":10}}}),
+        json!({"ordinal":11,"type":"event_msg","payload":{"type":"task_complete","turn_id":"child"}}),
     ];
     let mut child_bytes = Vec::new();
     for line in child {
@@ -462,7 +558,7 @@ fn pending_fork_cannot_publish_when_its_existing_ancestor_disappeared() {
     let source_child = fixture.primary.join(format!("sessions/{OTHER}.jsonl"));
     let target_child = fixture.package.join(format!("sessions/{OTHER}.jsonl"));
     fs::write(&source_child, &child_bytes).unwrap();
-    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=11 WHERE thread_id=?2", rusqlite::params![child_bytes.len() as i64, OTHER]).unwrap();
+    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=12 WHERE thread_id=?2", rusqlite::params![child_bytes.len() as i64, OTHER]).unwrap();
     let child_visible = || -> bool {
         Connection::open(fixture.package.join("state_5.sqlite"))
             .unwrap()
@@ -524,8 +620,8 @@ fn revert_preserves_ancestor_and_exports_raw_append_by_immutable_rollout_id() {
         )
         .unwrap();
     let records = [
-        json!({"ordinal":9,"type":"session_meta","payload":{"id":THREAD,"cwd":"/test","model_provider":"openai","history_mode":"paginated","history_base":{"thread_id":THREAD,"end_byte_offset":original.len(),"end_ordinal_exclusive":9}}}),
-        json!({"ordinal":10,"type":"event_msg","payload":{"type":"task_complete","turn_id":"replacement"}}),
+        json!({"ordinal":10,"type":"session_meta","payload":{"id":THREAD,"cwd":"/test","model_provider":"openai","history_mode":"paginated","history_base":{"thread_id":THREAD,"end_byte_offset":original.len(),"end_ordinal_exclusive":10}}}),
+        json!({"ordinal":11,"type":"event_msg","payload":{"type":"task_complete","turn_id":"replacement"}}),
     ];
     let mut replacement = Vec::new();
     for record in records {
@@ -533,7 +629,7 @@ fn revert_preserves_ancestor_and_exports_raw_append_by_immutable_rollout_id() {
         replacement.push(b'\n');
     }
     fs::write(&source_replacement, &replacement).unwrap();
-    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=11 WHERE thread_id=?2", rusqlite::params![replacement.len() as i64, OTHER]).unwrap();
+    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=12 WHERE thread_id=?2", rusqlite::params![replacement.len() as i64, OTHER]).unwrap();
     let result = fixture.run(|| Ok(())).unwrap();
     assert_eq!(result.copied, 1);
     assert_eq!(result.conflicts, 0);
@@ -560,7 +656,7 @@ fn revert_preserves_ancestor_and_exports_raw_append_by_immutable_rollout_id() {
     let metadata_before = store::list_threads(&fixture.primary, None).unwrap()[0]
         .metadata_hash
         .clone();
-    let raw_append = json!({"ordinal":11,"type":"event_msg","payload":{"type":"user_message","message":"incremental fixture append"}});
+    let raw_append = json!({"ordinal":12,"type":"event_msg","payload":{"type":"user_message","message":"incremental fixture append"}});
     writeln!(
         fs::OpenOptions::new()
             .append(true)
@@ -587,7 +683,15 @@ fn revert_preserves_ancestor_and_exports_raw_append_by_immutable_rollout_id() {
         store::list_threads(&fixture.primary, None).unwrap()[0].metadata_hash,
         metadata_before
     );
-    assert!(fs::read(&target_replacement).unwrap().starts_with(&current));
+    let current_target = store::list_threads(&fixture.package, None)
+        .unwrap()
+        .remove(0)
+        .rollout_path;
+    assert_ne!(current_target, target_replacement);
+    assert!(fs::read(&current_target).unwrap().starts_with(&current));
+    assert!(fs::read(&target_replacement)
+        .unwrap()
+        .starts_with(&replacement));
     assert_eq!(
         fs::read(fixture.rollout(true)).unwrap(),
         target_ancestor_before
@@ -608,7 +712,7 @@ fn metadata_invalidation_copies_another_threads_title_alongside_raw_file_events(
         &other_bytes,
     )
     .unwrap();
-    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1 WHERE thread_id=?2", rusqlite::params![other_bytes.len() as i64, OTHER]).unwrap();
+    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=10 WHERE thread_id=?2", rusqlite::params![other_bytes.len() as i64, OTHER]).unwrap();
     assert_eq!(fixture.run(|| Ok(())).unwrap().copied, 2);
     Connection::open(fixture.primary.join("state_5.sqlite"))
         .unwrap()
@@ -700,6 +804,7 @@ fn return_direction_waits_for_an_explicit_primary_model_without_probing_it() {
     .unwrap();
     let forward = fixture.run(|| Ok(())).unwrap();
     assert_eq!((forward.copied, forward.busy, forward.conflicts), (1, 0, 0));
+    assert!(forward.target_route_pending);
     assert!(fixture.row_visible());
     let published = fs::read(fixture.rollout(true)).unwrap();
     assert!(published.starts_with(&original));
@@ -709,14 +814,14 @@ fn return_direction_waits_for_an_explicit_primary_model_without_probing_it() {
         .unwrap();
     std::io::Write::write_all(
         &mut file,
-        b"{\"ordinal\":10,\"type\":\"event_msg\",\"payload\":{\"type\":\"task_complete\",\"turn_id\":\"market\"}}\n",
+        b"{\"ordinal\":11,\"type\":\"event_msg\",\"payload\":{\"type\":\"task_complete\",\"turn_id\":\"market\"}}\n",
     )
     .unwrap();
     let appended = fs::read(fixture.rollout(true)).unwrap();
     Connection::open(fixture.package.join("thread_history_1.sqlite"))
         .unwrap()
         .execute(
-            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=11",
+            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=12",
             [appended.len() as i64],
         )
         .unwrap();
@@ -732,6 +837,7 @@ fn return_direction_waits_for_an_explicit_primary_model_without_probing_it() {
         (deferred.copied, deferred.busy, deferred.conflicts),
         (0, 1, 0)
     );
+    assert!(deferred.target_route_pending);
     assert_eq!(fs::read(fixture.rollout(false)).unwrap(), original);
     assert!(!fixture
         .primary
@@ -743,6 +849,7 @@ fn return_direction_waits_for_an_explicit_primary_model_without_probing_it() {
     )
     .unwrap();
     let returned = fixture.run(|| Ok(())).unwrap();
+    assert!(!returned.target_route_pending);
     assert_eq!(
         (returned.copied, returned.busy, returned.conflicts),
         (1, 0, 0)
@@ -771,7 +878,7 @@ fn only_recent_primary_conversations_start_crossing_but_shared_and_fork_bases_ke
             .replace(THREAD, &id)
             .into_bytes();
         fs::write(fixture.primary.join(format!("sessions/{id}.jsonl")), &bytes).unwrap();
-        Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1 WHERE thread_id=?2", rusqlite::params![bytes.len() as i64, id]).unwrap();
+        Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=10 WHERE thread_id=?2", rusqlite::params![bytes.len() as i64, id]).unwrap();
         state()
             .execute(
                 "UPDATE threads SET updated_at=?1 WHERE id=?2",
@@ -790,8 +897,8 @@ fn only_recent_primary_conversations_start_crossing_but_shared_and_fork_bases_ke
     // The second newest is a fork of the oldest conversation.
     let fork = &ids[ids.len() - 2];
     let child = [
-        json!({"ordinal":9,"type":"session_meta","payload":{"id":fork,"cwd":"/test","model_provider":"openai","history_mode":"paginated","history_base":{"thread_id":THREAD,"end_byte_offset":original.len(),"end_ordinal_exclusive":9}}}),
-        json!({"ordinal":10,"type":"event_msg","payload":{"type":"task_complete","turn_id":"child"}}),
+        json!({"ordinal":10,"type":"session_meta","payload":{"id":fork,"cwd":"/test","model_provider":"openai","history_mode":"paginated","history_base":{"thread_id":THREAD,"end_byte_offset":original.len(),"end_ordinal_exclusive":10}}}),
+        json!({"ordinal":11,"type":"event_msg","payload":{"type":"task_complete","turn_id":"child"}}),
     ];
     let mut child_bytes = Vec::new();
     for line in child {
@@ -803,7 +910,7 @@ fn only_recent_primary_conversations_start_crossing_but_shared_and_fork_bases_ke
         &child_bytes,
     )
     .unwrap();
-    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=11 WHERE thread_id=?2", rusqlite::params![child_bytes.len() as i64, fork]).unwrap();
+    Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap().execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=12 WHERE thread_id=?2", rusqlite::params![child_bytes.len() as i64, fork]).unwrap();
 
     let mut copied = 0;
     loop {
@@ -874,7 +981,7 @@ fn recovery_accepts_a_target_the_native_app_projected_after_our_rename() {
     Connection::open(fixture.package.join("thread_history_1.sqlite"))
         .unwrap()
         .execute(
-            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=11 WHERE thread_id=?2",
+            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=12 WHERE thread_id=?2",
             rusqlite::params![published.len() as i64, THREAD],
         )
         .unwrap();
@@ -909,6 +1016,25 @@ fn recovery_accepts_a_target_the_native_app_projected_after_our_rename() {
     assert!(ledger.pairs.contains_key(THREAD));
     let repeat = fixture.run(|| Ok(())).unwrap();
     assert_eq!((repeat.copied, repeat.conflicts), (0, 0));
+
+    // Recovery accepted native's tokens_used=7 in its portable metadata. A
+    // later settings-only open must compare against that accepted row, rather
+    // than the older metadata saved in the pre-publication snapshot.
+    last_write_wins::append_settings(&fixture.package);
+    last_write_wins::append_content(&fixture.primary, "after-native-recovery");
+    let source_bytes = fs::read(fixture.rollout(false)).unwrap();
+    let continued = fixture.run(|| Ok(())).unwrap();
+    assert_eq!(
+        (continued.copied, continued.busy, continued.conflicts),
+        (1, 0, 0)
+    );
+    let target = store::list_threads(&fixture.package, Some(&[THREAD.into()]))
+        .unwrap()
+        .pop()
+        .unwrap();
+    assert!(fs::read(target.rollout_path)
+        .unwrap()
+        .starts_with(&source_bytes));
 }
 
 #[test]
@@ -931,14 +1057,14 @@ fn recovery_still_refuses_a_target_the_native_app_continued() {
     store::fixture_seed(&fixture.package, THREAD, THREAD);
     files::append(
         &fixture.rollout(true),
-        &json!({"ordinal":20,"type":"event_msg","payload":{"type":"task_complete","turn_id":"native"}}),
+        &json!({"ordinal":21,"type":"event_msg","payload":{"type":"task_complete","turn_id":"native"}}),
     )
     .unwrap();
     let continued = fs::read(fixture.rollout(true)).unwrap();
     Connection::open(fixture.package.join("thread_history_1.sqlite"))
         .unwrap()
         .execute(
-            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=21 WHERE thread_id=?2",
+            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=22 WHERE thread_id=?2",
             rusqlite::params![continued.len() as i64, THREAD],
         )
         .unwrap();
@@ -955,14 +1081,14 @@ fn recovery_still_refuses_a_target_the_native_app_continued() {
         .contains_key(THREAD));
 }
 
-fn native_settings_line(permission_key: &str) -> Vec<u8> {
+fn native_settings_line(permission_key: &str, ordinal: u64) -> Vec<u8> {
     let mut settings = json!({
         "model":"gpt","model_provider_id":"openai","approval_policy":"on-request",
-        "approvals_reviewer":"user","cwd":"/test","collaboration_mode":{"mode":"default"},
+        "approvals_reviewer":"user","cwd":"/test","collaboration_mode":{"mode":"default","settings":{"model":"gpt","reasoning_effort":null,"developer_instructions":null}},
         "personality":"pragmatic","reasoning_effort":"low","service_tier":"default"
     });
-    settings[permission_key] = json!({"type":"managed"});
-    let mut line = serde_json::to_vec(&json!({"ordinal":9,"type":"event_msg","payload":{
+    settings[permission_key] = routing::conservative_permission_profile();
+    let mut line = serde_json::to_vec(&json!({"ordinal":ordinal,"type":"event_msg","payload":{
         "type":"thread_settings_applied","thread_id":THREAD,"thread_settings":settings}}))
     .unwrap();
     line.push(b'\n');
@@ -970,47 +1096,227 @@ fn native_settings_line(permission_key: &str) -> Vec<u8> {
 }
 
 #[test]
-fn format_gate_admits_native_settings_events_and_refuses_a_renamed_field() {
-    let fixture = Fixture::new();
-    let original = fixture.seed();
-    assert_eq!(format_gate(&fixture.primary).unwrap(), 0);
-    let mut file = fs::OpenOptions::new()
-        .append(true)
-        .open(fixture.rollout(false))
-        .unwrap();
-    file.write_all(&native_settings_line("permission_profile")).unwrap();
-    drop(file);
-    let bytes = fs::read(fixture.rollout(false)).unwrap();
-    Connection::open(fixture.primary.join("thread_history_1.sqlite"))
-        .unwrap()
-        .execute(
-            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1",
-            [bytes.len() as i64],
+fn authorized_first_turn_without_settings_reconciles_on_full_and_targeted_passes() {
+    for changed_files in [None, Some(vec![]), Some(vec![THREAD.into()])] {
+        let fixture = Fixture::new();
+        let original = fixture.seed_without_settings();
+        let report = reconcile_at_with_models(
+            &fixture.primary,
+            &fixture.package,
+            &fixture.journal,
+            None,
+            ["", ""],
+            changed_files.as_deref(),
+            || Ok(()),
         )
         .unwrap();
-    assert_eq!(format_gate(&fixture.primary).unwrap(), 1);
+        assert_eq!((report.copied, report.conflicts, report.pending), (1, 0, 0));
+        fixture.assert_recovered(&original);
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct FixtureFile {
+    size: u64,
+    sha256: String,
+}
+type FixtureTree = BTreeMap<PathBuf, Option<FixtureFile>>;
+type FixtureSnapshot = [FixtureTree; 3];
+
+fn fixture_tree(path: &Path) -> FixtureTree {
+    fn visit(root: &Path, path: &Path, tree: &mut FixtureTree) {
+        for entry in fs::read_dir(path).unwrap() {
+            let path = entry.unwrap().path();
+            let metadata = fs::symlink_metadata(&path).unwrap();
+            assert!(!metadata.file_type().is_symlink());
+            let relative = path.strip_prefix(root).unwrap().to_owned();
+            if metadata.is_dir() {
+                tree.insert(relative, None);
+                visit(root, &path, tree);
+            } else {
+                let bytes = fs::read(path).unwrap();
+                tree.insert(
+                    relative,
+                    Some(FixtureFile {
+                        size: bytes.len() as u64,
+                        sha256: format!("{:x}", Sha256::digest(bytes)),
+                    }),
+                );
+            }
+        }
+    }
+    let mut tree = BTreeMap::new();
+    visit(path, path, &mut tree);
+    tree
+}
+
+fn snapshot(fixture: &Fixture) -> FixtureSnapshot {
+    [
+        fixture_tree(&fixture.primary),
+        fixture_tree(&fixture.package),
+        fixture_tree(fixture.journal.parent().unwrap()),
+    ]
+}
+
+fn assert_snapshot_unchanged(fixture: &Fixture, before: &FixtureSnapshot) {
+    let after = snapshot(fixture);
+    for (scope, (before, after)) in ["primary", "package", "journal"]
+        .into_iter()
+        .zip(before.iter().zip(&after))
+    {
+        let paths = before.keys().chain(after.keys()).collect::<BTreeSet<_>>();
+        for path in paths {
+            // Report only the differing path, size and digest. Never dump
+            // database bytes or transcript contents on assertion failure.
+            assert_eq!(
+                before.get(path),
+                after.get(path),
+                "fixture changed: {scope}/{}",
+                path.display()
+            );
+        }
+    }
+}
+
+fn interrupt_before_sql(fixture: &Fixture) {
+    let interrupted = Cell::new(false);
+    let result = fixture.run(|| {
+        if fixture.rollout(true).exists() && !fixture.row_visible() {
+            interrupted.set(true);
+        }
+        if interrupted.get() {
+            Err("fixture authority retired before SQL".into())
+        } else {
+            Ok(())
+        }
+    });
+    assert!(interrupted.get());
+    assert!(result.is_err());
+    assert!(read_ledger(&fixture.journal)
+        .unwrap()
+        .pending
+        .contains_key(THREAD));
+}
+
+#[test]
+fn denied_authority_never_mutates_first_turn_or_pending_recovery() {
+    for pending in [false, true] {
+        for changed_files in [None, Some(vec![]), Some(vec![THREAD.into()])] {
+            let fixture = Fixture::new();
+            let original = fixture.seed_without_settings();
+            if pending {
+                interrupt_before_sql(&fixture);
+            }
+            let before = snapshot(&fixture);
+            let error = reconcile_at_with_models(
+                &fixture.primary,
+                &fixture.package,
+                &fixture.journal,
+                None,
+                ["", ""],
+                changed_files.as_deref(),
+                || Err("fixture binary/owner/config authority denied".into()),
+            )
+            .unwrap_err();
+            assert_eq!(error, "fixture binary/owner/config authority denied");
+            assert_snapshot_unchanged(&fixture, &before);
+            assert!(!fixture.row_visible());
+            // Restored authority can recover the same no-sample publication;
+            // neither startup nor recovery needs a fabricated settings event.
+            fixture.assert_recovered(&original);
+        }
+    }
+}
+
+#[test]
+fn separate_account_writer_fences_actual_store_both_directions() {
+    for writing_primary in [false, true] {
+        let fixture = Fixture::new();
+        let original = fixture.seed();
+        let account = tempfile::tempdir().unwrap();
+        let account_home = account.path().canonicalize().unwrap();
+        let native_home = if writing_primary {
+            &fixture.primary
+        } else {
+            &fixture.package
+        };
+        // Native still keeps this account-scoped lock; it is not the store lock.
+        let _native = WriterLock::acquire(&account_home, THREAD).unwrap();
+        let producer = NativeStoreWriter::acquire(native_home).unwrap();
+        let report = fixture.run(|| Ok(())).unwrap();
+        if writing_primary {
+            assert_eq!(report.copied, 1, "completed source remains exportable");
+            assert_eq!(fs::read(fixture.rollout(false)).unwrap(), original);
+            // Destination metadata is a newer revision. Never replace the live
+            // source inode even though its canonical thread lock is free.
+            let before = files::stamp(&fixture.rollout(false)).unwrap();
+            let returning = fixture.run(|| Ok(())).unwrap();
+            assert_eq!(returning.copied, 0);
+            assert_eq!(files::stamp(&fixture.rollout(false)).unwrap(), before);
+        } else {
+            assert_eq!(report.busy, 1);
+            assert_eq!(report.copied, 0);
+            assert!(!fixture.rollout(true).exists());
+        }
+        drop(producer);
+        fixture.assert_recovered(&original);
+    }
+}
+
+#[test]
+fn native_store_writer_blocks_pending_recovery_without_moving_old_account_locks() {
+    let fixture = Fixture::new();
+    fixture.seed();
+    interrupt_before_sql(&fixture);
+    let before = files::stamp(&fixture.rollout(true)).unwrap();
+    let pending_before = fs::read(&fixture.journal).unwrap();
+    let writer = NativeStoreWriter::acquire(&fixture.package).unwrap();
     let report = fixture.run(|| Ok(())).unwrap();
-    assert_eq!((report.copied, report.conflicts, report.shared, report.pending), (1, 0, 1, 0));
-    fs::write(fixture.rollout(false), &original).unwrap();
-    let mut file = fs::OpenOptions::new()
-        .append(true)
-        .open(fixture.rollout(false))
+    assert_eq!(report.pending, 1);
+    assert_eq!(report.copied, 0);
+    assert_eq!(files::stamp(&fixture.rollout(true)).unwrap(), before);
+    assert_eq!(fs::read(&fixture.journal).unwrap(), pending_before);
+    drop(writer);
+    assert_eq!(fixture.run(|| Ok(())).unwrap().pending, 0);
+}
+
+#[test]
+fn native_store_writer_is_shared_between_accounts_and_scoped_to_store() {
+    let fixture = Fixture::new();
+    let first = NativeStoreWriter::acquire(&fixture.primary).unwrap();
+    let second = NativeStoreWriter::acquire(&fixture.primary).unwrap();
+    assert!(NativeStoreWriter::exclusive(&fixture.primary).is_err());
+    let unrelated = NativeStoreWriter::exclusive(&fixture.package).unwrap();
+    drop(first);
+    assert!(NativeStoreWriter::exclusive(&fixture.primary).is_err());
+    drop(second);
+    assert!(NativeStoreWriter::exclusive(&fixture.primary).is_ok());
+    drop(unrelated);
+}
+
+#[test]
+fn store_fence_remains_exclusive_through_native_file_and_sql_publication() {
+    let fixture = Fixture::new();
+    fixture.seed();
+    let checked = Cell::new(0);
+    let report = fixture
+        .run(|| {
+            if fixture.rollout(true).exists()
+                && read_ledger(&fixture.journal)
+                    .unwrap()
+                    .pending
+                    .contains_key(THREAD)
+            {
+                assert!(NativeStoreWriter::acquire(&fixture.package).is_err());
+                checked.set(checked.get() + 1);
+            }
+            Ok(())
+        })
         .unwrap();
-    file.write_all(&native_settings_line("permissions")).unwrap();
-    drop(file);
-    let error = format_gate(&fixture.primary).unwrap_err();
-    assert!(error.contains("permission_profile"), "{error}");
-    assert_eq!(fixture.run(|| Ok(())).unwrap_err(), error);
-    // Targeted passes never re-run the gate; they only follow admitted files.
-    let targeted = reconcile_at_with_models(
-        &fixture.primary,
-        &fixture.package,
-        &fixture.journal,
-        None,
-        ["", ""],
-        Some(&[]),
-        || Ok(()),
-    )
-    .unwrap();
-    assert_eq!(targeted.copied, 0);
+    assert_eq!(report.copied, 1);
+    assert!(
+        checked.get() > 1,
+        "guard checked across multiple publication boundaries"
+    );
+    assert!(NativeStoreWriter::acquire(&fixture.package).is_ok());
 }

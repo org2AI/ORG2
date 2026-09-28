@@ -6,7 +6,8 @@
  * Exceptions that branch to richer blocks:
  *   - `worktree` → WorktreeListBlock
  *
- * Title resolution: built-in tools use the Rust registry via
+ * Title resolution: CUA JavaScript calls use their per-call title when present.
+ * Built-in tools use the Rust registry via
  * `useLifecycleLabels`; only unregistered tools fall back to `formatToolName()`.
  */
 import React from "react";
@@ -32,6 +33,10 @@ import WorktreeListBlock, {
 } from "../../blocks/WorktreeListBlock";
 
 const MCP_ICON = getEventIcon("mcp_tool");
+
+// CUA's title describes the operation being executed, unlike domain tools
+// where a title argument can name a document or task being created.
+const CUA_JS_TOOLS = new Set(["js", "cua_repl.js", "mcp__cua_repl__js"]);
 
 function isWorktreeTool(toolName: string): boolean {
   return stripMcpPrefix(toolName) === "worktree";
@@ -109,7 +114,12 @@ export const FallbackAdapter: React.FC<UniversalEventProps> = (props) => {
   const state = statusToLifecycle(props.status);
 
   const toolLabels = useLifecycleLabels(displayToolName, action);
+  const callTitle =
+    CUA_JS_TOOLS.has(displayToolName) && typeof props.args?.title === "string"
+      ? props.args.title.trim()
+      : "";
   const title =
+    callTitle ||
     toolLabels[state] ||
     getToolDisplayLabelFromRegistry(displayToolName, action);
 

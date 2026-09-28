@@ -17,6 +17,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { QuotaSnapshot } from "@src/api/types/keyVault";
+import ModelQuotaDisplay from "@src/components/ModelQuotaDisplay";
 import QuotaBar from "@src/components/QuotaBar";
 import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 
@@ -101,6 +102,8 @@ const QuotaDisplay: React.FC<QuotaDisplayProps> = ({
           isUnlimited={false}
         />
       )}
+
+      <ModelQuotaDisplay quotaInfo={quotaInfo} />
 
       {quotaInfo.reset_time && (
         <div className="mt-2 text-[11px] text-text-2">

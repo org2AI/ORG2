@@ -23,6 +23,7 @@ chrono = { workspace = true }
 rand = { workspace = true }
 json5 = "0.4"
 url = "2"
+uuid = { version = "1", features = ["v4"] }
 fs2 = "0.4.3"
 toml_edit = "0.20.2"
 serde = { version = "1.0", features = ["derive"] }

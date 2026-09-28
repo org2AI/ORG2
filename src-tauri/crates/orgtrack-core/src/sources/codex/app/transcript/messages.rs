@@ -130,11 +130,15 @@ pub(super) fn user_message_from_line(parsed: &CodexJsonlLine) -> Option<CodexUse
             if text.is_empty() && image_refs.is_empty() {
                 return None;
             }
-            let turn_intent_id = parsed
-                .payload
-                .get("message")
-                .and_then(Value::as_str)
-                .and_then(imported_history::turn_correlation::turn_intent_from_input);
+            let turn_intent_id =
+                imported_history::turn_correlation::turn_intent_from_native_message(
+                    parsed.payload.get("client_id").and_then(Value::as_str),
+                    parsed
+                        .payload
+                        .get("message")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default(),
+                );
             Some(CodexUserMessage {
                 text,
                 image_refs,
@@ -210,7 +214,7 @@ pub(super) fn injected_user_message_chunk_from_response_message(
     if !is_orgii_injected {
         if let Some(kinds) = payload.pointer("/internal_chat_message_metadata_passthrough/content_item_kinds").and_then(Value::as_array) {
             let has_user_mirror = kinds.iter().any(|kind| kind.as_str().is_some_and(|kind| kind.starts_with("user.")));
-            let only_provider_context = !kinds.is_empty() && kinds.iter().all(|kind| matches!(kind.as_str(), Some("plugins.recommendations" | "agents_md.instructions" | "environments.environment_context" | "skills.selected_skill_instructions")));
+            let only_provider_context = !kinds.is_empty() && kinds.iter().all(|kind| matches!(kind.as_str(), Some("plugins.recommendations" | "agents_md.instructions" | "environments.environment_context" | "skills.selected_skill_instructions" | "generic.turn_aborted")));
             if has_user_mirror || only_provider_context {
                 return None;
             }
@@ -268,7 +272,10 @@ fn paginated_user_message_from_payload(payload: &Value) -> Option<CodexUserMessa
     if text.trim().is_empty() && image_refs.is_empty() {
         return None;
     }
-    let turn_intent_id = imported_history::turn_correlation::turn_intent_from_input(&raw_text);
+    let turn_intent_id = imported_history::turn_correlation::turn_intent_from_native_message(
+        item.get("client_id").and_then(Value::as_str),
+        &raw_text,
+    );
     Some(CodexUserMessage {
         text,
         image_refs,

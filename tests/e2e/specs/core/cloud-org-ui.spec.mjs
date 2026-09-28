@@ -613,10 +613,10 @@ describe("Cloud org rendered UI (managed ORG2 Cloud)", function () {
     );
     await clickRendered('[data-testid="kanban-view-list"]', "Kanban List view");
     const tableOrdinaryRowSelector = `[data-testid="kanban-list-session-row"]`;
-    const takeOverSelector = `[data-testid="kanban-list-session-take-over-e2e-team-all-${RUN_ID}"]`;
+    const continueSelector = `[data-testid="kanban-list-session-continue-e2e-team-all-${RUN_ID}"]`;
     await waitForRendered(
-      takeOverSelector,
-      "Take over action for ordinary cloud session in Kanban List"
+      continueSelector,
+      "Continue action for ordinary cloud session in Kanban List"
     );
     const sessionsTableEvidence = await execJS(`
       const scope = document.querySelector('[data-testid="kanban-org-scope-select"]');
@@ -627,7 +627,7 @@ describe("Cloud org rendered UI (managed ORG2 Cloud)", function () {
       return {
         scopedOrg: scope?.textContent ?? '',
         hasExpectedText: row?.textContent?.includes('Teammate A') === true,
-        hasTakeOver: !!document.querySelector(${JSON.stringify(takeOverSelector)}),
+        hasContinue: !!document.querySelector(${JSON.stringify(continueSelector)}),
         fillsSection:
           !!table && !!tableHost &&
           Math.abs(table.getBoundingClientRect().width - tableHost.getBoundingClientRect().width) < 2,
@@ -635,14 +635,13 @@ describe("Cloud org rendered UI (managed ORG2 Cloud)", function () {
     `);
     if (
       !sessionsTableEvidence?.hasExpectedText ||
-      !sessionsTableEvidence?.hasTakeOver ||
+      !sessionsTableEvidence?.hasContinue ||
       !sessionsTableEvidence?.fillsSection
     ) {
       throw new Error(
         `scoped Kanban List is missing cloud session data/action: ${JSON.stringify(sessionsTableEvidence)}`
       );
     }
-
     // Return to the cloud sidebar scope to exercise its rendered filter and
     // refresh lifecycle against the same fixture below.
     await selectCloudOrgScopeFromSidebar(

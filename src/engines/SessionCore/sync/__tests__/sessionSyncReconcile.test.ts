@@ -217,6 +217,74 @@ describe("reconcileInFlightHistory", () => {
     getInstrumentedStore().set(sessionsAtom, []);
   });
 
+  it("contains missing native history without erasing live events or rejecting globally", async () => {
+    const original = makeEvent("live-answer");
+    store.eventsBySession.set(SESSION_ID, [original]);
+    const adapter = makeAdapter({
+      history: () => {
+        throw new Error("native history file missing");
+      },
+      postLoad: { runStatus: "running", transcriptSource: "native" },
+    });
+    const { recorded, actions } = makeActions();
+    reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
+    await settle();
+    expect(adapter.loadHistoryCalls).toBe(
+      IN_FLIGHT_HISTORY_RECONCILE_DELAYS_MS.length
+    );
+    expect(recorded.runtimeError).toEqual(["native history file missing"]);
+    expect(recorded.loads).toEqual([]);
+    expect(store.eventsBySession.get(SESSION_ID)).toEqual([original]);
+  });
+  it("shows terminal provider failure immediately even when no native file was created", async () => {
+    const adapter = makeAdapter({
+      history: () => {
+        throw new Error("missing history");
+      },
+      postLoad: {
+        runStatus: "failed",
+        runError: "provider login expired",
+        transcriptSource: "native",
+      },
+    });
+    const { recorded, actions } = makeActions();
+    reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
+    await settle();
+    expect(adapter.loadHistoryCalls).toBe(1);
+    expect(recorded.runtimeStatus).toEqual(["failed"]);
+    expect(recorded.runtimeError.at(-1)).toBe("provider login expired");
+    expect(recorded.loads).toEqual([]);
+  });
+  it("recovers when a provider creates its native file on a later bounded attempt", async () => {
+    let attempts = 0;
+    const adapter = makeAdapter({
+      history: () => {
+        if (attempts++ === 0) throw new Error("not flushed yet");
+        return [makeEvent("late")];
+      },
+      postLoad: { runStatus: "completed", transcriptSource: "native" },
+    });
+    const { recorded, actions } = makeActions();
+    reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
+    await settle();
+    expect(adapter.loadHistoryCalls).toBe(2);
+    expect(recorded.loads).toHaveLength(1);
+    expect(recorded.runtimeError.filter(Boolean)).toEqual([]);
+  });
+  it("does not report an old history failure after switching sessions", async () => {
+    const refs = liveRefs();
+    const adapter = makeAdapter({
+      history: () => {
+        refs.liveSessionIdRef.current = "another-session";
+        throw new Error("old failure");
+      },
+    });
+    const { recorded, actions } = makeActions();
+    reconcileInFlightHistory(SESSION_ID, adapter, refs, actions);
+    await settle();
+    expect(recorded.runtimeError).toEqual([]);
+    expect(adapter.loadHistoryCalls).toBe(1);
+  });
   it("merges the replay next to live events and stops on a terminal run status", async () => {
     const adapter = makeAdapter({
       history: [makeEvent("a"), makeEvent("b")],

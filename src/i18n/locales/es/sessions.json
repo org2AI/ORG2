@@ -644,7 +644,7 @@
       "positionDown": "Abajo",
       "showQuickActions": "Acciones rápidas",
       "showSkills": "Skills fijadas",
-      "showCliUpdate": "Actualizaciones de CLI",
+      "showCliUpdate": "Notificaciones de actualizaciones de CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Nueva sesión"
@@ -1996,10 +1996,12 @@
     },
     "cliVersionOutdated": {
       "title": "Hay una actualización de {{cli}}",
-      "versions": "Actual: {{installed}} · Última: {{latest}}",
       "upgrade": "Actualizar en terminal",
-      "upgradeHint": "Actualiza Cursor CLI en un terminal independiente. Al terminar, vuelve a comprobar la versión.",
-      "upgradeTerminal": "Actualizar Cursor CLI",
+      "upgradeDocs": "Documentación oficial",
+      "upgradeChooseMethod": "Elige cómo lo instalaste",
+      "upgradeNative": "Actualizador integrado",
+      "upgradeHint": "Actualiza {{cli}} CLI en un terminal independiente. Al terminar, vuelve a comprobar la versión.",
+      "upgradeTerminal": "Actualizar {{cli}} CLI",
       "upgradeStarted": "Actualización iniciada en el terminal. Al terminar, vuelve a comprobar la versión.",
       "upgradeFailed": "No se pudo abrir el terminal de actualización. Inténtalo de nuevo.",
       "muteUntilNextVersion": "No avisar hasta la próxima versión",
@@ -2649,6 +2651,10 @@
     "teamChatMode": "Chat de equipo",
     "promptTooltip": "Enviar al agent",
     "teamChatTooltip": "Escribe a tus compañeros — no envía un prompt al agent",
+    "workspaceResolving": "Buscando un espacio de trabajo local que coincida. Inténtalo de nuevo en un momento.",
+    "workspaceRequiredTitle": "Abrir un espacio de trabajo que coincida",
+    "workspaceRequiredBody": "Para que un agente continúe esta conversación compartida, abre una copia local del repositorio.",
+    "openWorkspace": "Abrir espacio de trabajo",
     "imagesUnsupported": "Los mensajes del chat de equipo no pueden incluir imágenes",
     "participantsTooltip": "Participantes de la conversación y mensajes de discusión",
     "mentionGroup": "Compañeros"
@@ -2672,10 +2678,12 @@
     "limit": "Mostrando hasta 128 cuentas"
   },
   "sharedFile": {
+    "resolvingOrigin": "El origen del archivo compartido aún se está cargando. Vuelve a intentarlo en un momento.",
     "downloaded": "Guardado en Descargas",
     "downloadError": "No se pudo guardar en Descargas",
     "title": "Archivo compartido",
-    "error": "No se puede abrir este archivo. Comprueba tu cuenta, el servidor y el acceso a la sesión, y vuelve a abrir el enlace.",
+    "error": "No se puede abrir este archivo. Vuelve a intentarlo o comprueba la conexión, la cuenta, el servidor y el acceso a la sesión.",
+    "notUploaded": "Este archivo aún no se ha subido a esta sesión compartida. El dispositivo del remitente debe completar la subida; vuelve a intentarlo para comprobarlo.",
     "downloadPreview": "Descarga este archivo para ver su contenido",
     "download": "Descargar",
     "loading": "Cargando archivo compartido…"

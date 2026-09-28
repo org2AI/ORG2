@@ -644,7 +644,7 @@
       "positionDown": "Bas",
       "showQuickActions": "Actions rapides",
       "showSkills": "Skills épinglées",
-      "showCliUpdate": "Mises à jour CLI",
+      "showCliUpdate": "Notifications de mise à jour CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Nouvelle session"
@@ -1996,10 +1996,12 @@
     },
     "cliVersionOutdated": {
       "title": "Une mise à jour de {{cli}} est disponible",
-      "versions": "Actuelle : {{installed}} · Dernière : {{latest}}",
       "upgrade": "Mettre à jour dans le terminal",
-      "upgradeHint": "Met à jour Cursor CLI dans un terminal séparé. Vérifiez ensuite la version.",
-      "upgradeTerminal": "Mettre à jour Cursor CLI",
+      "upgradeDocs": "Documentation officielle",
+      "upgradeChooseMethod": "Choisissez le mode d’installation initial",
+      "upgradeNative": "Mise à jour intégrée",
+      "upgradeHint": "Met à jour {{cli}} CLI dans un terminal séparé. Vérifiez ensuite la version.",
+      "upgradeTerminal": "Mettre à jour {{cli}} CLI",
       "upgradeStarted": "Mise à jour lancée dans le terminal. Vérifiez ensuite la version.",
       "upgradeFailed": "Impossible d’ouvrir le terminal de mise à jour. Réessayez.",
       "muteUntilNextVersion": "Aucune alerte jusqu’à la prochaine version",
@@ -2649,6 +2651,10 @@
     "teamChatMode": "Chat d’équipe",
     "promptTooltip": "Envoyer à l’agent",
     "teamChatTooltip": "Écrire aux coéquipiers — ne sollicite pas l’agent",
+    "workspaceResolving": "Recherche d’un espace de travail local correspondant. Réessayez dans un instant.",
+    "workspaceRequiredTitle": "Ouvrir un espace de travail correspondant",
+    "workspaceRequiredBody": "Pour qu’un agent poursuive cette conversation partagée, ouvrez une copie locale du dépôt.",
+    "openWorkspace": "Ouvrir un espace de travail",
     "imagesUnsupported": "Les messages du chat d’équipe ne peuvent pas contenir d’images",
     "participantsTooltip": "Participants à la conversation et messages de discussion",
     "mentionGroup": "Coéquipiers"
@@ -2672,10 +2678,12 @@
     "limit": "Affichage de 128 comptes au maximum"
   },
   "sharedFile": {
+    "resolvingOrigin": "La source du fichier partagé est en cours de chargement. Réessayez dans un instant.",
     "downloaded": "Enregistré dans Téléchargements",
     "downloadError": "Impossible d’enregistrer dans Téléchargements",
     "title": "Fichier partagé",
-    "error": "Impossible d’ouvrir ce fichier. Vérifiez votre compte, le serveur et l’accès à la session, puis rouvrez le lien.",
+    "error": "Impossible d’ouvrir ce fichier. Réessayez ou vérifiez la connexion, le compte, le serveur et l’accès à la session.",
+    "notUploaded": "Ce fichier n’a pas encore été envoyé dans cette session partagée. L’appareil de l’expéditeur doit terminer l’envoi ; réessayez pour vérifier.",
     "downloadPreview": "Téléchargez ce fichier pour voir son contenu",
     "download": "Télécharger",
     "loading": "Chargement du fichier partagé…"

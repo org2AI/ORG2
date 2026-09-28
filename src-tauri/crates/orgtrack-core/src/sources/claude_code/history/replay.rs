@@ -202,6 +202,7 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
             }
         }
         let harness_injected = is_harness_injected_user_line(&parsed);
+        let materialized = parsed.entrypoint == "orgii";
         let Some(message) = parsed.message else {
             continue;
         };
@@ -253,6 +254,7 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
                                 parsed.tool_use_result.as_ref(),
                                 is_error,
                             );
+                            super::types::mark_materialized_args(&mut chunk.args, materialized);
                             chunks.push(chunk);
                             sequence += 1;
                         }
@@ -291,6 +293,7 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
                         if !images.is_empty() {
                             chunk.result["images"] = json!(images);
                         }
+                        super::types::mark_materialized_args(&mut chunk.args, materialized);
                         chunks.push(chunk);
                         sequence += 1;
                     }
@@ -302,30 +305,35 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
                     match item_type {
                         "text" => {
                             if let Some(text) = item.get("text").and_then(Value::as_str) {
-                                chunks.push(imported_history::assistant_message_chunk(
+                                let mut chunk = imported_history::assistant_message_chunk(
                                     session_id,
                                     CLAUDE_CODE_PROVIDER_SLUG,
                                     sequence,
                                     &created_at,
                                     text,
-                                ));
+                                );
+                                super::types::mark_materialized_args(&mut chunk.args, materialized);
+                                chunks.push(chunk);
                                 sequence += 1;
                             }
                         }
                         "thinking" => {
                             if let Some(text) = item.get("thinking").and_then(Value::as_str) {
-                                chunks.push(imported_history::thinking_chunk(
+                                let mut chunk = imported_history::thinking_chunk(
                                     session_id,
                                     CLAUDE_CODE_PROVIDER_SLUG,
                                     sequence,
                                     &created_at,
                                     text,
-                                ));
+                                );
+                                super::types::mark_materialized_args(&mut chunk.args, materialized);
+                                chunks.push(chunk);
                                 sequence += 1;
                             }
                         }
                         "tool_use" => {
-                            if let Some(call) = claude_tool_call_from_item(item, &created_at) {
+                            if let Some(mut call) = claude_tool_call_from_item(item, &created_at) {
+                                super::types::mark_materialized_args(&mut call.args, materialized);
                                 pending_tool_calls.insert(call.call_id.clone(), call);
                             }
                         }

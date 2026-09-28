@@ -10,8 +10,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Deserialize;
 
 pub const ORG2_CLOUD_AUTH_STORAGE_KEY: &str = "orgii:org2-cloud-v1:auth";
-const SHARED_AUTH_STORE_FILENAME: &str = "shared-service-auth.json";
-const APP_IDENTIFIER: &str = "org2ai.org2";
 const REFRESH_SKEW_SECONDS: f64 = 60.0;
 
 pub const NOT_SIGNED_IN_MESSAGE: &str = "Sign in to ORG2 Cloud to use outdoor relay";
@@ -42,20 +40,17 @@ pub struct Org2CloudAuthSnapshot {
     pub expires_at: f64,
 }
 
-pub fn shared_auth_store_path() -> PathBuf {
+fn shared_auth_store_path() -> Option<PathBuf> {
+    #[cfg(test)]
     if let Ok(path) = std::env::var("ORGII_TEST_SHARED_AUTH_STORE") {
-        return PathBuf::from(path);
+        return Some(PathBuf::from(path));
     }
-    // Must match `@tauri-apps/plugin-store` LazyStore: files live directly in
-    // `app_data_dir`, not a `stores/` subdirectory.
-    dirs::data_dir()
-        .unwrap_or_else(app_paths::home_dir)
-        .join(APP_IDENTIFIER)
-        .join(SHARED_AUTH_STORE_FILENAME)
+    let app = crate::api::get_app_handle()?;
+    crate::infrastructure::shared_auth_paths::shared_auth_store_path(app).ok()
 }
 
 pub fn load_snapshot() -> Option<Org2CloudAuthSnapshot> {
-    let path = shared_auth_store_path();
+    let path = shared_auth_store_path()?;
     let raw = std::fs::read_to_string(path).ok()?;
     let store: serde_json::Value = serde_json::from_str(&raw).ok()?;
     let auth_raw = store.get(ORG2_CLOUD_AUTH_STORAGE_KEY)?.as_str()?;
@@ -132,24 +127,6 @@ mod tests {
             store.to_string(),
         )
         .expect("write store");
-    }
-
-    #[test]
-    fn shared_auth_store_path_matches_tauri_plugin_store_layout() {
-        let _lock = TEST_AUTH_STORE_LOCK
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        let path = shared_auth_store_path();
-        assert_eq!(
-            path.file_name().and_then(|name| name.to_str()),
-            Some(SHARED_AUTH_STORE_FILENAME)
-        );
-        assert_ne!(
-            path.parent()
-                .and_then(|parent| parent.file_name())
-                .and_then(|name| name.to_str()),
-            Some("stores")
-        );
     }
 
     #[test]

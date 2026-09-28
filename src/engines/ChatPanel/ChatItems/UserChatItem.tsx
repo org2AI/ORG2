@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { REPO_SETUP_PROMPT_MARKER } from "@src/config/repoSetupMarker";
@@ -305,6 +306,11 @@ const UserChatItem = ({
           display
         )}
       </div>
+      {event?.result?.executionError && retryDelivery ? (
+        <Button variant="ghost" size="small" onClick={retryDelivery}>
+          {t("common:actions.retry")}
+        </Button>
+      ) : null}
       {deliveryStatus === "failed" && (
         <PageNotice
           title={t("chat.failedToSendMessage")}

@@ -21,7 +21,11 @@ import {
 } from "@src/icons";
 import { WORK_ITEM_THREAD_TOKENS } from "@src/modules/ProjectManager/WorkItems/components/WorkItemThread";
 
-import type { CommentMentionItem, TeamInboxNavigationIntent } from "../domain";
+import {
+  type CommentMentionItem,
+  type TeamInboxNavigationIntent,
+  toTeamInboxNavigationIntent,
+} from "../domain";
 import TeamInboxDetailLayout from "./TeamInboxDetailLayout";
 
 export interface CommentMentionDetailProps {
@@ -51,14 +55,20 @@ const CommentMentionDetail: React.FC<CommentMentionDetailProps> = ({
   const targetTitle =
     item.target.kind === "work_item_comment"
       ? item.target.workItemTitle
-      : item.target.sessionTitle;
+      : item.target.kind === "channel_message"
+        ? `#${item.target.channelName}`
+        : item.target.sessionTitle;
   const commentCount =
     item.payload.threadCommentCount ?? item.payload.commentCount;
 
   return (
     <TeamInboxDetailLayout
       title={targetTitle}
-      subtitle={t("teamInbox.detail.mentionSubtitle")}
+      subtitle={t(
+        item.target.kind === "channel_message"
+          ? "teamInbox.detail.channelMentionSubtitle"
+          : "teamInbox.detail.mentionSubtitle"
+      )}
       icon={AtIcon}
       unread={item.readAt === null}
       markReadLabel={t("teamInbox.actions.markRead")}
@@ -111,24 +121,7 @@ const CommentMentionDetail: React.FC<CommentMentionDetailProps> = ({
       }
       onOpen={
         onNavigate
-          ? () =>
-              item.target.kind === "work_item_comment"
-                ? onNavigate({
-                    kind: "open_work_item",
-                    orgId: item.target.orgId,
-                    projectId: item.target.projectId,
-                    workItemId: item.target.workItemId,
-                  })
-                : onNavigate({
-                    kind: "open_session_comment",
-                    ...(item.target.orgId ? { orgId: item.target.orgId } : {}),
-                    sessionId: item.target.sessionId,
-                    commentId: item.target.commentId,
-                    threadId: item.target.threadId,
-                    ...(item.target.anchor
-                      ? { anchor: item.target.anchor }
-                      : {}),
-                  })
+          ? () => onNavigate(toTeamInboxNavigationIntent(item))
           : undefined
       }
       onClose={onClose}
@@ -165,12 +158,14 @@ const CommentMentionDetail: React.FC<CommentMentionDetailProps> = ({
                       action={
                         <>
                           {t("teamInbox.detail.mentionedYou")}
-                          <span className="text-text-4">
-                            {" · "}
-                            {t("teamInbox.detail.threadComments", {
-                              count: commentCount,
-                            })}
-                          </span>
+                          {item.target.kind !== "channel_message" && (
+                            <span className="text-text-4">
+                              {" · "}
+                              {t("teamInbox.detail.threadComments", {
+                                count: commentCount,
+                              })}
+                            </span>
+                          )}
                         </>
                       }
                       timestamp={item.occurredAt}

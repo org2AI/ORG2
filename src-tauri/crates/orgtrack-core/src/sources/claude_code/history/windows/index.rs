@@ -245,6 +245,10 @@ pub(in crate::sources::claude_code::history) fn index_claude_user_turns(
         if !image_refs.is_empty() {
             user_chunk.result["images"] = serde_json::json!(image_refs);
         }
+        super::super::types::mark_materialized_args(
+            &mut user_chunk.args,
+            parsed.entrypoint == "orgii",
+        );
         user_chunk.chunk_id = claude_window_turn_id(current_offset);
         turns.push(ClaudeIndexedTurn {
             start_offset: current_offset,

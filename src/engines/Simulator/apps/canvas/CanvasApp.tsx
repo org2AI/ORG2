@@ -19,7 +19,9 @@ import { useAtomValue } from "jotai";
 import React, { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
+import { NoDragRegion } from "@src/components/WindowChrome";
 import CanvasRevisionProgress from "@src/engines/ChatPanel/blocks/CanvasInlineCard/CanvasRevisionProgress";
 import { isCanvasRevisionDraftRelevant } from "@src/engines/ChatPanel/blocks/CanvasInlineCard/canvasRevisionProgressState";
 import { useCanvasRevisionDraftForSession } from "@src/engines/SessionCore";
@@ -55,6 +57,7 @@ import {
 } from "./canvasInteractionState";
 import { extractPayload, getDefaultTitle } from "./canvasPayload";
 import { projectLatestCanvasEvents } from "./canvasRevisionProjection";
+import { useNewCanvasDraft } from "./useNewCanvasDraft";
 
 // Lazy: the "source" tab is the only CodeMirror user in the canvas app.
 const SessionReplayCodeMirrorViewer = lazy(() =>
@@ -67,6 +70,7 @@ const SessionReplayCodeMirrorViewer = lazy(() =>
 
 const CanvasApp: React.FC<SimulatorAppProps> = () => {
   const { t } = useTranslation("sessions");
+  const createNewCanvas = useNewCanvasDraft();
   const {
     state: canvasShareState,
     open: openCanvasShare,
@@ -236,24 +240,37 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
   // ── publish to SimulatorWorkstationTabHeader ─────────────────────────────
 
   const headerContent = useMemo(
-    () =>
-      appEvents.length > 0 && selectedPayload ? (
-        <CanvasTabHeader
-          tab={activeTab}
-          onSetTab={handleSetTab}
-          title={cardTitle}
-          isStreaming={Boolean(selectedPayload.streaming) || revisionActive}
-          onReload={handleReload}
-          showCompare={compareEventIds.length === 2}
-          designAvailable={designAvailable}
-          designEnabled={designEnabled}
-          onToggleDesign={handleToggleDesign}
-          shareEnabled={shareAvailability.available}
-          shareHint={shareHint}
-          onShare={handleShare}
-        />
-      ) : null,
+    () => (
+      <NoDragRegion className="flex min-w-0 flex-1 items-center gap-2">
+        <Button
+          size="mini"
+          variant="tertiary"
+          className="shrink-0"
+          onClick={createNewCanvas}
+        >
+          {t("input.newCanvasAction")}
+        </Button>
+        {appEvents.length > 0 && selectedPayload ? (
+          <CanvasTabHeader
+            tab={activeTab}
+            onSetTab={handleSetTab}
+            title={cardTitle}
+            isStreaming={Boolean(selectedPayload.streaming) || revisionActive}
+            onReload={handleReload}
+            showCompare={compareEventIds.length === 2}
+            designAvailable={designAvailable}
+            designEnabled={designEnabled}
+            onToggleDesign={handleToggleDesign}
+            shareEnabled={shareAvailability.available}
+            shareHint={shareHint}
+            onShare={handleShare}
+          />
+        ) : null}
+      </NoDragRegion>
+    ),
     [
+      createNewCanvas,
+      t,
       appEvents.length,
       selectedPayload,
       activeTab,
@@ -274,7 +291,7 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
   usePublishWorkstationTabHeader({
     host: "simulator",
     content: headerContent,
-    enabled: appEvents.length > 0 && selectedPayload !== null,
+    enabled: true,
   });
 
   // ── primary sidebar config ───────────────────────────────────────────────

@@ -1,5 +1,5 @@
-//! Explicit offline handoff of existing Claude Desktop conversations. No watcher,
-//! vendor index writes, new-session import, credential or configuration copying.
+//! Bounded Claude whole-session last-write-wins handoff. Conversation bytes stay
+//! native; catalogs register identity separately from local configuration.
 mod automatic;
 mod records;
 mod storage;
@@ -13,9 +13,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Status {
-    Unchecked,
-    Ready,
-    RecoveryReady,
     Clean,
     SyncedToPrimary,
     SyncedToPackage,
@@ -29,26 +26,13 @@ pub(crate) enum Status {
     Limit,
     Failed,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Mode {
-    List,
-    Inspect,
-    Sync,
-}
-
 #[cfg(all(target_os = "macos", feature = "market-connect"))]
 pub(crate) use automatic::{run_automatic, watch_roots};
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct Item {
     pub session_id: String,
-    pub title: String,
     pub status: Status,
 }
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct Report {
     pub status: Status,
     pub items: Vec<Item>,
@@ -90,42 +74,6 @@ impl Budget {
     }
 }
 
-/// The caller checks the current owner and that all Claude writers have quit.
-/// These checks are repeated at each commit. They are a controlled-handoff
-/// contract, not a claim that third-party processes honor ORG2's advisory lock.
-#[cfg(test)]
-pub(crate) fn run(
-    profile: &NativeAppProfile,
-    owner: &str,
-    selected: Option<&str>,
-    mode: Mode,
-    check_owner: impl Fn() -> Result<(), Status>,
-    check_writers: impl Fn() -> Result<(), Status>,
-) -> Report {
-    if (mode == Mode::List) != selected.is_none() {
-        return Report {
-            status: Status::Unsupported,
-            items: Vec::new(),
-        };
-    }
-    let roots = Roots {
-        official: claude_desktop_sessions_root(),
-        isolated: profile.home().join("claude-code-sessions"),
-        primary: app_paths::native_transcript_home_dir().join(".claude"),
-        package: profile.system_home().join(".claude"),
-        state: profile.root().join("history-handoff"),
-    };
-    run_at(
-        profile,
-        owner,
-        selected,
-        mode,
-        check_owner,
-        check_writers,
-        &roots,
-    )
-}
-
 struct Roots {
     official: PathBuf,
     isolated: PathBuf,
@@ -133,34 +81,9 @@ struct Roots {
     package: PathBuf,
     state: PathBuf,
 }
-#[cfg(test)]
-fn run_at(
-    profile: &NativeAppProfile,
-    owner: &str,
-    selected: Option<&str>,
-    mode: Mode,
-    check_owner: impl Fn() -> Result<(), Status>,
-    check_writers: impl Fn() -> Result<(), Status>,
-    roots: &Roots,
-) -> Report {
-    run_filtered_at(
-        profile,
-        owner,
-        selected,
-        mode,
-        check_owner,
-        check_writers,
-        roots,
-        None,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
 fn run_filtered_at(
     profile: &NativeAppProfile,
     owner: &str,
-    selected: Option<&str>,
-    mode: Mode,
     check_owner: impl Fn() -> Result<(), Status>,
     check_writers: impl Fn() -> Result<(), Status>,
     roots: &Roots,
@@ -172,9 +95,6 @@ fn run_filtered_at(
     };
     let result = (|| -> Result<(), Status> {
         check_owner()?;
-        if selected.is_some_and(|id| Uuid::parse_str(id).is_err()) {
-            return Err(Status::Unsupported);
-        }
         profile
             .validate("claude_desktop")
             .map_err(|_| Status::Changed)?;
@@ -245,9 +165,6 @@ fn run_filtered_at(
                 if dirty_ids.is_some_and(|ids| !ids.contains(id)) {
                     continue;
                 }
-                if selected.is_some_and(|selected| selected != id) {
-                    continue;
-                }
                 if !seen.insert(id.to_owned()) {
                     return Err(Status::Conflict);
                 }
@@ -275,9 +192,7 @@ fn run_filtered_at(
                 .join(format!("{id}.jsonl"));
             let primary = primary_root.join(&relative);
             let package = package_root.join(&relative);
-            let status = if mode == Mode::List {
-                Status::Unchecked
-            } else {
+            let status = {
                 let scope = pair_scope(
                     profile,
                     owner,
@@ -309,11 +224,7 @@ fn run_filtered_at(
                             return Err(Status::ScopeChanged);
                         }
                     }
-                    if mode == Mode::Sync {
-                        check_writers()
-                    } else {
-                        Ok(())
-                    }
+                    check_writers()
                 };
                 storage::reconcile_scoped(
                     primary_root,
@@ -328,33 +239,16 @@ fn run_filtered_at(
                         binding: &scope,
                         cwd: cwd_path,
                     },
-                    mode != Mode::Sync,
                 )
                 .unwrap_or_else(|status| status)
             };
             report.items.push(Item {
                 session_id: id.to_owned(),
-                title: row["title"]
-                    .as_str()
-                    .unwrap_or("Claude conversation")
-                    .chars()
-                    .take(200)
-                    .collect(),
                 status,
             });
-            if status == Status::Unchecked && report.status == Status::Clean {
-                report.status = Status::Unchecked;
-            }
-            if status == Status::Ready && report.status == Status::Clean {
-                report.status = Status::Ready;
-            }
             if !matches!(
                 status,
-                Status::Unchecked
-                    | Status::Ready
-                    | Status::Clean
-                    | Status::SyncedToPrimary
-                    | Status::SyncedToPackage
+                Status::Clean | Status::SyncedToPrimary | Status::SyncedToPackage
             ) {
                 report.status = status;
             }
@@ -366,9 +260,6 @@ fn run_filtered_at(
             }
         }
         check_owner()?;
-        if selected.is_some() && report.items.is_empty() {
-            return Err(Status::ScopeChanged);
-        }
         Ok(())
     })();
     let result = match check_owner() {
@@ -385,48 +276,25 @@ fn run_filtered_at(
 }
 
 fn active_account(root: &Path) -> Result<String, Status> {
-    let path = root
-        .parent()
-        .ok_or(Status::ScopeChanged)?
-        .join("config.json");
-    let row = storage::catalog_row(&path, &Budget::new())?.ok_or(Status::Unsupported)?;
-    let id = row["lastKnownAccountUuid"]
-        .as_str()
-        .ok_or(Status::Unsupported)?;
-    Uuid::parse_str(id).map_err(|_| Status::Unsupported)?;
-    Ok(id.to_owned())
+    let home = root.parent().ok_or(Status::ScopeChanged)?;
+    super::isolated_claude_history::namespace::active_account(home, home)
+        .map_err(namespace_status)?
+        .ok_or(Status::Unsupported)
 }
 
 fn local_project(account: &Path) -> Result<PathBuf, Status> {
-    let mut count = CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT;
-    let budget = Budget::new();
-    let mut selected = None;
-    for marker in bounded_directory_paths(account, &mut count) {
-        if !marker
-            .file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name.ends_with(".profile-origin.json"))
-        {
-            continue;
-        }
-        let Some(row) = storage::catalog_row(&marker, &budget)? else {
-            continue;
-        };
-        if row["mode"] != "local" {
-            continue;
-        }
-        let id = row["org"].as_str().ok_or(Status::Unsupported)?;
-        Uuid::parse_str(id).map_err(|_| Status::Unsupported)?;
-        let project = account.join(id);
-        storage::safe(account, &project)?;
-        if project.is_dir() && selected.replace(project).is_some() {
-            return Err(Status::Unsupported);
-        }
+    super::isolated_claude_history::namespace::local_project(account, account)
+        .map_err(namespace_status)?
+        .ok_or(Status::Unsupported)
+}
+
+fn namespace_status(error: super::isolated_claude_history::namespace::Error) -> Status {
+    use super::isolated_claude_history::namespace::Error;
+    match error {
+        Error::Changed => Status::Changed,
+        Error::Unsupported => Status::Unsupported,
+        Error::Limit => Status::Limit,
     }
-    if count == 0 {
-        return Err(Status::Limit);
-    }
-    selected.ok_or(Status::Unsupported)
 }
 
 fn pair_scope(

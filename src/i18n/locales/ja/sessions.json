@@ -644,7 +644,7 @@
       "positionDown": "下",
       "showQuickActions": "クイックアクション",
       "showSkills": "ピン留めしたスキル",
-      "showCliUpdate": "CLI の更新",
+      "showCliUpdate": "CLI 更新通知",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新しいセッション"
@@ -1996,10 +1996,12 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} の更新があります",
-      "versions": "現在：{{installed}} · 最新：{{latest}}",
       "upgrade": "ターミナルで更新",
-      "upgradeHint": "別のターミナルで Cursor CLI を更新します。完了後にバージョンを再確認してください。",
-      "upgradeTerminal": "Cursor CLI を更新",
+      "upgradeDocs": "公式ドキュメント",
+      "upgradeChooseMethod": "元のインストール方法を選択",
+      "upgradeNative": "内蔵アップデーター",
+      "upgradeHint": "別のターミナルで {{cli}} CLI を更新します。完了後にバージョンを再確認してください。",
+      "upgradeTerminal": "{{cli}} CLI を更新",
       "upgradeStarted": "ターミナルで更新を開始しました。完了後にバージョンを再確認してください。",
       "upgradeFailed": "更新用のターミナルを開けませんでした。もう一度お試しください。",
       "muteUntilNextVersion": "次のバージョンまで通知しない",
@@ -2649,6 +2651,10 @@
     "teamChatMode": "チームチャット",
     "promptTooltip": "Agent に送信",
     "teamChatTooltip": "チームメイトにメッセージ — Agent には送られません",
+    "workspaceResolving": "一致するローカルワークスペースを確認中です。少し待ってから再試行してください。",
+    "workspaceRequiredTitle": "一致するワークスペースを開く",
+    "workspaceRequiredBody": "この共有会話をエージェントが続けるには、リポジトリのローカルチェックアウトを開いてください。",
+    "openWorkspace": "ワークスペースを開く",
     "imagesUnsupported": "チームチャットのメッセージには画像を含められません",
     "participantsTooltip": "会話の参加者とディスカッションメッセージ",
     "mentionGroup": "チームメイト"
@@ -2672,10 +2678,12 @@
     "limit": "最大 128 アカウントまで表示"
   },
   "sharedFile": {
+    "resolvingOrigin": "共有ファイルの取得元を読み込み中です。しばらくしてから再試行してください。",
     "downloaded": "ダウンロードフォルダーに保存しました",
     "downloadError": "ダウンロードフォルダーに保存できません",
     "title": "共有ファイル",
-    "error": "このファイルを開けません。アカウント、サーバー、セッションへのアクセス権を確認してから、リンクを開き直してください。",
+    "error": "このファイルを開けません。再試行するか、接続、アカウント、サーバー、セッションへのアクセス権を確認してください。",
+    "notUploaded": "このファイルは共有セッションにまだアップロードされていません。送信側の端末でアップロードが完了した後、再試行して確認してください。",
     "downloadPreview": "内容を表示するには、このファイルをダウンロードしてください",
     "download": "ダウンロード",
     "loading": "共有ファイルを読み込み中…"

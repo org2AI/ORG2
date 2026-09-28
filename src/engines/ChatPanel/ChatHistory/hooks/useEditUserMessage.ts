@@ -38,6 +38,7 @@ import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreP
 import {
   flushMessageQueuePersistence,
   hydrateMessageQueue,
+  reconcileOrphanedOptimisticQueueProjections,
   refreshMessageDeliveries,
 } from "@src/engines/SessionCore/hooks/session/messageQueuePersistence";
 import {
@@ -147,17 +148,27 @@ export function useEditUserMessage(
       const createdAt = chatItem.event?.createdAt;
       const failedSyntheticIntent = Boolean(
         initiatedSessionId &&
-        chatItem.event?.displayStatus === "failed" &&
-        chatItem.event.result?.syntheticUserInput === true
+        (chatItem.event?.displayStatus === "failed" ||
+          Boolean(chatItem.event?.result?.executionError)) &&
+        chatItem.event?.result?.syntheticUserInput === true
       );
 
-      // A delivery failure happened before the provider accepted this turn,
-      // so it is not a history-edit boundary. Retry through the ordinary
-      // submit/queue path and remove only the superseded failed placeholder;
-      // never truncate later turns or offer a file rewind for this case.
+      // Failed sends and executions use explicit retry, not a history-edit
+      // boundary. Only unsent placeholders or proved empty attempts can be
+      // replaced. A retired accepted turn must remain in the history; never
+      // truncate later turns or offer a file rewind for this case.
       if (failedSyntheticIntent && initiatedSessionId && chatItem.event) {
+        const failedProjectionSessionId =
+          chatItem.event.sessionId ?? initiatedSessionId;
         const originalText = chatItem.event.displayText ?? "";
         const originalTurnIntentId = turnIntentIdOf(chatItem.event);
+        const ownerRetired =
+          chatItem.event.result?.deliveryOwnerRetired === true;
+        // A retired accepted turn may contain output that recovery could not
+        // reconcile. Without an empty-attempt proof it cannot be superseded or
+        // deleted. Retry appends a new intent while preserving that history.
+        const preserveAcceptedHistory =
+          ownerRetired && chatItem.event.result?.deliveryStatus === "sent";
         const queueMessageId =
           typeof chatItem.event.result?.queueMessageId === "string"
             ? chatItem.event.result.queueMessageId
@@ -183,7 +194,7 @@ export function useEditUserMessage(
                   .find(
                     (message) =>
                       message.id === queueMessageId &&
-                      Boolean(message.deliveryError)
+                      Boolean(message.deliveryError || message.executionError)
                   )
               : undefined;
           let durableFailedQueueRow = findDurableFailedQueueRow();
@@ -194,12 +205,25 @@ export function useEditUserMessage(
           }
           if (queueMessageId && !durableFailedQueueRow) {
             if (chatItem.event.result?.deliveryOwnerRetired !== true) {
-              // queueMessageId is an ownership claim, not a hint. Falling
-              // back to a new submit here would delete the only visible root
-              // row and create a second delivery on whichever Session is
-              // currently mounted. Preserve the failed bubble until its owner
-              // is readable.
-              throw new Error("failed delivery owner is not available yet");
+              // A restart can leave the failed EventStore projection after
+              // its durable queue owner has gone away. The passive orphan
+              // scan may have run before this session was mounted, so prove
+              // absence at Retry and remove only that stale ownership claim.
+              await reconcileOrphanedOptimisticQueueProjections(
+                failedProjectionSessionId
+              );
+              const currentFailedRow = (
+                await eventStoreProxy.getEvents(failedProjectionSessionId)
+              ).find((event) => event.id === eventId);
+              if (
+                currentFailedRow?.displayStatus !== "failed" ||
+                currentFailedRow.result?.deliveryStatus !== "failed" ||
+                currentFailedRow.result?.queueMessageId != null
+              ) {
+                // A still-owned, accepted, or concurrently changed row must
+                // never become a second dispatch.
+                throw new Error("failed delivery owner is not available yet");
+              }
             }
             // The dispatcher retired this owner after a terminal provider/
             // Cloud verdict and stamped the row. The failed bubble is the only
@@ -272,8 +296,9 @@ export function useEditUserMessage(
             store.set(forceSendMessageAtom, durableFailedQueueRow.id);
             return;
           }
-          const turnIntentId =
-            newText === originalText
+          const turnIntentId = ownerRetired
+            ? mintTurnIntentId()
+            : newText === originalText
               ? (originalTurnIntentId ?? undefined)
               : undefined;
           const handled = await onFailedUserIntentRetry?.({
@@ -292,13 +317,18 @@ export function useEditUserMessage(
               turnIntentId,
             });
           }
-          await eventStoreProxy.removeByIdPrefix(eventId, initiatedSessionId);
+          if (!preserveAcceptedHistory) {
+            await eventStoreProxy.removeByIdPrefix(
+              eventId,
+              failedProjectionSessionId
+            );
+          }
         } catch (error) {
           // A send-stage error already produced the replacement failed row.
           // A preparation/storage error did not, so retain the original row.
-          if (isUserIntentSendError(error)) {
+          if (!preserveAcceptedHistory && isUserIntentSendError(error)) {
             await eventStoreProxy
-              .removeByIdPrefix(eventId, initiatedSessionId)
+              .removeByIdPrefix(eventId, failedProjectionSessionId)
               .catch(() => 0);
           }
           log.error(

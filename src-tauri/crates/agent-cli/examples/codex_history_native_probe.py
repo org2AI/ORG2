@@ -4,12 +4,13 @@
 Build: cargo build --manifest-path src-tauri/Cargo.toml -p agent_cli --example codex_history_probe
 Run: python3 src-tauri/crates/agent-cli/examples/codex_history_native_probe.py --engine src-tauri/target/debug/examples/codex_history_probe --live-writers
 Add --fork for native history_base lineage transfer, or --cold-target for an
-empty profile initialized by zero-inference native RPC. Requires Python 3.10+.
+empty profile initialized by zero-inference native RPC. --last-write-wins tests
+raw revision ordering, simultaneous branches, resume-only later writes and stable repeats. Requires Python 3.10+.
 
 Only temporary profiles and a loopback mock model are used. This is not GUI
 acceptance. Artifacts are written under cwd/.local/codex-history-native-probe.
 """
-import argparse, hashlib, http.server, json, os, pathlib, queue, sqlite3, subprocess, sys, threading, time, traceback
+import argparse, hashlib, http.server, json, os, pathlib, queue, signal, sqlite3, subprocess, sys, threading, time, traceback
 
 ROOT = pathlib.Path.cwd() / '.local' / 'codex-history-native-probe'
 ROOT.mkdir(parents=True, exist_ok=True)
@@ -74,7 +75,8 @@ class App:
         self.log=open(RUN/(label+'-rpc.jsonl'),'w'); self.err=open(RUN/(label+'-stderr.log'),'w')
         env={'HOME':str(home.parent/'system-home'),'CODEX_HOME':str(home),'PATH':'/usr/bin:/bin:/usr/sbin:/sbin','USER':'codex-history-probe','LOGNAME':'codex-history-probe','TMPDIR':str(RUN/'tmp')}
         pathlib.Path(env['HOME']).mkdir(exist_ok=True); pathlib.Path(env['TMPDIR']).mkdir(exist_ok=True)
-        self.p=subprocess.Popen([BIN,'app-server','--stdio'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=self.err,text=True,env=env,cwd=RUN,start_new_session=True)
+        sandbox='(version 1)(allow default)(deny network-outbound)(allow network-outbound (remote ip "localhost:*"))'
+        self.p=subprocess.Popen(['/usr/bin/sandbox-exec','-p',sandbox,BIN,'-c','cli_auth_credentials_store="file"','app-server','--stdio'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=self.err,text=True,env=env,cwd=RUN,start_new_session=True)
         PROCESSES.append(self)
         threading.Thread(target=self.read,daemon=True).start()
         self.call('initialize',{'clientInfo':{'name':'codex-history-probe','version':'1.0.0'},'capabilities':{'experimentalApi':True}})
@@ -110,9 +112,12 @@ class App:
         except RuntimeError as e:return {'probeError':str(e)}
     def close(self):
         if self.p.poll() is None:
-            self.p.terminate()
+            os.killpg(self.p.pid,signal.SIGTERM)
             try:self.p.wait(timeout=5)
-            except subprocess.TimeoutExpired:self.p.kill();self.p.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                os.killpg(self.p.pid,signal.SIGKILL);self.p.wait(timeout=1)
+        try:os.killpg(self.p.pid,signal.SIGKILL)
+        except ProcessLookupError:pass
         self.log.close();self.err.close()
 
 def dbrows(home,tid):
@@ -129,6 +134,31 @@ def inventory(home):
             out[str(p.relative_to(home))]={t:db.execute('select count(*) from "'+t+'"').fetchone()[0] for t in tables}
     return out
 
+def schema_evidence(home):
+    """Only structural metadata; the production Rust adapter owns compatibility.
+
+    Keep observed migrations/columns/keys/triggers for diagnosing a red canary.
+    No second Python schema allowlist, native row data or prompt is published.
+    """
+    observed={}
+    databases=list(home.glob('*.sqlite'))
+    if len(databases)>16: return {'inspectionError':'database inventory exceeds bound'}
+    for path in databases:
+        with sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True) as db:
+            tables=[row[0] for row in db.execute("select name from sqlite_master where type='table' order by name limit 129")]
+            if len(tables)>128: return {'inspectionError':'table inventory exceeds bound'}
+            value={'tables':{}}
+            for table in tables:
+                quoted='"'+table.replace('"','""')+'"'
+                columns=list(db.execute('PRAGMA table_xinfo('+quoted+')'))
+                if len(columns)>256: return {'inspectionError':'column inventory exceeds bound'}
+                value['tables'][table]={'columns':columns,'foreignKeys':list(db.execute('PRAGMA foreign_key_list('+quoted+')'))}
+            if '_sqlx_migrations' in tables:
+                value['migrations']=list(db.execute('select version,success from _sqlx_migrations order by version limit 1024'))
+            value['triggers']=list(db.execute("select name,sql from sqlite_master where type='trigger' order by name limit 128"))
+            observed[path.name]=value
+    return observed
+
 def response_summary(r):
     thread=r.get('thread',r)
     return {'model':r.get('model'),'modelProvider':r.get('modelProvider'),'threadModelProvider':thread.get('modelProvider'),'historyMode':thread.get('historyMode'),'turnCount':len(thread.get('turns',[])),'turns':thread.get('turns',[])}
@@ -139,6 +169,7 @@ parser.add_argument('--engine',required=True,type=pathlib.Path)
 parser.add_argument('--live-writers',action='store_true')
 parser.add_argument('--fork',action='store_true')
 parser.add_argument('--cold-target',action='store_true')
+parser.add_argument('--last-write-wins',action='store_true')
 parser.add_argument('--codex',type=pathlib.Path,default=pathlib.Path(BIN))
 args=parser.parse_args()
 BIN=str(args.codex.resolve())
@@ -167,10 +198,12 @@ def reconcile(label,expected):
 def drive_reconcile():
     total={'copied':0,'busy':0,'conflicts':0,'more':False}
     for _ in range(8):
+        journal=pathlib.Path(RESULT['paths']['journal'])
+        before=journal.read_bytes() if journal.exists() else None
         report=engine('reconcile')
         for field in ['copied','busy','conflicts']:total[field]+=report[field]
         if not report['more']:return total
-        assert report['copied']>0,'Engine requested another pass without making progress'
+        assert report['copied']>0 or (journal.exists() and journal.read_bytes()!=before),'Engine requested another pass without durable progress'
     raise AssertionError('Native probe exceeded bounded reconcile passes')
 
 def new_thread(app,text):
@@ -404,12 +437,111 @@ def run_cold_target():
     RESULT['ok']=True
 
 
+def run_last_write_wins():
+    """Use native writers only: newer complete raw revisions replace older ones."""
+    paths=engine('paths');RESULT['paths']=paths
+    primary=pathlib.Path(paths['primary']);package=pathlib.Path(paths['package'])
+    config(primary,'test_a','gpt-5.4');config(package,'test_b','gpt-5.4-mini')
+    a=App(primary,'lww-primary-create');tid=new_thread(a,'LWW_SHARED_FIRST_TURN');a.close()
+    b=App(package,'lww-package-bootstrap');seed_id=new_thread(b,'LWW_PACKAGE_BOOTSTRAP');b.close()
+    RESULT['threadIds']={'shared':tid,'packageSeed':seed_id}
+    reconcile('initialReconcile',2)
+
+    # Both sides branch from one turn. The later package branch wins in full;
+    # the earlier unique primary message must not be spliced into the winner.
+    a=App(primary,'lww-primary-earlier')
+    RESULT['earlierPrimaryBranch']=continue_native(a,tid,'test_a','gpt-5.4','EARLIER_PRIMARY_UNIQUE',1);a.close()
+    b=App(package,'lww-package-later')
+    RESULT['laterPackageBranch']=continue_native(b,tid,'test_b','gpt-5.4-mini','LATER_PACKAGE_UNIQUE',1);b.close()
+    earlier=pathlib.Path(dbrows(primary,tid)['rollout_path'])
+    winning=pathlib.Path(dbrows(package,tid)['rollout_path'])
+    assert winning.stat().st_mtime_ns>earlier.stat().st_mtime_ns,'Native writes did not establish strict order'
+    winning_bytes=winning.read_bytes();old_primary_bytes=earlier.read_bytes()
+    reconcile('laterPackageWins',1)
+    assert pathlib.Path(dbrows(primary,tid)['rollout_path']).read_bytes().startswith(winning_bytes)
+    assert earlier.read_bytes()==old_primary_bytes
+    reconcile('unchangedAfterPackageWin',0)
+
+    # Reverse the ordering: the later primary branch wins this time.
+    b=App(package,'lww-package-earlier')
+    RESULT['earlierPackageBranch']=continue_native(b,tid,'test_b','gpt-5.4-mini','EARLIER_PACKAGE_UNIQUE',2);b.close()
+    a=App(primary,'lww-primary-later')
+    RESULT['laterPrimaryBranch']=continue_native(a,tid,'test_a','gpt-5.4','LATER_PRIMARY_UNIQUE',2);a.close()
+    winning=pathlib.Path(dbrows(primary,tid)['rollout_path'])
+    older=pathlib.Path(dbrows(package,tid)['rollout_path'])
+    assert winning.stat().st_mtime_ns>older.stat().st_mtime_ns,'Native writes did not establish strict order'
+    winning_bytes=winning.read_bytes()
+    reconcile('laterPrimaryWins',1)
+    assert pathlib.Path(dbrows(package,tid)['rollout_path']).read_bytes().startswith(winning_bytes)
+    reconcile('unchangedAfterPrimaryWin',0)
+
+    # A later native resume is a real raw revision, even without a model call.
+    # Product policy deliberately compares data writes, not human-message time.
+    a=App(primary,'lww-primary-before-later-open')
+    RESULT['messageBeforeLaterOpen']=continue_native(a,tid,'test_a','gpt-5.4','EARLIER_MESSAGE_BEFORE_OPEN',3);a.close()
+    b=App(package,'lww-package-open-only')
+    requests_before=len(REQUESTS)
+    resumed=b.call('thread/resume',{'threadId':tid})
+    assert resumed['modelProvider']=='test_b' and resumed['model']=='gpt-5.4-mini'
+    assert len(REQUESTS)==requests_before
+    b.close()
+    winner=pathlib.Path(dbrows(package,tid)['rollout_path'])
+    loser=pathlib.Path(dbrows(primary,tid)['rollout_path'])
+    assert winner.stat().st_mtime_ns>loser.stat().st_mtime_ns,'Resume-only native write did not establish strict order'
+    winning_bytes=winner.read_bytes()
+    reconcile('laterOpenWinsAsRawRevision',1)
+    assert pathlib.Path(dbrows(primary,tid)['rollout_path']).read_bytes().startswith(winning_bytes)
+    for index in range(3):reconcile('unchangedRepeat'+str(index),0)
+    for home,label in [(primary,'primary'),(package,'package')]:
+        app=App(home,'lww-cold-'+label)
+        roster=list_native(app)
+        assert [row['id'] for row in roster['data']].count(tid)==1
+        read=app.call('thread/read',{'threadId':tid,'includeTurns':True})
+        RESULT[label+'FinalRead']=response_summary(read)
+        assert len(read['thread']['turns'])==3,read
+        encoded=json.dumps(read)
+        for missing in ['EARLIER_PRIMARY_UNIQUE','EARLIER_PACKAGE_UNIQUE','EARLIER_MESSAGE_BEFORE_OPEN']:
+            assert missing not in encoded,missing
+        for present in ['LATER_PACKAGE_UNIQUE','LATER_PRIMARY_UNIQUE']:
+            assert present in encoded,present
+        app.close()
+    # A real continuation proves that the chosen snapshot remains resumable and
+    # destination-owned routing is still used after both LWW directions.
+    a=App(primary,'lww-final-primary-continue')
+    RESULT['finalContinuation']=continue_native(a,tid,'test_a','gpt-5.4','AFTER_LWW_RESUME',3);a.close()
+    reconcile('finalContinuationReturn',1)
+    reconcile('finalUnchangedReconcile',0)
+    assert [(r['path'],r['model']) for r in REQUESTS]==[
+        ('/test_a/v1/responses','gpt-5.4'),('/test_b/v1/responses','gpt-5.4-mini'),
+        ('/test_a/v1/responses','gpt-5.4'),('/test_b/v1/responses','gpt-5.4-mini'),
+        ('/test_b/v1/responses','gpt-5.4-mini'),('/test_a/v1/responses','gpt-5.4'),
+        ('/test_a/v1/responses','gpt-5.4'),('/test_a/v1/responses','gpt-5.4')]
+    # Extra pre-overwrite backups and completed private handoff snapshots must
+    # be absent. Retained physical files/projections remain native dependencies.
+    journal=pathlib.Path(paths['journal'])
+    assert not any(path.is_file() for path in journal.parent.glob('backups/*'))
+    assert not list(journal.parent.glob('snapshots/handoff-*/snapshot.sqlite'))
+    assert not json.loads(journal.read_text())['pending']
+    RESULT['retainedPhysicalGenerations']={label:sum(1 for folder in ['sessions','archived_sessions'] for path in (home/folder).rglob('*.jsonl') if path.is_file()) for home,label in [(primary,'primary'),(package,'package')]}
+    RESULT['retainedNativeDependenciesPreserved']=earlier.read_bytes()==old_primary_bytes
+    RESULT['checks']={name:True for name in ['later_package_wins','later_primary_wins','later_open_is_raw_revision','no_copy_rebound','cold_native_read','destination_route','no_snapshot_backup']}
+    RESULT['ok']=True
+
+
+def cancelled(_signal,_frame):
+    raise InterruptedError('native canary cancelled')
+
+signal.signal(signal.SIGTERM,cancelled)
+
 try:
     RESULT['engineBinarySha256']=hashlib.sha256(args.engine.read_bytes()).hexdigest()
     RESULT['nativeBinarySha256']=hashlib.sha256(pathlib.Path(BIN).read_bytes()).hexdigest()
-    if sum([args.fork,args.cold_target,args.live_writers])>1:
-        raise ValueError('Choose one native scenario: --fork, --cold-target or --live-writers')
-    if args.cold_target:
+    if sum([args.fork,args.cold_target,args.live_writers,args.last_write_wins])>1:
+        raise ValueError('Choose only one native scenario')
+    if args.last_write_wins:
+        RESULT['kind']='production-rust-engine-native-last-write-wins'
+        run_last_write_wins()
+    elif args.cold_target:
         RESULT['kind']='production-rust-engine-native-cold-target'
         run_cold_target()
     elif args.fork:
@@ -422,15 +554,35 @@ try:
         run_bidirectional()
 except Exception as error:
     RESULT['ok']=False
+    RESULT['status']=('infrastructure_error' if isinstance(error,(OSError,TimeoutError,queue.Empty,InterruptedError)) else 'incompatible')
     RESULT['error']=repr(error)
     RESULT['traceback']=traceback.format_exc()
 finally:
+    if RESULT.get('ok'): RESULT['status']='pass'
+    signal.signal(signal.SIGTERM,signal.SIG_IGN)
     MODEL_HOLD_RELEASE.set()
+    # Broadcast first so cancellation stays bounded regardless of case size.
+    for app in PROCESSES:
+        try:os.killpg(app.p.pid,signal.SIGTERM)
+        except ProcessLookupError:pass
+    cleanup_deadline=time.monotonic()+5
+    while any(app.p.poll() is None for app in PROCESSES) and time.monotonic()<cleanup_deadline:
+        time.sleep(.05)
+    for app in PROCESSES:
+        try:os.killpg(app.p.pid,signal.SIGKILL)
+        except ProcessLookupError:pass
     for app in PROCESSES:
         try:app.close()
         except Exception:pass
     SERVER.shutdown()
     SERVER.server_close()
+    RESULT['schemaEvidence']={}
+    observed_homes=set()
+    for app in PROCESSES:
+        if app.home in observed_homes: continue
+        observed_homes.add(app.home)
+        try: RESULT['schemaEvidence'][app.label]=schema_evidence(app.home)
+        except Exception as error: RESULT['schemaEvidence'][app.label]={'inspectionError':type(error).__name__}
     RESULT['requests']=REQUESTS
     RESULT['processExitCodes']=[{'label':x.label,'pid':x.p.pid,'returncode':x.p.poll()} for x in PROCESSES]
     (ROOT/'result.json').write_text(json.dumps(RESULT,indent=2)+'\n')

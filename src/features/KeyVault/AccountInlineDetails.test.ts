@@ -92,3 +92,47 @@ describe("AccountInlineDetails quota rows", () => {
     expect(markup).toContain("25% left");
   });
 });
+
+function codexReserveAccount(): KeyVaultAccount {
+  const account = deepSeekAccount({ balance: null, remainingPercentage: 0 });
+  account.modelType = "codex";
+  account.quotaInfo!.model_quotas = [
+    {
+      model: "gpt-5.6-luna",
+      limit_id: "gpt-reserve",
+      allowed: true,
+      limit_reached: false,
+      usage_items: [
+        {
+          usage_type: "weekly",
+          enabled: true,
+          used: null,
+          limit: null,
+          remaining: null,
+          remaining_percentage: 96,
+          reset_time: null,
+        },
+      ],
+    },
+  ];
+  return account;
+}
+
+it("shows ordinary exhaustion and the independently reported reserve pool", () => {
+  const markup = render(codexReserveAccount());
+  expect(markup).toContain("0% left");
+  expect(markup).toContain("GPT 5.6 Luna Reserve");
+  expect(markup).toContain("96% left");
+});
+
+it.each([
+  { healthStatus: "invalid" as const },
+  { listingStatus: "suspended" as const },
+])(
+  "hides cached reserve and ordinary meters for unavailable accounts: %j",
+  (status) => {
+    const markup = render({ ...codexReserveAccount(), ...status });
+    expect(markup).not.toContain("GPT 5.6 Luna Reserve");
+    expect(markup).not.toContain("% left");
+  }
+);

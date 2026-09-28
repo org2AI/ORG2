@@ -31,7 +31,10 @@ export interface CloudChannelMessagesState {
   unreadCount: number;
   loadOlder: () => void;
   /** Resolves on success; REJECTS with the RPC error so the draft survives. */
-  postMessage: (body: string) => Promise<void>;
+  postMessage: (
+    body: string,
+    mentionedUserIds?: readonly string[]
+  ) => Promise<void>;
   editMessage: (messageId: string, body: string) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   /** Debounced read-cursor write; the hook also calls it on new rows. */
@@ -156,6 +159,7 @@ export function createOptimisticMessage(input: {
   authorDisplayName?: string;
   authorAvatarUrl?: string;
   clientKey?: string;
+  mentionedUserIds?: readonly string[];
 }): CloudChannelMessage {
   const now = new Date().toISOString();
   return {
@@ -170,7 +174,7 @@ export function createOptimisticMessage(input: {
     deletedAt: null,
     clientKey: input.clientKey ?? null,
     stateChangedAt: now,
-    mentionedUserIds: [],
+    mentionedUserIds: [...(input.mentionedUserIds ?? [])],
   };
 }
 

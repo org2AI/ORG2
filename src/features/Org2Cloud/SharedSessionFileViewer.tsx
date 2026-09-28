@@ -1,10 +1,9 @@
 import { useAtomValue, useStore } from "jotai";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
-import Modal from "@src/scaffold/ModalSystem";
 
 import { getCloudEndpoint } from "./config";
 import { downloadSharedSessionFile } from "./downloadSharedSessionFile";
@@ -13,10 +12,12 @@ import {
   org2CloudAuthIdentityKey,
 } from "./org2CloudAuthAtom";
 import { useCloudFreshAccessToken } from "./org2CloudSessionCommentsAtom.freshToken";
+import { useSharedSessionFileAccess } from "./sharedSessionFileAccess";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 import {
   type SharedSessionFile,
   findSharedSessionFile,
+  findSharedSessionFileVersion,
   readSharedSessionFile,
 } from "./sharedSessionFilesClient";
 
@@ -24,37 +25,51 @@ type Loaded = SharedSessionFile & {
   bytes: Uint8Array;
   identity: string;
   requestKey: string;
+  shareToken?: string;
 };
 export default function SharedSessionFileViewer({
   reference,
-  onClose,
+  openingIdentity,
 }: {
   reference: SharedSessionFileReference;
-  onClose: () => void;
+  openingIdentity: string;
 }) {
   const { t } = useTranslation("sessions");
   const auth = useAtomValue(org2CloudAuthAtom);
   const store = useStore();
   const identity = auth ? org2CloudAuthIdentityKey(auth) : "";
   const token = useCloudFreshAccessToken();
+  const access = useSharedSessionFileAccess();
+  const shareToken =
+    access?.endpoint === reference.endpoint ? access.shareToken : undefined;
+  const shareTokenRef = useRef(shareToken);
+  shareTokenRef.current = shareToken;
   const requestKey = JSON.stringify(reference);
   const [file, setFile] = useState<Loaded | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"not_uploaded" | "request_failed" | null>(
+    null
+  );
+  const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     const reference = JSON.parse(requestKey) as SharedSessionFileReference;
     const controller = new AbortController();
     const endpoint = getCloudEndpoint();
     setFile(null);
-    setError(false);
-    if (!identity || endpoint.supabaseUrl !== reference.endpoint) {
-      setError(true);
+    setError(null);
+    if (
+      !identity ||
+      identity !== openingIdentity ||
+      endpoint.supabaseUrl !== reference.endpoint
+    ) {
+      setError("request_failed");
       return;
     }
     const stillCurrent = () => {
       const latest = store.get(org2CloudAuthAtom);
       return (
         !controller.signal.aborted &&
+        shareTokenRef.current === shareToken &&
         latest &&
         org2CloudAuthIdentityKey(latest) === identity &&
         getCloudEndpoint().supabaseUrl === endpoint.supabaseUrl
@@ -63,34 +78,61 @@ export default function SharedSessionFileViewer({
     void (async () => {
       const accessToken = await token();
       if (!stillCurrent()) return;
-      const located = reference.source
-        ? await findSharedSessionFile(
+      const source = reference.source;
+      const located = source?.version
+        ? await findSharedSessionFileVersion(
             accessToken,
             endpoint,
-            reference.source.orgId,
-            reference.source.sessionId,
-            reference.source.path,
-            undefined,
-            controller.signal
+            { ...source, version: source.version },
+            controller.signal,
+            shareToken
           )
-        : null;
-      if (reference.source && !located)
-        throw new Error("File has not been uploaded by its source device");
+        : source
+          ? await findSharedSessionFile(
+              accessToken,
+              endpoint,
+              source.orgId,
+              source.sessionId,
+              source.path,
+              undefined,
+              controller.signal,
+              shareToken
+            )
+          : null;
       if (!stillCurrent()) return;
+      if (reference.source && !located) {
+        setError("not_uploaded");
+        return;
+      }
       const result = await readSharedSessionFile(
         accessToken,
         endpoint,
         located?.id ?? reference.id,
-        controller.signal
+        controller.signal,
+        shareToken
       );
-      if (stillCurrent()) setFile({ ...result, identity, requestKey });
+      if (stillCurrent())
+        setFile({ ...result, identity, requestKey, shareToken });
     })().catch(() => {
-      if (!controller.signal.aborted) setError(true);
+      if (stillCurrent()) setError("request_failed");
     });
     return () => controller.abort();
-  }, [identity, requestKey, token, store]);
+  }, [
+    identity,
+    openingIdentity,
+    requestKey,
+    token,
+    store,
+    shareToken,
+    attempt,
+  ]);
   const currentFile =
-    file?.identity === identity && file.requestKey === requestKey ? file : null;
+    identity === openingIdentity &&
+    file?.identity === identity &&
+    file.requestKey === requestKey &&
+    file.shareToken === shareToken
+      ? file
+      : null;
   const [media, setMedia] = useState<{
     fileId: string;
     url: string;
@@ -144,6 +186,7 @@ export default function SharedSessionFileViewer({
         const latest = store.get(org2CloudAuthAtom);
         return Boolean(
           latest &&
+          shareTokenRef.current === currentFile.shareToken &&
           org2CloudAuthIdentityKey(latest) === currentFile.identity &&
           getCloudEndpoint().supabaseUrl === reference.endpoint
         );
@@ -156,15 +199,46 @@ export default function SharedSessionFileViewer({
     }
   };
   return (
-    <Modal
-      visible
-      title={currentFile?.name ?? t("sharedFile.title")}
-      onCancel={onClose}
-      footer={null}
+    <section
+      data-testid="shared-file-preview"
+      className="flex h-full min-h-0 flex-col bg-bg-1 text-text-1"
+      aria-label={currentFile?.name ?? t("sharedFile.title")}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-1 px-3 py-2">
+        <span className="min-w-0 truncate text-sm" title={currentFile?.name}>
+          {currentFile?.name ??
+            reference.source?.path.split(/[\\/]/).pop() ??
+            t("sharedFile.title")}
+        </span>
+        <Button
+          data-testid="shared-file-download"
+          variant="tertiary"
+          size="small"
+          disabled={!currentFile}
+          loading={saving}
+          onClick={() => void download()}
+        >
+          {t("sharedFile.download")}
+        </Button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
         {error ? (
-          <p role="alert">{t("sharedFile.error")}</p>
+          <>
+            <p role="alert">
+              {error === "not_uploaded"
+                ? t("sharedFile.notUploaded")
+                : t("sharedFile.error")}
+            </p>
+            <Button
+              data-testid="shared-file-retry"
+              onClick={() => {
+                setError(null);
+                setAttempt((value) => value + 1);
+              }}
+            >
+              {t("common:actions.retry")}
+            </Button>
+          </>
         ) : currentFile ? (
           <>
             {activeMedia ? (
@@ -173,34 +247,27 @@ export default function SharedSessionFileViewer({
                   title={currentFile.name}
                   src={activeMedia.url}
                   sandbox=""
-                  className="h-96 w-full"
+                  className="min-h-0 w-full flex-1"
                 />
               ) : (
                 <img
                   src={activeMedia.url}
                   alt={currentFile.name}
-                  className="max-h-96 max-w-full object-contain"
+                  className="min-h-0 max-w-full flex-1 object-contain"
                 />
               )
             ) : preview !== null ? (
-              <pre className="max-h-96 overflow-auto rounded-md bg-fill-1 p-3 text-sm break-words whitespace-pre-wrap text-text-1">
+              <pre className="min-h-0 flex-1 overflow-auto font-mono text-sm break-words whitespace-pre-wrap">
                 {preview}
               </pre>
             ) : (
               <p>{t("sharedFile.downloadPreview")}</p>
             )}
-            <Button
-              data-testid="shared-file-download"
-              loading={saving}
-              onClick={() => void download()}
-            >
-              {t("sharedFile.download")}
-            </Button>
           </>
         ) : (
           <p role="status">{t("sharedFile.loading")}</p>
         )}
       </div>
-    </Modal>
+    </section>
   );
 }

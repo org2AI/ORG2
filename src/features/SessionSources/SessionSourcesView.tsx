@@ -1,19 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
-import { SidebarSectionHeader } from "@src/components/SidebarSectionHeader";
 import { ListPanelScrollArea } from "@src/components/layout/blocks";
 import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
 import type { SessionSource } from "@src/engines/ChatPanel/sessionSources/extractSessionSources";
 
+import { SessionSourceCategory } from "./SessionSourceCategory";
 import { SessionSourceImagePreview } from "./SessionSourceImagePreview";
-import { SessionSourceRow } from "./SessionSourceRow";
-import { SessionToolActivityGroup } from "./SessionToolActivityGroup";
 import { useSessionSourceNavigation } from "./useSessionSourceNavigation";
 
-const PAGE_SIZE = 30;
 const CATEGORIES = [
   { kind: "image", label: "sourceCategoryImages" },
   { kind: "file", label: "sourceCategoryFiles" },
@@ -36,9 +32,6 @@ export function SessionSourcesView({
   onRetry: () => void;
 }) {
   const { t } = useTranslation();
-  const [visibleCounts, setVisibleCounts] = useState<
-    Partial<Record<SessionSource["kind"], number>>
-  >({});
   const categories = useMemo(
     () =>
       CATEGORIES.map((category) => ({
@@ -84,61 +77,15 @@ export function SessionSourcesView({
           </p>
         ) : (
           <div className="flex flex-col gap-4 py-3">
-            {categories.map(({ kind, label, items }) => {
-              const visibleCount = visibleCounts[kind] ?? PAGE_SIZE;
-              return (
-                <section
-                  key={kind}
-                  aria-label={t(`common:git.rail.${label}`)}
-                  data-source-category={kind}
-                >
-                  <SidebarSectionHeader
-                    surface="panel"
-                    title={t(`common:git.rail.${label}`)}
-                    titleSuffix={
-                      <span className="text-xs text-text-3">
-                        {items.length}
-                      </span>
-                    }
-                  />
-                  <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                    {items.slice(0, visibleCount).map((source) => (
-                      <li key={source.key}>
-                        {source.kind === "tool-group" ? (
-                          <SessionToolActivityGroup
-                            source={source}
-                            onOpenSource={openSource}
-                          />
-                        ) : (
-                          <SessionSourceRow
-                            source={source}
-                            onOpenSource={openSource}
-                          />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  {items.length > visibleCount ? (
-                    <div className="py-3 text-center">
-                      <Button
-                        variant="tertiary"
-                        size="small"
-                        onClick={() =>
-                          setVisibleCounts((counts) => ({
-                            ...counts,
-                            [kind]: visibleCount + PAGE_SIZE,
-                          }))
-                        }
-                      >
-                        {t("common:git.rail.loadMoreSources", {
-                          count: items.length - visibleCount,
-                        })}
-                      </Button>
-                    </div>
-                  ) : null}
-                </section>
-              );
-            })}
+            {categories.map(({ kind, label, items }) => (
+              <SessionSourceCategory
+                key={kind}
+                kind={kind}
+                title={t(`common:git.rail.${label}`)}
+                items={items}
+                onOpenSource={openSource}
+              />
+            ))}
           </div>
         )}
       </ListPanelScrollArea>

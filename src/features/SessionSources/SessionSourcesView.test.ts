@@ -176,6 +176,86 @@ describe("SessionSourcesView", () => {
       container.querySelector('[data-source-category="image"]')
     ).toBeNull();
   });
+  it.each(["image", "file", "link", "tool-group"] as const)(
+    "collapses %s independently while retaining its header and count",
+    async (kind) => {
+      const mixed: SessionSource[] = [
+        sources[0],
+        {
+          kind: "file",
+          key: "file",
+          path: "/tmp/report.md",
+          fileName: "report.md",
+          isDirectory: false,
+        },
+        {
+          kind: "link",
+          key: "link",
+          url: "https://example.com",
+          label: "Reference",
+        },
+        { kind: "tool-group", key: "tool", group: "exec", operations: [] },
+      ];
+      await render({ sources: mixed });
+      const category = container.querySelector(
+        `[data-source-category="${kind}"]`
+      )!;
+      const header = category.querySelector<HTMLButtonElement>(
+        "button[aria-expanded]"
+      )!;
+      expect(header.getAttribute("aria-expanded")).toBe("true");
+      expect(header.textContent).toContain("1");
+      act(() => {
+        header.focus();
+        header.click();
+      });
+      expect(header.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(header);
+      expect(category.querySelector("ul")).toBeNull();
+      for (const other of container.querySelectorAll(
+        "[data-source-category]"
+      )) {
+        if (other !== category)
+          expect(other.querySelector("ul")).not.toBeNull();
+      }
+      act(() => header.click());
+      expect(header.getAttribute("aria-expanded")).toBe("true");
+      expect(category.querySelector("ul")).not.toBeNull();
+      expect(navigation.openSource).not.toHaveBeenCalled();
+    }
+  );
+  it("retains collapse and pagination across refresh and retry, resetting for a new session", async () => {
+    await render();
+    click("loadMoreSources");
+    click("sourceCategoryImages");
+    expect(container.querySelectorAll("[data-thumbnail]")).toHaveLength(0);
+    expect(container.textContent).not.toContain("loadMoreSources");
+    const updated = [
+      ...sources,
+      { ...sources[0], key: "new-image", fileName: "new.png" },
+    ];
+    await render({ sources: updated, error: true });
+    expect(container.querySelectorAll("[data-thumbnail]")).toHaveLength(0);
+    expect(
+      container.querySelector("button[aria-expanded]")?.textContent
+    ).toContain("66");
+    click("actions.retry");
+    expect(retry).toHaveBeenCalledOnce();
+    await render({ sources: updated, loading: true });
+    expect(container.querySelectorAll("[data-thumbnail]")).toHaveLength(0);
+    click("sourceCategoryImages");
+    expect(container.querySelectorAll("[data-thumbnail]")).toHaveLength(60);
+    click("shot-2.png");
+    expect(navigation.openSource).toHaveBeenCalledWith(sources[2]);
+    click("sourceCategoryImages");
+    await render({}, "session-b");
+    expect(container.querySelectorAll("[data-thumbnail]")).toHaveLength(30);
+    expect(
+      container
+        .querySelector("button[aria-expanded]")
+        ?.getAttribute("aria-expanded")
+    ).toBe("true");
+  });
   it("preserves successful rows during failed refresh and offers retry", async () => {
     await render({ error: true });
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(

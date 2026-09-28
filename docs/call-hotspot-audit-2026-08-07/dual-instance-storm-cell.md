@@ -12,7 +12,7 @@ broadcasts are `self:false`, so only a second account's pushes exercise it.
 | Build   | worktree `fix/realtime-sessions-signal-coalesce` @ 0829a9b (all fix batches) | pre-existing bundle (unpatched — correct: the sender side is unchanged)      |
 | Account | vinceorz                                                                     | vinceorz418                                                                  |
 | Org     | CU New Target 0720 (`34e24e9e-…`) — both members                             | same                                                                         |
-| Session | —                                                                            | `osagent-9d524bca-…` "PR743 接收端限流风暴测试验证", org-tagged, full_replay |
+| Session | —                                                                            | `osagent-9d524bca-…` "PR743 receiver-side rate-limit storm test", org-tagged, full_replay |
 
 Storm driver: a real Deepseek V4 Pro round streaming a ten-section answer
 (~28s agent work, 2 rounds), i.e. continuous `cloud_append_session_events`
@@ -44,7 +44,7 @@ varied 6.5→9.0/min — the decoupling the fix was meant to produce.
   `delete`, `demote`, `vanish`, or `superseded`. Zero ERROR, zero watchdog /
   dead-man / retry-exhausted lines.
 - **Receiver-depth**: the storm session rendered on instance 1 (sidebar
-  "PR743 接收端限流风暴…" bright row, opened, streamed content visible and
+  "PR743 receiver-side rate-limit storm…" bright row, opened, streamed content visible and
   matching the sender's round verbatim).
 - **Resource three-piece**: instance 1 settled at 0.0-1.0% CPU / ~214MB RSS
   seven minutes after boot; no CPU wave during the storm.

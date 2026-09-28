@@ -27,7 +27,7 @@ Skills live at:
 - `.orgii/skills/frontend-ui-audit/SKILL.md` (workspace)
 - `.orgii/skills/react-best-practices/SKILL.md` (workspace; ORGII overlay for Vercel's React guidance)
 - `.orgii/skills/e2e-testing/SKILL.md` (workspace)
-- `.orgii/skills/dual-instance-verification/SKILL.md` (workspace; 双机实测 protocol for cloud sync / sharing)
+- `.orgii/skills/dual-instance-verification/SKILL.md` (workspace; two-device verification protocol for cloud sync / sharing)
 - `.orgii/skills/org2-performance-guard/SKILL.md` (workspace)
 
 If the skill block isn't already prefetched in your context, read its `SKILL.md` before acting on it.
@@ -53,6 +53,11 @@ Review gate: any UI predicate introduced to hide malformed data must cite an exp
 ---
 
 ## Default Delivery Flow
+
+### Documentation language
+
+- Write repository documentation, audit reports, plans, handoffs, and agent instructions in English.
+- Preserve exact non-English UI copy and test data when they are evidence. Localized README and wiki editions remain language-specific artifacts.
 
 ### UI copy conventions
 

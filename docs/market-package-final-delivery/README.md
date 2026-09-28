@@ -9,7 +9,7 @@ functional commit consolidation and current-head CI. Open official-App/business
 acceptance below remains rollout work, not a claim of complete acceptance.
 No ORG2 installer, Beta, tag or release is published.
 
-See [Harry's UI handoff and screenshot gallery](HARRY-UI-HANDOFF.zh-CN.md).
+See [Harry's UI handoff and screenshot gallery](HARRY-UI-HANDOFF.md).
 Each linked report and screenshot applies only to its named build. Source tests,
 ORG2 runtime, official App runtime, and production deployment are distinct evidence.
 

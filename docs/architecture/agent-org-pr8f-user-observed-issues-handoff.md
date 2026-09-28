@@ -1,222 +1,224 @@
-# Agent Org PR8F 用户实测问题交接
+# Agent Org PR8F user-observed issues handoff
 
-> 状态：调查完成，修复尚未实施
+> Status: Investigation complete; fixes not yet implemented
 >
-> 日期：2026-08-28
+> Date: 2026-08-28
 >
-> 对应 Issue：[org2AI/ORG2#997](https://github.com/org2AI/ORG2/issues/997)
+> Related issue: [org2AI/ORG2#997](https://github.com/org2AI/ORG2/issues/997)
 >
-> 用户复现 Session：`pr8f test 0828`
+> User reproduction session: `pr8f test 0828`
 >
-> 调查环境：当前 packaged Tauri App，真实 `orlando / gpt-5.6-terra`
+> Investigation environment: current packaged Tauri App, real `orlando / gpt-5.6-terra`
 >
-> 本文范围：只记录用户亲自观察到、归属 PR8F 的问题。PR8S 的进程停止、错误取消 Tester 和 completion closure 已拆到独立 PR8S 交接文档。
+> Scope: This document records only issues personally observed by the user and attributed to PR8F. PR8S process stopping, incorrect Tester cancellation, and completion closure have been moved to a separate PR8S handoff document.
 >
-> **交付决定：本文只保留原 PR8F 区域的根因和测试证据；本文修复与原 PR8S 区域修复统一进入一个 `PR8 Stabilization`，不再分别开修复 PR。**
+> **Delivery decision: This document retains only the root cause and test evidence for the original PR8F area. Fixes described here and fixes for the original PR8S area will be combined into one `PR8 Stabilization`; separate fix PRs will no longer be opened.**
 
-## 一、最简单的结论
+## 1. The simplest conclusion
 
-用户观察到的四个问题中，PR8F 自己直接造成的核心错误只有一条：
+Of the four issues observed by the user, PR8F directly caused one core error:
 
-> 用户在 Team 工作时发送 Group 消息，消息虽然保存成功，却进入了 Coordinator 已经不再读取的旧收件箱。
+> While the Team was working, the user sent a Group message. It was saved successfully, but went into the old inbox that the Coordinator no longer reads.
 
-大白话：**信送到了旧邮箱，但现在没人查那个邮箱。**
+In plain terms: **the letter reached the old mailbox, but nobody checks it anymore.**
 
-这条错误还会间接造成“所有 Task 都结束了，Overview 仍 Needs attention”，因为那条从未处理的用户消息会一直阻止 Team 正式收口。
+This error can also indirectly cause “all Tasks have finished, but Overview still says Needs attention,” because the unprocessed user message keeps the Team from formally closing out.
 
-## 二、用户看到什么
+## 2. What the user sees
 
-用户在 Team 正在工作时发送：
+While the Team is working, the user sends:
 
 `我想要做可以任意加注任何额度的加注，现在好像只能加20`
 
-随后观察到：
+(“I want to be able to bet any amount; right now it seems limited to 20.”)
 
-- 消息显示在 Group Chat 中；
-- 界面可能显示 Coordinator 正在接收；
-- Team 实际没有响应；
-- 消息长期躺在那里；
-- 切换 Session、刷新或状态变化后，等待提示可能消失；
-- 后来所有 Task terminal，Overview 仍可能显示 Needs attention。
+The user then observes:
 
-这不是 Terra Provider 主动忽略消息。真实证据表明 Provider 根本没有收到该消息正文。
+- The message appears in Group Chat;
+- the UI may show that the Coordinator is receiving it;
+- the Team does not actually respond;
+- the message remains there indefinitely;
+- after switching Session, refreshing, or a state change, the waiting indicator may disappear;
+- later, after all Tasks are terminal, Overview may still show Needs attention.
 
-## 三、正确设计应该怎样工作
+The Terra Provider did not actively ignore the message. Actual evidence shows that the Provider never received the message body.
 
-普通 Group 消息没有点名具体 Member 时，归 Coordinator Root 处理。
+## 3. How the design should work
 
-Coordinator 正忙时，默认行为应该是持久 FIFO 排队：
+When an ordinary Group message does not name a specific Member, the Coordinator Root handles it.
+
+When the Coordinator is busy, the default behavior should be persistent FIFO queuing:
 
 ```text
-用户发送 Group 消息
+User sends a Group message
         ↓
-持久保存并绑定稳定 source identity
+Persist it and bind a stable source identity
         ↓
-Coordinator 正忙：排到下一个 Coordinator Turn
+Coordinator is busy: queue it for the next Coordinator Turn
         ↓
-精确 materialize 为 Provider 可见输入
+Materialize it exactly as Provider-visible input
         ↓
-Provider 实际观察并回答
+Provider observes and responds
         ↓
-只确认这一条 source 已处理
+Acknowledge only this source as processed
 ```
 
-它不应该：
+It should not:
 
-- 硬打断当前 Member Task；
-- 等所有 Member Task 做完才处理；
-- 只发一个没有正文的 Wake；
-- 由前端内存猜测消息是否已经处理；
-- 恢复 Coordinator 对全部 unread Inbox 的批量读取。
+- hard-interrupt the current Member Task;
+- wait for all Member Tasks to finish before handling it;
+- send only a Wake with no message body;
+- guess from frontend memory whether the message has been processed;
+- restore the Coordinator’s blanket drain of the entire unread Inbox.
 
-完整 `@Member` GroupMention 属于 PR9；但“无 Member target 或只发给 Coordinator”的 Root 消息路径在 PR8F 后必须仍然工作。
+Full `@Member` GroupMention belongs to PR9; however, the Root message path for “no Member target or addressed only to the Coordinator” must continue working after PR8F.
 
-## 四、真实发生了什么
+## 4. What actually happened
 
-### 旧写入端
+### Legacy writer
 
-Group Chat 发送命令继续走旧路径：
+The Group Chat send command continues to use the legacy path:
 
-1. 写一条普通用户 Inbox row；
-2. 调用 generic Coordinator wake。
+1. writes an ordinary user Inbox row;
+2. calls generic Coordinator wake.
 
-相关入口：
+Relevant entry points:
 
 - `src-tauri/crates/agent-core/src/state/commands/session/org_tasks/group_chat.rs`
 - `src-tauri/crates/agent-core/src/core/tools/impls/orchestration/inbox_wake.rs`
 
-### PR8F 新读取端
+### New PR8F reader
 
-PR8F 为了消除重复触发和错误批量确认，把 Coordinator 的正式输入改成只读取精确 FormalTriggerReceipt：
+To eliminate duplicate triggers and incorrect bulk acknowledgments, PR8F changed the Coordinator’s formal input to read only exact FormalTriggerReceipt records:
 
 - `src-tauri/crates/agent-core/src/core/session/turn/processor/inbox_drain/drain.rs`
 - `src-tauri/crates/agent-core/src/core/coordination/agent_inbox/store_drain.rs`
 
-user-directed Group row 不属于 FormalTriggerReceipt，因此不会出现在新的 Coordinator input batch 中。
+A user-directed Group row is not a FormalTriggerReceipt, so it does not appear in the new Coordinator input batch.
 
-### 最终断链
+### Resulting break in the flow
 
 ```text
-Group 消息写入普通 Inbox
+Group message written to ordinary Inbox
         ↓
-generic wake 创建 Coordinator Turn
+Generic wake creates a Coordinator Turn
         ↓
-Coordinator 只查询 FormalTriggerReceipt
+Coordinator queries only FormalTriggerReceipt
         ↓
-查不到用户消息
+User message not found
         ↓
-Turn 没有输入，很快结束
+Turn has no input and ends quickly
         ↓
-原消息永久 unread
+Original message remains unread indefinitely
 ```
 
-这是 PR8F 替换消费者时漏迁移旧生产者产生的兼容回归，不是 Design 要求用户消息失效。
+This is a compatibility regression caused by PR8F replacing the consumer without migrating the legacy producer; it is not a design requirement that user messages become ineffective.
 
-## 五、为什么 UI 会误导用户
+## 5. Why the UI can mislead the user
 
-当前 Group Chat 的“正在接收消息”主要是 React 页面内存中的 pending 状态，不是从持久化 observation receipt 重建。
+The current Group Chat “receiving message” indicator is mainly a pending state held in React page memory; it is not reconstructed from a persistent observation receipt.
 
-因此可能发生：
+As a result:
 
-- 消息实际仍 unread，但 UI 显示正在处理；
-- 切换页面后本地状态被清掉，看起来像已经处理；
-- Coordinator 空 Turn 结束后，UI 无法证明 Provider 是否看过正文。
+- the message may still be unread even though the UI says it is being processed;
+- after navigating away, local state is cleared, making it look as if the message was processed;
+- after the Coordinator’s empty Turn ends, the UI cannot prove whether the Provider saw the body.
 
-相关前端入口：
+Relevant frontend entry point:
 
 - `src/engines/ChatPanel/hooks/useAgentOrgGroupChatController.ts`
 
-## 六、对“最后一直 Needs attention”的影响
+## 6. Effect on “Needs attention” remaining at the end
 
-用户最后看到所有 Task terminal，但 Team 仍 Needs attention，有两个独立 blocker：
+When the user sees all Tasks terminal but the Team still says Needs attention, there are two independent blockers:
 
-1. 本文负责的 PR8F blocker：Group 用户消息仍 unread；
-2. PR8S blocker：`Keep stopped` 后 cancelled scope 没有合法 completion closure。
+1. the PR8F blocker covered here: the Group user message is still unread;
+2. the PR8S blocker: after `Keep stopped`, the cancelled scope has no valid completion closure.
 
-所以只修本文问题，可以清掉“未处理用户消息”这一项 blocker，但不能替代 PR8S 对 episode/completion 的修复。反过来，只修 PR8S completion，也不能删除或伪装这条未读用户消息。
+Fixing only the issue in this document can remove the “unprocessed user message” blocker, but cannot replace PR8S’s episode/completion fix. Conversely, fixing only PR8S completion cannot delete or disguise this unread user message.
 
-## 七、正确修复边界
+## 7. Correct fix boundaries
 
-1. Root/Group 用户消息必须复用现有 Root UserDirectedWork queue，或建立等价的精确 source receipt；
-2. 每条消息保存稳定 source id、causation、目标 Coordinator、Turn identity 和 FIFO sequence；
-3. 业务消息和持久 doorbell 在同一事务提交；内存 wake 只负责加速；
-4. Coordinator 正忙时，消息留给下一个 Turn，不能混入已 materialize 的当前 Turn；
-5. Provider 成功后只确认当前 Turn 实际观察的 source；
-6. crash、restart 和 response loss 复用原消息和原身份，不能重复生成 transcript input；
-7. 前端 pending/queued/observed 状态来自持久事实，不使用本地布尔值猜测；
-8. 不恢复 Coordinator blanket unread drain；
-9. 不把普通用户 Group 消息登记成 FormalTriggerReceipt；正式工作 trigger 和 UserDirectedWork queue 保持两条精确但不同的输入来源；
-10. 普通 SDE 不增加 Agent Org receipt、query、timer 或 listener。
+1. Root/Group user messages must reuse the existing Root UserDirectedWork queue or establish an equivalent exact source receipt;
+2. persist a stable source id, causation, target Coordinator, Turn identity, and FIFO sequence for every message;
+3. commit the business message and persistent doorbell in the same transaction; in-memory wake is only an optimization;
+4. when the Coordinator is busy, leave the message for the next Turn; do not mix it into the already materialized current Turn;
+5. after Provider success, acknowledge only the source actually observed by the current Turn;
+6. on crash, restart, or response loss, reuse the original message and identity; do not generate duplicate transcript input;
+7. frontend pending/queued/observed state must come from persistent facts, not guesses based on local booleans;
+8. do not restore the Coordinator’s blanket unread drain;
+9. do not register ordinary user Group messages as FormalTriggerReceipt; formal work triggers and the UserDirectedWork queue remain two distinct, precise input sources;
+10. ordinary SDE must not add Agent Org receipts, queries, timers, or listeners.
 
-若实现发现必须新增第二 Coordinator dispatcher、新 Task 状态或新的通用 GroupMention 协议，应立即停线更新 Design；这些都超出本修复范围。
+If implementation shows that a second Coordinator dispatcher, a new Task state, or a new general GroupMention protocol is required, stop immediately and update the Design; all of these are outside this fix’s scope.
 
-## 八、必须测试
+## 8. Required tests
 
-### 后端 owning-boundary
+### Backend owning-boundary tests
 
-- Coordinator Working、Idle 时发送 Root Group 消息；
-- busy Coordinator 的 later-row 保留到 follow-up Turn；
-- 每条 source 只 materialize、ack 一次；
-- response loss、Turn crash、App restart 后复用同一消息身份；
-- Coordinator 不顺带读取另一 Task、Direct Member 或未 materialize row；
-- 消息 pending 时阻止错误 finality，observed 后 blocker 精确消失；
-- 五次 Watchdog tick 不重复消息、Wake 或 Provider Turn；
-- Run View/page read 前后数据库无副作用；
-- 普通 SDE 路径零 Agent Org 额外工作。
+- Send a Root Group message while the Coordinator is Working and while Idle;
+- retain a later row for a busy Coordinator until the follow-up Turn;
+- materialize and acknowledge each source only once;
+- reuse the same message identity after response loss, Turn crash, and App restart;
+- ensure the Coordinator does not also read another Task, Direct Member, or unmaterialized row;
+- prevent incorrect finality while a message is pending, and remove the blocker exactly when it is observed;
+- five Watchdog ticks must not duplicate messages, Wake events, or Provider Turns;
+- database state has no side effects before or after Run View/page reads;
+- no extra Agent Org work on the ordinary SDE path.
 
-### Rendered E2E
+### Rendered E2E tests
 
-- 通过 packaged Tauri App 的真实 Group Chat 输入框和 Send 按钮发送；
-- 工作中发送新要求，UI 明确显示 Queued，再显示 Observed/回答；
-- Session switch、refresh、退出 App、重新启动后状态一致；
-- 不允许 debug endpoint 代替输入、发送或观察 Provider 回答；
-- `Command+5` 和后端证据共同证明没有请求风暴或空 Wake。
+- send through the real Group Chat input and Send button in the packaged Tauri App;
+- send a new request during active work; the UI clearly shows Queued, then Observed/response;
+- state remains consistent after Session switch, refresh, App exit, and restart;
+- do not use a debug endpoint in place of input, sending, or observing the Provider response;
+- `Command+5` and backend evidence together show there is no request storm or empty Wake.
 
-### 真实 Provider
+### Real Provider tests
 
-- 固定 `orlando / gpt-5.6-terra`；
-- 运行一个真实 Member Task，在其尚未完成时发送第二条 Group 要求；
-- 当前 Member Task 不被硬取消；
-- Coordinator 在正确的后续 Turn 读取第二条要求；
-- SQLite、EventStore、source/Turn identity 和 Provider 请求次数一致；
-- 重启后消息和回答仍可见。
+- use the fixed `orlando / gpt-5.6-terra`;
+- run a real Member Task and send a second Group request before it finishes;
+- the current Member Task is not hard-cancelled;
+- the Coordinator reads the second request in the correct subsequent Turn;
+- SQLite, EventStore, source/Turn identity, and Provider request counts agree;
+- the message and response remain visible after restart.
 
-## 九、估算
+## 9. Estimate
 
-| 类别                            |       P50 |       P90 |
+| Category | P50 | P90 |
 | ------------------------------- | --------: | --------: |
-| Production：Rust、wire、React   |     1,200 |     2,800 |
-| 单元、恢复、并发、E2E、真实测量 |     1,800 |     3,700 |
-| UI/机械调整与证据               |       500 |     1,000 |
-| **总 review lines**             | **3,500** | **7,500** |
-| **实质文件**                    | **22–32** | **40–55** |
+| Production: Rust, wire, React | 1,200 | 2,800 |
+| Unit, recovery, concurrency, E2E, real measurements | 1,800 | 3,700 |
+| UI/mechanical adjustments and evidence | 500 | 1,000 |
+| **Total review lines** | **3,500** | **7,500** |
+| **Substantive files** | **22–32** | **40–55** |
 
-当前 PR8F 实现本体为 17,487 review lines。完成本文修复后，预计约为：
+The current PR8F implementation itself is 17,487 review lines. After this fix, the expected total is approximately:
 
-- P50：20,987 review lines；
-- 本修复达到 P90：24,987 review lines。
+- P50: 20,987 review lines;
+- This fix reaching P90: 24,987 review lines.
 
-仍低于 Design 的 36,000 review-line P90 停线阈值，但实施时必须重新统计实质文件；不得通过删减真实 Provider、packaged App、重启、并发或性能测试压缩规模。
+This remains below the Design’s 36,000 review-line P90 stop threshold, but substantive files must be recounted during implementation. Do not reduce the scope by cutting real Provider, packaged App, restart, concurrency, or performance tests.
 
-## 十、明确不在本文中的内容
+## 10. Explicitly out of scope for this document
 
-- Tester 后台进程和 handoff：归属 PR8S；
-- Coordinator 工具 schema 的 `purpose` 冲突：归属 PR8S；
-- `Keep stopped` 与 completion closure：归属 PR8S，并需要补 Design；
-- PR9 的 `@Member` GroupMention；
-- PR10 的最终 Group transcript projection；
-- 外部用户数据库迁移。
+- Tester background process and handoff: belongs to PR8S;
+- `purpose` conflict in the Coordinator tool schema: belongs to PR8S;
+- `Keep stopped` and completion closure: belongs to PR8S and requires a Design update;
+- PR9 `@Member` GroupMention;
+- PR10 final Group transcript projection;
+- external user database migration.
 
-## 十一、完成标准
+## 11. Completion criteria
 
-PR8F 只有在以下条件全部成立时，才能认为用户观察到的消息问题已经修复：
+The user-observed messaging issue can be considered fixed only when all of the following are true:
 
-- 工作中发送的 Group 消息不会丢失或空 Wake；
-- Coordinator 正忙时消息持久 FIFO 排队，而不是硬打断当前 Task；
-- Provider 实际看到正文后才显示 observed；
-- refresh、Session switch、restart 后 pending 状态不撒谎；
-- 同一消息只有一个 source、一个 materialized input 和一次有效回答；
-- 修复后不恢复 blanket Inbox drain；
-- 用户消息不再错误阻塞最终 completion；
-- 真实 Terra + packaged App 完成完整第二消息场景；
-- Rust 测试位于独立测试文件或 `tests/` 目录，TypeScript/React 测试使用独立 `.test.ts/.test.tsx`，不同功能不集中到大型总测试文件。
+- Group messages sent during active work are not lost and do not produce empty Wake events;
+- when the Coordinator is busy, messages are persistently FIFO-queued instead of hard-interrupting the current Task;
+- observed is shown only after the Provider has actually seen the body;
+- pending state remains truthful after refresh, Session switch, and restart;
+- each message has only one source, one materialized input, and one valid response;
+- the fix does not restore blanket Inbox drain;
+- user messages no longer incorrectly block final completion;
+- the complete second-message scenario succeeds with real Terra + packaged App;
+- Rust tests live in separate test files or the `tests/` directory; TypeScript/React tests use separate `.test.ts` / `.test.tsx` files; unrelated functionality is not accumulated in a large omnibus test file.

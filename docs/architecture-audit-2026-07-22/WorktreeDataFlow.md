@@ -1,27 +1,27 @@
-# Worktree 数据流架构审计（修复前快照）
+# Worktree data-flow architecture audit (pre-fix snapshot)
 
-- 日期：2026-07-22
-- 基线：`develop` @ `646bb62f0`
-- 审计分支：`junyu/audit-worktree-data-flow`
-- 范围：Session Creator、统一 `session_launch`、Rust/CLI agent 启动、Git worktree 创建/复用/删除、worktree source 缓存
-- 性质：本报告记录修复前的只读审计快照；落地结果见 `WorktreeDataFlow-Fixes.md`
+- Date: 2026-07-22
+- Baseline: `develop` @ `646bb62f0`
+- Audit branch: `junyu/audit-worktree-data-flow`
+- Scope: Session Creator, unified `session_launch`, Rust/CLI agent startup, Git worktree creation/reuse/deletion, and worktree source caching
+- Nature: This report is a read-only snapshot of the pre-fix state; implementation results are in `WorktreeDataFlow-Fixes.md`
 
-## 结论
+## Conclusion
 
-当前“创建新 worktree”的主路径基本完整，定向前端与 Rust 测试均通过；但 worktree 领域仍有 7 个高优先级断点和 2 个中优先级结构问题。最关键的问题是：
+The main “create new worktree” path is mostly complete, and focused frontend and Rust tests pass. However, the worktree domain still has 7 high-priority breaks and 2 medium-priority structural issues. The key findings are:
 
-1. UI 展示了已有 worktree，却没有任何生产路径把所选路径写入 launch payload；对应能力只存在于 atom、payload helper 和单元测试中。
-2. Rust agent 与 CLI agent 对同一 `session_launch` payload 的解释不一致：CLI 忽略 `worktreePath`，且创建新 worktree 后把真实路径从返回值中丢掉。
-3. repo 切换不会清理或重新限定 worktree source，repo A 的 branch/SHA 可被带入 repo B 的启动请求。
-4. 启动返回的 `branch` 是“基准 ref”，而实际 checkout 的分支是 `agent/<session-id>`；前端会把前者当成 session branch。
-5. 删除流程先删数据库记录、后做 Git 清理，失败后失去可靠重试所需的 repo/session 映射。
-6. setup hook 没有超时/取消，diff cache 没有容量上限，GitHub source cache 缺少账号/endpoint 隔离。
+1. The UI displays existing worktrees, but no production path writes the selected path into the launch payload; the capability exists only in an atom, a payload helper, and unit tests.
+2. The Rust and CLI agents interpret the same `session_launch` payload differently: CLI ignores `worktreePath` and drops the real path from its result after creating a worktree.
+3. Switching repos does not clear or rescope the worktree source, so a branch/SHA from repo A can enter a launch request for repo B.
+4. The returned `branch` is the base ref, while the checked-out branch is `agent/<session-id>`; the frontend treats the former as the session branch.
+5. Deletion removes the database record before Git cleanup; after a failure, the repo/session mapping needed for reliable retry is lost.
+6. The setup hook has no timeout or cancellation, the diff cache has no capacity limit, and the GitHub source cache is not isolated by account/endpoint.
 
-因此本次总评为：**数据流可运行，但跨入口、跨 agent 类型和全生命周期语义不一致，不应视为已闭环。**
+Overall: **the data flow runs, but semantics differ across entry points, agent types, and the full lifecycle; the work should not be considered complete.**
 
-## 生产数据流
+## Production data flow
 
-### 1. 新建隔离 worktree
+### 1. Create an isolated worktree
 
 ```text
 WorktreeSourceModal
@@ -39,21 +39,21 @@ WorktreeSourceModal
   -> buildSessionFromLaunchResult()
 ```
 
-这条路径会实际创建 worktree；Git 创建与持久化失败时也有局部 rollback。主要问题在返回契约：CLI 丢失 worktree path，Rust/CLI 都没有返回实际 worktree branch。
+This path creates a worktree, with partial rollback if Git creation or persistence fails. The main issue is the result contract: CLI loses the worktree path, and neither Rust nor CLI returns the actual worktree branch.
 
-### 2. 复用已有 worktree（设计意图）
+### 2. Reuse an existing worktree (intended design)
 
 ```text
 selectedWorktreePathAtom
   -> buildSessionLaunchPayload()
        { worktreePath }
   -> Rust agent: SessionWorkspace::new_worktree(root, existingPath)
-  -> CLI agent: 当前忽略 worktreePath
+  -> CLI agent: currently ignores worktreePath
 ```
 
-该路径在生产 UI 中不可达：atom 只有清空写入，没有非空写入；modal 中归入 “Worktrees” 的 branch option 在转换成 launch source 时丢弃了 `worktreePath`。因此用户选择已存在 worktree 对应的 branch 后，实际语义仍是“从该 branch 新建 worktree”。
+This path is unreachable from the production UI: the atom is only written with an empty value, never a non-empty one; when the modal converts a branch option under “Worktrees” into a launch source, it drops `worktreePath`. As a result, selecting a branch from an existing worktree still means “create a new worktree from that branch.”
 
-### 3. 管理型 linked worktree
+### 3. Managed linked worktree
 
 ```text
 GlobalSpotlight / worktree management UI
@@ -64,88 +64,88 @@ GlobalSpotlight / worktree management UI
   -> invalidate/refresh worktree map
 ```
 
-这条路径与 session worktree 共用 Git 创建底层，但不共用 session launch 契约。它解释了为何 UI 能列出已有 worktree，却不能自动证明 Session Creator 已支持“复用”。
+This path shares the underlying Git creation code with session worktrees but does not share the session-launch contract. This explains why the UI can list existing worktrees without proving that Session Creator supports reusing them.
 
-### 4. 删除与孤儿清理
+### 4. Deletion and orphan cleanup
 
 ```text
 delete_session(sessionId)
-  -> 读取 workspace path
-  -> 删除 session DB row
-  -> 尝试 git worktree remove / branch cleanup
-  -> housekeeping 扫描残留目录
+  -> read workspace path
+  -> delete session DB row
+  -> attempt git worktree removal / branch cleanup
+  -> housekeeping scans for leftover directories
 ```
 
-顺序导致 Git 清理失败时数据库上下文已经丢失；后续 housekeeping 主要删除目录，无法可靠恢复 Git worktree registration 与分支清理。
+Because of this ordering, database context is already gone if Git cleanup fails. Later housekeeping mainly deletes directories and cannot reliably restore Git worktree registration or clean up the branch.
 
-## 发现
+## Findings
 
-| ID    | 优先级 | 发现                                                           | 证据                                                                                                                                                                                                                                                                                                                                            | 影响                                                                                                                     | 建议                                                                                                                                                      |
-| ----- | ------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| WT-01 | 高     | “复用已有 worktree”是未接通的死路径                            | `selectedWorktreePathAtom.ts:13` 定义状态；生产写入只见 `ChatPanel/index.tsx:309-337` 的清空。`WorktreeSourceModal.tsx:352-372` 展示 worktree 分组，但 `worktreeBranchSource.ts:169-195` 转换时不保留 `option.worktreePath`。只有 `launchPayload.test.ts:422` 人工覆盖非空值                                                                    | 用户看到已有 worktree，但选择后会创建新的隔离 worktree；产品语义与真实动作相反                                           | 将 source 建模为显式 union：`currentRepo                                                                                                                  | createFromRef                                                                                                                                                    | reuseWorktree`。modal 选择已有 worktree 时必须携带 canonical path，并补生产级组件/E2E 覆盖；若产品不支持复用，则删除 atom、payload 分支和误导 UI |
-| WT-02 | 高     | Rust 与 CLI 对 `worktreePath` 和 launch result 不对称          | Rust `launch.rs:161-178` 把非空 `worktree_path` 识别为 Worktree；`CliLaunchParams`（`foundation/session_bridge.rs:40-69`）无该字段；`launch.rs:324-377` 构造 CLI 请求时不传，并固定返回 `worktree_path: None`。CLI 实际在 `cli/commands.rs:143-221` 创建并保存 worktree，但 bridge 在 `agent_core_bridge.rs:55-82` 只保留 session id/created_at | 同一 RPC 随 agent 类型改变语义；CLI 创建成功后，前端立即态拿不到真实路径；已有 worktree 请求可能退化为 local launch      | 让 Rust/CLI 共用一个 typed workspace target 和同一 authoritative launch result；CLI bridge 返回完整 workspace metadata，不在适配层丢字段                  |
-| WT-03 | 高     | repo 切换后 worktree source 可跨 repo 泄漏                     | `worktreeLaunchSourceAtom` 是全局、非 repo-keyed 状态；`ChatPanel/index.tsx:313-320` 只在离开 worktree 模式时清理。`useSessionCreatorChatPanelHandlers.ts:109-146` 切 repo 不清理 source。`launchPayload.ts:226-246,273-277` 最后用 source base ref 覆盖前面求得的 branch                                                                       | repo A 的 SHA/ref 可发送给 repo B；不存在时启动失败，恰好同名时可能静默从错误基准启动                                    | source 与 `{repoId, canonicalRepoPath}` 绑定；repo/identity generation 变化时同步失效，late async result 必须带 generation guard；增加 A→B 切换回归测试   |
-| WT-04 | 高     | `branch` 同时表示 base ref、展示 branch 和实际 checkout branch | UI 发送的 `branch` 可为 PR SHA；`launch.rs:141-145,238` 原样回传。`git/worktree.rs:339-340` 实际生成 `agent/<session-id>`；launch result 没有 worktree branch。`launchPayload.ts` 的 `buildSessionFromLaunchResult()` 又把 `result.branch` 写入 session branch                                                                                  | 新 session 的立即态可能显示 base branch/SHA，而工作目录实际位于 `agent/<id>`；刷新前后语义可能漂移                       | wire result 显式返回 `baseRef`、`baseBranch`、`worktreeBranch`、`workspaceRoot`、`workingDirectory`；禁止用一个 `branch` 字段承载三个概念                 |
-| WT-05 | 高     | 已有 worktree path 未验证归属和有效性                          | `launch_workspace.rs:56-61` 直接调用 `SessionWorkspace::new_worktree`；`workspace.rs:137-143` 仅赋值，`is_worktree()` 只比较路径。Git 删除路由在 `git/src/worktree.rs:557-581` 已有 registered-path 校验，但 launch 未复用                                                                                                                      | 不存在目录、普通目录或其他 repo 的目录可能先被持久化并返回成功，随后首个 turn 才异步失败；错误边界过晚                   | canonicalize；要求目录存在；从 `git worktree list --porcelain` 验证属于 workspace repo；校验通过后再持久化和启动                                          |
-| WT-06 | 高     | 删除先删 DB，Git 清理失败后缺少可重试上下文                    | `agent-core/.../persistence/crud/ops.rs:637-724` 先 `delete_session_cascade`，后尝试 worktree cleanup，失败只记录日志并返回成功。`housekeeping_orphans.rs:227-284` 主要直接删目录；周期 prune 又依赖仍存活的 session repo                                                                                                                       | 可永久遗留 stale worktree registration、`agent/<id>` 分支和磁盘目录；用户看不到 session，也无法从 DB 恢复 cleanup target | 清理成功后再删主记录，或写 durable cleanup tombstone（repo、path、branch、session id、attempt state）；housekeeping 必须走 Git-aware cleanup 并有有界重试 |
-| WT-07 | 高     | setup command 无超时、取消与进程回收策略                       | `git/src/worktree.rs:421-470,504-548` 通过 `sh -c` / `cmd /C` 调用 `.output()`；调用发生于新建 linked/session worktree 的阻塞任务内                                                                                                                                                                                                             | 任意挂起脚本会让 launch 一直等待；重复启动可积累阻塞线程/子进程                                                          | 设置可配置硬超时和 kill-on-timeout；记录命令、耗时、退出原因；对 launch cancellation 和 app shutdown 明确处置                                             |
-| WT-08 | 中     | `SessionService.create()` 把一般工作目录重载为 `worktreePath`  | `SessionService.ts:146-169` 同时传 `workspacePath: projectRepoPath                                                                                                                                                                                                                                                                              |                                                                                                                          | repoPath`与`worktreePath: repoPath`；`services/types.ts:20-23`又把`repoPath` 定义为 agent working path。Rust 因非空 path 统一识别为 Worktree              | 普通 cwd、alternate working dir 与 registered worktree 被压成一个概念；response 可判为 worktree，而 DB 在 root==working_dir 时保存为 local，形成瞬时 split-brain | 调用方传 discriminated workspace target；若确需 alternate cwd，单独命名，不得借用 `worktreePath`                                                 |
-| WT-09 | 中     | wire schema 对 launch input 几乎不做约束                       | `src/api/tauri/rpc/schemas/agentSession.ts:345-347` 使用 `z.record(z.string(), z.unknown())`；结果 schema 才显式声明 worktreePath                                                                                                                                                                                                               | TS/Rust 字段遗漏、互斥条件错误和新增字段漂移无法在编译或运行时边界暴露，WT-02 因而能长期存在                             | 用 discriminated Zod schema 与 Rust DTO 对齐；覆盖 unknown-key、互斥字段和 Rust/CLI parity contract tests                                                 |
+| ID | Priority | Finding | Evidence | Impact | Recommendation |
+| --- | --- | --- | --- | --- | --- |
+| WT-01 | High | “Reuse existing worktree” is an unwired dead path | `selectedWorktreePathAtom.ts:13` defines the state; the only production write found is the clearing operation in `ChatPanel/index.tsx:309-337`. `WorktreeSourceModal.tsx:352-372` shows the worktree group, but `worktreeBranchSource.ts:169-195` does not preserve `option.worktreePath`. Only `launchPayload.test.ts:422` manually supplies a non-empty value. | The user sees existing worktrees, but selecting one creates a new isolated worktree; the product semantics contradict the actual action. | Model the source as an explicit union: `currentRepo | createFromRef | reuseWorktree`. When the modal selects an existing worktree, it must carry the canonical path and add production-level component/E2E coverage; if reuse is not supported, remove the atom, payload branch, and misleading UI. |
+| WT-02 | High | Rust and CLI handle `worktreePath` and the launch result asymmetrically | Rust `launch.rs:161-178` treats a non-empty `worktree_path` as Worktree; `CliLaunchParams` (`foundation/session_bridge.rs:40-69`) has no such field; `launch.rs:324-377` does not pass it when building the CLI request and always returns `worktree_path: None`. CLI creates and saves the worktree in `cli/commands.rs:143-221`, but the bridge in `agent_core_bridge.rs:55-82` retains only session id/created_at. | The same RPC changes semantics depending on agent type; after CLI creation succeeds, the frontend immediate state cannot get the real path; an existing-worktree request may degrade into a local launch. | Have Rust and CLI share one typed workspace target and the same authoritative launch result; return complete workspace metadata from the CLI bridge without dropping fields in the adapter. |
+| WT-03 | High | Worktree source can leak across repos after switching repos | `worktreeLaunchSourceAtom` is global state not keyed by repo; `ChatPanel/index.tsx:313-320` clears it only when leaving worktree mode. `useSessionCreatorChatPanelHandlers.ts:109-146` does not clear the source when switching repos. `launchPayload.ts:226-246,273-277` ultimately overwrites the previously resolved branch with the source base ref. | A SHA/ref from repo A can be sent to repo B; if it does not exist, launch fails, and if the name happens to match, launch may silently start from the wrong base. | Bind the source to `{repoId, canonicalRepoPath}`; invalidate it when the repo/identity generation changes, require a generation guard on late async results, and add an A→B switch regression test. |
+| WT-04 | High | `branch` simultaneously represents the base ref, displayed branch, and actual checkout branch | The UI-sent `branch` may be a PR SHA; `launch.rs:141-145,238` returns it unchanged. `git/worktree.rs:339-340` actually generates `agent/<session-id>`; the launch result has no worktree branch. `buildSessionFromLaunchResult()` in `launchPayload.ts` writes `result.branch` to the session branch. | The immediate state of a new session may display the base branch/SHA while the working directory is actually on `agent/<id>`; semantics may shift after refresh. | Explicitly return `baseRef`, `baseBranch`, `worktreeBranch`, `workspaceRoot`, and `workingDirectory`; do not use one `branch` field for three concepts. |
+| WT-05 | High | Existing worktree paths are not checked for ownership or validity | `launch_workspace.rs:56-61` directly calls `SessionWorkspace::new_worktree`; `workspace.rs:137-143` only assigns the path, and `is_worktree()` only compares paths. The Git deletion route in `git/src/worktree.rs:557-581` already validates registered paths, but launch does not reuse that check. | A missing directory, ordinary directory, or directory from another repo may be persisted and reported as success, then fail asynchronously on the first turn; the error is surfaced too late. | Canonicalize the path; require that the directory exists; use `git worktree list --porcelain` to verify it belongs to the workspace repo; persist and launch only after validation. |
+| WT-06 | High | Deletion removes the DB row first, leaving no retry context if Git cleanup fails | `agent-core/.../persistence/crud/ops.rs:637-724` calls `delete_session_cascade` first, then attempts worktree cleanup; on failure, it only logs and returns success. `housekeeping_orphans.rs:227-284` mainly deletes directories directly; periodic pruning also depends on the session repo still existing. | This can permanently leave stale worktree registration, an `agent/<id>` branch, and disk directories; the user cannot see the session or recover the cleanup target from the DB. | Delete the primary record after cleanup succeeds, or write a durable cleanup tombstone (repo, path, branch, session id, attempt state); housekeeping must perform Git-aware cleanup with bounded retries. |
+| WT-07 | High | Setup commands have no timeout, cancellation, or process-reaping policy | `git/src/worktree.rs:421-470,504-548` invokes `sh -c` / `cmd /C` through `.output()`; the call runs inside the blocking task that creates a linked/session worktree. | Any hung script can make launch wait indefinitely; repeated launches can accumulate blocked threads and child processes. | Set a configurable hard timeout and kill on timeout; record the command, duration, and exit reason; define handling for launch cancellation and app shutdown. |
+| WT-08 | Medium | `SessionService.create()` overloads a general working directory as `worktreePath` | `SessionService.ts:146-169` passes both `workspacePath: projectRepoPath | repoPath` and `worktreePath: repoPath`; `services/types.ts:20-23` defines `repoPath` as the agent working path. Rust classifies every non-empty path as Worktree. | An ordinary cwd, alternate working directory, and registered worktree are collapsed into one concept; the response can classify it as a worktree while the DB stores it as local when `root==working_dir`, creating transient split-brain state. | Have callers pass a discriminated workspace target; if an alternate cwd is needed, name it separately and do not reuse `worktreePath`. |
+| WT-09 | Medium | The wire schema barely constrains launch input | `src/api/tauri/rpc/schemas/agentSession.ts:345-347` uses `z.record(z.string(), z.unknown())`; only the result schema explicitly declares `worktreePath`. | Missing TS/Rust fields, invalid mutual-exclusion conditions, and drift in new fields are not caught at compile time or runtime boundaries, allowing WT-02 to persist. | Align a discriminated Zod schema with the Rust DTO; cover unknown keys, mutually exclusive fields, and Rust/CLI parity contract tests. |
 
-## 10 层架构检查
+## 10-layer architecture check
 
-| 层                    | 结论     | 说明                                                                                                                         |
-| --------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 1. 编译正确性         | 定向通过 | 64 个前端单元测试与 33 个 Rust worktree 单元测试通过。此分支只新增文档，未做全量 app 编译、clippy 或 rendered E2E            |
-| 2. 死代码/重复路径    | 失败     | existing-worktree payload 分支无生产写入；`RunningLocationPill.tsx` 无生产引用；diff summary 未发现前端调用                  |
-| 3. 命名一致性         | 失败     | `branch`、`repoPath`、`worktreePath` 在 UI、RPC、session service、Git 层含义不同                                             |
-| 4. 语义重载           | 失败     | base ref / session display branch / checkout branch 共用 `branch`；alternate cwd / registered worktree 共用 `worktreePath`   |
-| 5. 默认分支           | 风险     | worktree 模式在 source 缺失时默认 current HEAD；CLI 缺失 worktree_path 字段时静默走 local/fresh 逻辑，而不是拒绝不支持的请求 |
-| 6. 跨域泄漏           | 失败     | SessionService 的一般 working path 被解释为 Git worktree；UI source 状态跨 repo 泄漏                                         |
-| 7. 新开发者可理解性   | 失败     | “Worktrees” 分组看似代表复用，实际只选 branch；同一 launch result 的 branch/path 含义依 agent 类型不同                       |
-| 8. Wire protocol      | 失败     | 输入为任意 record；CLI 适配层丢 `worktreePath` 和实际创建结果；未返回 authoritative worktree branch                          |
-| 9. 入口初始化一致性   | 失败     | Rust agent、CLI agent、Session Creator、SessionService 对 local/fresh/reuse 三种 workspace 模式支持矩阵不一致                |
-| 10. Resolver symmetry | 失败     | repo/source 没有同一 fallback/失效链；路径、branch 和 metadata 在 result、DB、WebSocket 间来源不对称                         |
+| Layer | Verdict | Notes |
+| --- | --- | --- |
+| 1. Compilation correctness | Targeted pass | 64 frontend unit tests and 33 Rust worktree unit tests passed. This branch only adds documentation; no full app compilation, clippy, or rendered E2E was run. |
+| 2. Dead code / duplicate paths | Fail | The existing-worktree payload branch has no production write; `RunningLocationPill.tsx` has no production references; no frontend calls to the diff summary were found. |
+| 3. Naming consistency | Fail | `branch`, `repoPath`, and `worktreePath` have different meanings across the UI, RPC, session service, and Git layers. |
+| 4. Semantic overload | Fail | Base ref / session display branch / checkout branch share `branch`; alternate cwd / registered worktree share `worktreePath`. |
+| 5. Default branch | Risk | Worktree mode defaults to current HEAD when the source is missing; when CLI lacks the `worktree_path` field, it silently follows local/fresh logic instead of rejecting an unsupported request. |
+| 6. Cross-domain leakage | Fail | SessionService general working paths are interpreted as Git worktrees; UI source state leaks across repos. |
+| 7. Understandability for new developers | Fail | The “Worktrees” group appears to mean reuse but only selects a branch; branch/path meanings in the same launch result vary by agent type. |
+| 8. Wire protocol | Fail | Input is an arbitrary record; the CLI adapter drops `worktreePath` and the actual creation result; the authoritative worktree branch is not returned. |
+| 9. Entry-point initialization consistency | Fail | Rust agent, CLI agent, Session Creator, and SessionService have inconsistent support matrices for local/fresh/reuse workspace modes. |
+| 10. Resolver symmetry | Fail | Repo/source do not share the same fallback/invalidation chain; path, branch, and metadata have asymmetric sources across the result, DB, and WebSocket. |
 
-## 入口一致性矩阵
+## Entry-point consistency matrix
 
-| 入口/模式                              | Local        | 新建隔离 worktree | 复用已有 worktree                    | 返回真实 path | 返回真实 checkout branch |
-| -------------------------------------- | ------------ | ----------------- | ------------------------------------ | ------------- | ------------------------ |
-| Session Creator → Rust agent           | 支持         | 支持              | helper 支持，但 UI 不可达            | 是            | 否                       |
-| Session Creator → CLI agent            | 支持         | 支持              | 不支持且未显式报错                   | 否            | 否                       |
-| `SessionService.create()` → Rust agent | 支持语义模糊 | 可触发            | 任意 `repoPath` 被当作 worktree path | 调用方丢弃    | 否                       |
-| `SessionService.create()` → CLI agent  | 支持         | 由 isolate 决定   | `worktreePath` 被忽略                | 调用方丢弃    | 否                       |
+| Entry / mode | Local | Create isolated worktree | Reuse existing worktree | Returns real path | Returns real checkout branch |
+| --- | --- | --- | --- | --- | --- |
+| Session Creator → Rust agent | Supported | Supported | Supported by helper, but unreachable from UI | Yes | No |
+| Session Creator → CLI agent | Supported | Supported | Unsupported and not explicitly rejected | No | No |
+| `SessionService.create()` → Rust agent | Supported with ambiguous semantics | Can be triggered | Any `repoPath` is treated as worktree path | Discarded by caller | No |
+| `SessionService.create()` → CLI agent | Supported | Determined by isolate | `worktreePath` is ignored | Discarded by caller | No |
 
-## 性能与生命周期检查
+## Performance and lifecycle check
 
-| Area               | Verdict | Evidence                                                                                                                                           | Change or reason kept                                                            | Verification                                                    |
-| ------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Background work    | fix     | setup hook 由 worktree create 拥有，但 `.output()` 无 deadline/cancel；挂起时 launch 与 blocking worker 无终止态                                   | 增加 timeout、kill、cancellation 与可观测状态                                    | 需补“永久等待脚本”单测和真实进程回收测试                        |
-| Memory             | fix     | `git-api/routes/worktrees.rs:24-39,194-252` 的 app-lifetime `HashMap<(path, headSha), DiffCacheEntry>` 只在 lookup 检查 TTL，无 cap/全局 prune     | 删除未使用 diff summary，或改 bounded LRU/TTL 并在 repo/worktree 删除时 eviction | 当前仅确认 endpoint 无前端调用；尚无容量/淘汰测试               |
-| Scope/isolation    | fix     | `worktreeSourceCache.ts:38-51` 只用 repo id/path；GitHub PR/issue cache 未包含 endpoint + authenticated user，旧请求也无 identity generation guard | key 加 endpoint/user/resource；登录态切换清空；提交结果前比较 generation         | 需补 account/endpoint switch 与 stale completion rejection 测试 |
-| Rendering/hot path | keep    | worktree map cache cap=16；source cache cap=8；同 key 请求有 in-flight single-flight；branch 与 GitHub 数据并行加载                                | 现有有界/并发结构可保留，修复 identity key 即可                                  | 相关 64 个前端单元测试通过；未做 rendered profiling             |
+| Area | Verdict | Evidence | Change or reason kept | Verification |
+| --- | --- | --- | --- | --- |
+| Background work | Fix | The worktree create path owns the setup hook, but `.output()` has no deadline/cancellation; when it hangs, launch and the blocking worker have no termination state. | Add timeout, kill, cancellation, and observable status. | Add a “permanently hanging script” unit test and a real process-reaping test. |
+| Memory | Fix | `git-api/routes/worktrees.rs:24-39,194-252` has an app-lifetime `HashMap<(path, headSha), DiffCacheEntry>` that checks TTL only during lookup, with no cap/global pruning. | Remove the unused diff summary, or use bounded LRU/TTL and evict on repo/worktree deletion. | So far, only confirmed that the endpoint has no frontend callers; no capacity/eviction tests yet. |
+| Scope/isolation | Fix | `worktreeSourceCache.ts:38-51` uses only repo id/path; the GitHub PR/issue cache does not include endpoint + authenticated user, and old requests also lack an identity generation guard. | Add endpoint/user/resource to the key; clear on login-state change; compare generations before committing results. | Add account/endpoint switch and stale-completion rejection tests. |
+| Rendering/hot path | Keep | Worktree map cache cap=16; source cache cap=8; requests with the same key use in-flight single-flight; branch and GitHub data load in parallel. | The existing bounded/concurrent structure can remain; fix the identity key. | The related 64 frontend unit tests passed; no rendered profiling was done. |
 
-**Performance verdict: fail** — 仍存在无上限缓存、不可终止的后台子进程，以及跨身份缓存命中/旧请求回写路径。
+**Performance verdict: fail** — unbounded caches, non-terminable background child processes, cross-identity cache hits, and stale-request writeback paths remain.
 
-## 已确认保留的设计
+## Designs confirmed as retained
 
-- 新建 session worktree 使用 `spawn_blocking` 承载 Git/文件系统工作，避免直接阻塞 async executor。
-- worktree 数量存在默认上限（默认 8）。
-- PR base ref 解析有 90 秒超时，并设置 `GIT_TERMINAL_PROMPT=0`。
-- Rust fresh-create 在 workspace metadata 持久化失败时会尝试移除刚创建的 worktree。
-- 前端 branch/GitHub source fetch 并行，常用 source cache 已有 entry cap 与 single-flight。
+- New session worktrees use `spawn_blocking` to run Git/filesystem work and avoid directly blocking the async executor.
+- The worktree count has a default limit (8).
+- PR base ref resolution has a 90-second timeout and sets `GIT_TERMINAL_PROMPT=0`.
+- Rust fresh-create attempts to remove the newly created worktree if persisting workspace metadata fails.
+- Frontend branch/GitHub source fetches run in parallel; the commonly used source cache already has an entry cap and single-flight behavior.
 
-## 建议落地顺序
+## Recommended implementation order
 
-1. 定义唯一的 `WorkspaceLaunchTarget` union：`local`、`createIsolated { baseRef }`、`reuseRegistered { path }`；TS、Zod、Rust、CLI 共用同一模式矩阵。
-2. 让 launch result 返回 authoritative workspace metadata：root、working directory、base ref、实际 worktree branch；前端只消费结果，不从输入反推。
-3. 选择产品方向：真正接通 existing-worktree UI，或删除死能力与误导性分组；不要保持半接通状态。
-4. source 状态按 repo + identity 定界，并在 repo/account/endpoint 切换时 generation-invalidated。
-5. 统一复用路径校验，并把删除改成可重试的 Git-aware lifecycle。
-6. 给 setup hook 设置超时/取消；删除或限制 diff cache；补身份切换和缓存淘汰测试。
+1. Define one `WorkspaceLaunchTarget` union: `local`, `createIsolated { baseRef }`, and `reuseRegistered { path }`; use the same mode matrix across TS, Zod, Rust, and CLI.
+2. Have the launch result return authoritative workspace metadata: root, working directory, base ref, and actual worktree branch; the frontend should consume the result instead of inferring from input.
+3. Choose the product direction: connect the existing-worktree UI properly or remove the dead capability and misleading group; do not leave it half-connected.
+4. Scope source state by repo + identity, and invalidate its generation when the repo/account/endpoint changes.
+5. Unify reuse-path validation and make deletion a retryable Git-aware lifecycle.
+6. Add timeout/cancellation for setup hooks; remove or limit the diff cache; add identity-switch and cache-eviction tests.
 
-## 验证记录
+## Verification record
 
-- Frontend：`vitest` 定向运行 `launchPayload`、`worktreeBranchSource`、`worktreeSourceCache`、`worktreeSourceResolve`，**4 files / 64 tests passed**。
-- Rust：`cargo test -p git worktree --lib`，**33 passed / 0 failed / 94 filtered out**。
-- 未执行：全量 TypeScript typecheck、全 workspace clippy、真实 Tauri rendered E2E、账号切换与 hung setup 进程测量。它们是修复阶段的验收项，不影响本报告对现有静态数据流断点的判断。
+- Frontend: targeted `vitest` run for `launchPayload`, `worktreeBranchSource`, `worktreeSourceCache`, and `worktreeSourceResolve`: **4 files / 64 tests passed**.
+- Rust: `cargo test -p git worktree --lib`: **33 passed / 0 failed / 94 filtered out**.
+- Not run: full TypeScript typecheck, workspace-wide clippy, real Tauri rendered E2E, account-switch testing, or hung setup process measurement. These are acceptance items for the fix phase and do not affect this report’s assessment of the existing static data-flow breaks.

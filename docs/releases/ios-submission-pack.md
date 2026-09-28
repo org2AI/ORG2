@@ -1,18 +1,18 @@
-# ORG2 Remote 首版提审资料包
+# ORG2 Remote First-Release Submission Pack
 
-状态：工程准备稿，未在 App Store Connect 提交。日期：2026-09-08。
-配合 [发布检查清单](ios-launch-readiness.md) 使用。文案描述的是待验收功能，不代表功能已在 Release 真机包通过。
+Status: engineering draft; not submitted in App Store Connect. Date: 2026-09-08.
+Use with the [release readiness checklist](ios-launch-readiness.md). The copy describes features awaiting acceptance; it does not mean they have passed on a Release build on a real device.
 
-## 商店文案草稿
+## Draft Store Listing
 
-| 字段         | 简体中文                                                        | 英文                                                                                                |
-| ------------ | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 名称         | ORG2 Remote                                                     | ORG2 Remote                                                                                         |
-| 副标题       | 随时查看电脑上的 Agent 会话                                     | Your desktop agents, on mobile                                                                      |
-| 关键词       | Agent,远程,会话,开发,编程,工作流                                | agent,remote,desktop,sessions,developer,coding,workflow                                             |
-| 首版更新说明 | 首个 iOS 版本：连接你的 ORG2 桌面，查看会话进展并处理待批准操作 | First iOS release: connect to your ORG2 desktop, follow sessions, and respond to approval requests. |
+| Field | Simplified Chinese | English |
+| --- | --- | --- |
+| Name | ORG2 Remote | ORG2 Remote |
+| Subtitle | 随时查看电脑上的 Agent 会话 | Your desktop agents, on mobile |
+| Keywords | Agent,远程,会话,开发,编程,工作流 | agent,remote,desktop,sessions,developer,coding,workflow |
+| First-release notes | 首个 iOS 版本：连接你的 ORG2 桌面，查看会话进展并处理待批准操作 | First iOS release: connect to your ORG2 desktop, follow sessions, and respond to approval requests. |
 
-中文介绍：
+**Simplified Chinese description:**
 
 ORG2 Remote 是 ORG2 桌面的移动遥控客户端。在 iPhone 上查看电脑中的 Agent 会话、阅读消息，并在授权范围内发送消息、停止任务或处理待批准操作。
 
@@ -20,7 +20,7 @@ ORG2 Remote 是 ORG2 桌面的移动遥控客户端。在 iPhone 上查看电脑
 
 使用前需要安装兼容的 ORG2 桌面版本，并保持电脑运行和网络连接。Remote 不是在手机本地运行 Agent 的独立应用。可用操作取决于桌面授予的权限。
 
-英文介绍：
+**English description:**
 
 ORG2 Remote is the mobile companion for your ORG2 desktop. Follow agent sessions on your iPhone, read messages, and—when permitted by your desktop—send messages, stop tasks, or respond to approval requests.
 
@@ -28,88 +28,86 @@ Sign in to ORG2 Cloud and follow the pairing flow to connect your own desktop. W
 
 A compatible ORG2 desktop installation, a running computer, and a network connection are required. Remote does not run agents independently on your phone. Available actions depend on the permissions granted by your desktop.
 
-不提前宣传图片、离线使用、后台通知、端到端加密或无需桌面等未验收能力。图片能力通过真机验收后再补充文案和截图。
+Do not advertise unaccepted features such as images, offline use, background notifications, end-to-end encryption, or desktop-free operation. Add copy and screenshots about images only after real-device acceptance.
 
-## 需要负责人填写的商店字段
+## Store Fields for the Owner to Complete
 
-- 发布团队及 App Store Connect 应用记录：待账号登录后核实
-- Bundle ID：当前代码为 `org2ai.org2.remote`；团队归属、可注册性尚未核实
-- SKU：由发布团队确定；不自动创建应用记录
-- 版本：候选 `0.1.0`；build number 必须查询已上传记录后选取
-- 支持 URL、真实支持邮箱、版权主体：待负责人提供
-- 隐私政策 URL：当前为 `https://org2-cloud-infra.vercel.app/legal/privacy`，但内容尚不适合发布
-- 分类、年龄分级、价格、地区、内容权利、交易者状态：由负责人逐项确认，不能根据应用名推断
-- 审核联系人与审核测试凭据：只填入 Apple 后台相应字段，不放仓库、聊天或截图
+- Release team and App Store Connect app record: verify after signing in to the account
+- Bundle ID: current code uses `org2ai.org2.remote`; team ownership and availability have not been verified
+- SKU: to be determined by the release team; do not create the app record automatically
+- Version: candidate `0.1.0`; check existing uploads before choosing the build number
+- Support URL, real support email, and copyright holder: awaiting details from the owner
+- Privacy-policy URL: currently `https://org2-cloud-infra.vercel.app/legal/privacy`, but its content is not ready for release
+- Category, age rating, price, territories, content rights, and trader status: owner to confirm each; do not infer them from the app name
+- Review contact and review credentials: enter only in the relevant Apple fields; do not put them in the repository, chat, or screenshots
 
-## 审核环境与操作说明
+## Review Environment and Instructions
 
-Apple 要求审核人员能实际访问应用功能，并获得必要的账号、硬件或其他资源。
-参见 [App Review Guidelines — Before You Submit](https://developer.apple.com/app-store/review/guidelines/#before-you-submit)。
+Apple requires reviewers to be able to access the app's features and have any necessary accounts, hardware, or other resources. See [App Review Guidelines — Before You Submit](https://developer.apple.com/app-store/review/guidelines/#before-you-submit).
 
-准备一个只含合成数据的专用审核桌面和独立审核账户。禁止使用开发者的私人会话、真实工作文件或生产管理员账号。
-不要用静态的过期配对二维码充当可操作的审核环境；若审核需要动态配对码，先确定可用的提供渠道和人工响应流程。
+Prepare a dedicated review desktop containing synthetic data and a separate review account. Do not use a developer's personal sessions, real work files, or production administrator account. Do not use a static, expired pairing QR code as an operational review environment. If review needs a dynamic pairing code, first determine how it will be provided and how a human will respond.
 
-待 Release 真机验证以下路径后，将实际步骤填写至审核备注：
+After the following flow has been verified on a Release build on a real device, add the actual steps to the review notes:
 
-1. 打开 App，使用审核账户完成 ORG2 Cloud 登录，确认浏览器能返回 App
-2. 按“扫描或粘贴配对码”进入配对，在专用桌面生成有效配对码
-3. 核对桌面和手机显示的短语，完成确认
-4. 在会话页打开合成测试会话，查看历史消息和状态
-5. 发送一条无副作用的测试消息；批准/拒绝仅使用隔离的测试请求
-6. 关闭并重新打开 App，验证已配对设备恢复，不要求重新扫码
-7. 在设置中验证隐私政策入口；账号删除使用单独的一次性测试账户，不能删除常驻审核账户
+1. Open the app and sign in to ORG2 Cloud with the review account; confirm the browser returns to the app.
+2. Tap the app's **“扫描或粘贴配对码”** (“Scan or paste pairing code”) action to start pairing, then generate a valid code on the dedicated desktop.
+3. Compare the phrases shown on the desktop and phone, then confirm pairing.
+4. On the Sessions page, open a synthetic test session and inspect its history and status.
+5. Send a harmless test message. Use only an isolated test request for approve/deny actions.
+6. Close and reopen the app; confirm the paired device is restored without scanning again.
+7. Check the privacy-policy entry in Settings. Use a separate, disposable test account for account deletion; do not delete the persistent review account.
 
-审核备注英文草稿（只有配套环境和步骤验收后才可提交）：
+**Draft English review notes (submit only after the environment and steps have been verified):**
 
 ORG2 Remote is a companion to ORG2 desktop. The agents run on the paired desktop, not on the iPhone. A dedicated review desktop with synthetic sessions will be provided for review. The desktop must remain online. Remote actions are limited by the permissions granted during pairing. Please use the review account and pairing instructions supplied in the review information fields.
 
-## 截图拍摄清单
+## Screenshot Checklist
 
-只截取真实 Release 候选版本，使用合成会话，保留截图原始尺寸。按 Apple 后台当前要求选择设备尺寸；当前 Xcode 项目若同时支持 iPad，也必须验证 iPad。
+Capture only a real Release candidate, using synthetic sessions, and preserve the original screenshot dimensions. Choose device sizes according to the current App Store Connect requirements. If the current Xcode project also supports iPad, test iPad too.
 
-| 画面       | 展示目标                             | 不得出现                                |
-| ---------- | ------------------------------------ | --------------------------------------- |
-| 会话列表   | 已连接的专用桌面和几条明确的合成会话 | 私人标题、工作区路径、空列表假成功      |
-| 会话详情   | 可读的消息和任务状态                 | 私有代码、访问令牌、未经验证的图片占位  |
-| 待批准操作 | 用户可控的批准/拒绝操作              | 真正有破坏性的命令                      |
-| 设备与设置 | 配对管理、账号与隐私入口             | 配对凭据、真实邮箱、localhost、调试错误 |
+| Screen | What to show | Must not appear |
+| --- | --- | --- |
+| Session list | Dedicated desktop connected and several clearly synthetic sessions | Personal titles, workspace paths, or a falsely successful empty list |
+| Session details | Readable messages and task status | Private code, access tokens, or unverified image placeholders |
+| Pending approval | User-controlled approve/deny action | A genuinely destructive command |
+| Devices and settings | Pairing management, account, and privacy entry points | Pairing credentials, real email address, localhost, or debug errors |
 
-## 隐私与删除链路的代码核对记录
+## Code Review Notes: Privacy and Deletion Flows
 
-下面是检查范围内的事实，不是最终 App Privacy 标签，也不是完整 SDK 审计。
-相关 Remote 功能仍在 `junyu/remote-relay-contract` 的未提交工作区；Cloud 源码检查于 `junyu/relay-account-auth-draft`。
+The items below are facts within the inspected scope. They are not a final App Privacy label or a complete SDK audit.
+The related Remote feature is still uncommitted in `junyu/remote-relay-contract`; Cloud source was inspected in `junyu/relay-account-auth-draft`.
 
-| 边界               | 证据                                                                                                                 | 当前结论 / 待办                                                                                          |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| 登录身份           | Remote `platform/supabaseMobileAuthClient.ts`、`platform/tauri/tauriMobileAuthClient.ts`                             | 处理账户身份和会话令牌；不能直接勾选“无数据收集”                                                         |
-| 本地凭据           | `apps/remote-ios/src-tauri/src/lib.rs`                                                                               | 原生存储调用 Keychain；这不说明云端的数据收集、保留或日志策略                                            |
-| Relay 接入         | Remote `platform/tauri/nativeSocketPreparation.ts`；Cloud `mobile-relay-worker/src/broker.ts`                        | 使用账户凭据申请短期连接票据；历史票据失败尚缺实际响应证据，不通过放宽校验掩盖                           |
-| 图片               | Desktop `src-tauri/src/api/mobile_bridge/adapters/images.rs`；Remote `components/transcript/MobileMessageImages.tsx` | 存在图片读取与传输路径，真机展示仍待验收                                                                 |
-| 相机               | `Info.ios.plist`；Remote `platform/scanCameraQr.ts`                                                                  | 用于配对二维码；必须核对最终归档权限和拒绝权限后的粘贴恢复                                               |
-| 隐私政策           | 线上 `/legal/privacy`，HTTP 200；Cloud `apps/org2-cloud-web/app/legal/privacy/page.tsx`                              | 实际仍有草稿横幅及 `privacy@org2.example` 占位邮箱，发布阻塞                                             |
-| 删除入口           | Remote `screens/settings/SettingsTab.tsx` → Cloud `/account`                                                         | 只验证入口存在，不证明删除成功                                                                           |
-| 删除服务           | Cloud `apps/org2-cloud-web/app/api/account/delete/route.ts`                                                          | 先执行 `cloud_delete_account` 再软删除 Auth 用户；第二步失败返回 `dataDeleted: true`，需要恢复流程与测试 |
-| 删除后访问         | 同一删除路由没有直接清理 Relay 的调用                                                                                | 不能据此断言仍可访问，但必须验证 Relay 配对撤销、已签发 JWT/现有连接失效和云数据删除范围                 |
-| 隐私清单与出口声明 | 检查的原生源码中未发现 `PrivacyInfo.xcprivacy`；Info 未配置出口声明                                                  | 需要实际 SDK/API 和加密用途审计、负责人确认后加入归档；不生成虚假的全空合规声明                          |
+| Boundary | Evidence | Current conclusion / follow-up |
+| --- | --- | --- |
+| Sign-in identity | Remote `platform/supabaseMobileAuthClient.ts`, `platform/tauri/tauriMobileAuthClient.ts` | Handles account identity and session tokens; this alone does not justify selecting “No data collected” |
+| Local credentials | `apps/remote-ios/src-tauri/src/lib.rs` | Native storage calls Keychain; this says nothing about cloud data collection, retention, or logging policies |
+| Relay access | Remote `platform/tauri/nativeSocketPreparation.ts`; Cloud `mobile-relay-worker/src/broker.ts` | Uses account credentials to request short-lived connection tickets. Historical ticket failures lack evidence from an actual response; do not hide them by weakening validation |
+| Images | Desktop `src-tauri/src/api/mobile_bridge/adapters/images.rs`; Remote `components/transcript/MobileMessageImages.tsx` | Image read/transfer paths exist; real-device display is still awaiting acceptance |
+| Camera | `Info.ios.plist`; Remote `platform/scanCameraQr.ts` | Used for pairing QR codes; check final archive permissions and recovery by pasting when permission is denied |
+| Privacy policy | Live `/legal/privacy`, HTTP 200; Cloud `apps/org2-cloud-web/app/legal/privacy/page.tsx` | Still has a draft banner and placeholder `privacy@org2.example`; blocks release |
+| Deletion entry point | Remote `screens/settings/SettingsTab.tsx` → Cloud `/account` | Entry point presence was checked; successful deletion was not established |
+| Deletion service | Cloud `apps/org2-cloud-web/app/api/account/delete/route.ts` | Calls `cloud_delete_account` and then soft-deletes the Auth user. If step two fails, it returns `dataDeleted: true`; a recovery flow and tests are needed |
+| Access after deletion | The same deletion route has no direct Relay cleanup call | This does not prove access remains possible, but Relay pairing revocation, invalidation of issued JWTs/existing connections, and scope of cloud-data deletion must be verified |
+| Privacy manifest and export declaration | No `PrivacyInfo.xcprivacy` was found in the inspected native source; Info has no export declaration configured | Audit actual SDK/API use and encryption, then have the owner confirm and add declarations to the archive; do not create a falsely empty compliance declaration |
 
-线上隐私政策于 2026-09-08 通过公开 HTTP GET 读回，确认草稿提示及占位联系方式；未操作账号删除、未提交法律声明。
+The live privacy policy was read back using a public HTTP GET on 2026-09-08, confirming the draft notice and placeholder contact information. No account deletion was performed and no legal declarations were submitted.
 
-## 放行记录
+## Release Gate Record
 
-工程自动化、产品验收和账号授权是三个独立门槛。当前均不得标记整体完成。
+Engineering automation, product acceptance, and account authorization are three separate gates. None may currently be marked complete overall.
 
-- 发布工具：见 PR #1418 和 `ios-launch-readiness.md`
-- 功能来源：未提交 Remote 改动必须审查并纳入可复现的 release SHA
-- 真机：必须按发布清单逐项记录构建号、设备、网络、结果和无敏感信息的证据
-- 账号：等待 Apple 发布账号登录、团队确认和 iOS 分发凭据
-- 隐私：等待真实联系方式、政策审查、数据及加密声明确认
-- 上传：以上门槛未通过，不设置已批准 SHA，不上传 TestFlight，不提交审核
+- Release tooling: see PR #1418 and `ios-launch-readiness.md`.
+- Feature source: uncommitted Remote changes must be reviewed and included in a reproducible release SHA.
+- Real device: record build number, device, network, result, and evidence without sensitive information for each checklist item.
+- Account: awaiting sign-in to the Apple release account, team confirmation, and iOS distribution credentials.
+- Privacy: awaiting real contact details, policy review, and confirmation of data and encryption declarations.
+- Upload: until the gates above pass, do not set an approved SHA, upload to TestFlight, or submit for review.
 
-本次工程预检（Remote 工作区仍含未提交内容，不能作为不可变 release SHA 的验收记录）：
+Engineering preflight for this pass (the Remote worktree still contained uncommitted content and cannot serve as acceptance evidence for an immutable release SHA):
 
-- `pnpm exec vitest run --config config/vitest.config.ts src/modules/MobileRemote`：51 个文件、290 项通过；测试仍有既存 QRScanScreen 的 React act 警告和测试环境 Tauri 调用告警
-- `pnpm exec tsc --noEmit`：通过
-- `pnpm build:mobile-native`：通过；有 Browserslist 数据过旧提示
-- 生产 JavaScript 中未检出 `local-development.invalid`、`createDevelopmentAuthSession`、`localhost:1999`；这是静态检查，不替代归档和离开开发环境后的真机启动
-- 将旧的开发入口静态渲染测试改为“恢复中 → 无已配对设备 → 欢迎页”的实际 React 挂载测试，保留“不构建认证客户端”，并断言无演示入口；该改动留在 Remote 工作区，未混入发布工具 PR
-- `node --test scripts/ios-release/readiness.test.mjs`：发布工具 15 项通过
+- `pnpm exec vitest run --config config/vitest.config.ts src/modules/MobileRemote`: 51 files and 290 tests passed; tests still emit pre-existing React `act` warnings from QRScanScreen and warnings about Tauri calls in the test environment.
+- `pnpm exec tsc --noEmit`: passed.
+- `pnpm build:mobile-native`: passed, with a warning that Browserslist data is outdated.
+- Static scan found no `local-development.invalid`, `createDevelopmentAuthSession`, or `localhost:1999` in production JavaScript. This is only a static check; it does not replace archive inspection or a real-device launch outside the development environment.
+- Replaced the old development-entry static-render test with an actual React mount test for “Restoring → No paired devices → Welcome.” It retains the assertion that no auth client is built and asserts that no demo entry point is present. This change remains in the Remote worktree and was not included in the release-tooling PR.
+- `node --test scripts/ios-release/readiness.test.mjs`: 15 release-tool tests passed.

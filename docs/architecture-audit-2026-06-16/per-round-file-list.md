@@ -48,7 +48,7 @@ Clean. `cargo test -p session_persistence --lib turn_files` → 8 passed; `--lib
 
 ### L7 New-developer clarity
 
-Module doc comment states the intent ("不要前端算，写 db") and the read-only-tools exclusion. `merge()` documents "latest event wins for status". Clear.
+The module doc comment states the intent ("Do not compute this in the frontend; write it to the database") and excludes read-only tools. `merge()` documents "latest event wins for status." Clear.
 
 ### L8 Wire protocol
 

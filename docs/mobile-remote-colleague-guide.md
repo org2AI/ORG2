@@ -1,210 +1,210 @@
-# ORGII 移动遥控 — 同事体验指南
+# ORGII Mobile Remote — Colleague Guide
 
-> **EN:** Use your phone to control Agent sessions on your desktop ORGII app — send messages, approve actions, and check progress from anywhere. This guide is for everyday use (production PWA + Cloudflare Relay), not local development setup.
-
----
-
-## 这是什么
-
-**移动遥控**让你用手机遥控电脑上的 ORGII Agent 会话：
-
-- 出门在外用 4G/5G 也能给桌面 Agent 发消息、看回复
-- 桌面需要你的授权时，手机可以直接点「允许」或「拒绝」
-- 支持语音输入和发送图片（截图、照片）
-
-**30 秒理解流程：** 桌面 ORGII 连上公网 Relay → 生成配对码 → 手机打开 PWA 扫码 → 核对安全短语 → 开始遥控。
-
-**生产环境地址（团队已部署）：**
-
-| 用途                               | 地址                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| 手机 PWA（收藏此链接）             | https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile |
-| 桌面 Relay（预设「生产」自动填入） | `wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws` |
+> **EN:** Use your phone to control Agent sessions in the ORGII desktop app: send messages, approve actions, and check progress from anywhere. This guide covers everyday use (production PWA + Cloudflare Relay), not local development setup.
 
 ---
 
-## 谁需要配置什么
+## What It Is
 
-| 角色           | 需要做什么                                                                                                    | 不需要做什么                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| **桌面用户**   | 在 ORGII 桌面端开启移动遥控、登录 ORG2 Cloud、选「生产」预设、生成配对码                                      | 不需要改路由器、不需要记密钥或 token                |
-| **手机用户**   | 打开 PWA、用 GitHub 登录、扫码配对、核对安全短语                                                              | 不需要和桌面在同一 Wi-Fi（公网 Relay 支持户外连接） |
-| **部署维护者** | 更新 Cloudflare Workers 上的 Relay + PWA（见 [开发与生产指南](./mobile-remote-dev-prod-guide.md) 维护者章节） | 日常使用者无需关心                                  |
+**Mobile Remote** lets you control ORGII Agent sessions on your computer from your phone:
+
+- Message your desktop Agent and read its replies over 4G/5G while you're away
+- Tap **Allow** or **Deny** on your phone when the desktop needs your authorization
+- Use voice input and send images (screenshots or photos)
+
+**The 30-second overview:** ORGII desktop connects to the public Relay → generates a pairing code → phone opens the PWA and scans the code → both sides verify a security phrase → remote control is ready.
+
+**Production addresses (deployed for the team):**
+
+| Purpose | Address |
+| --- | --- |
+| Phone PWA (bookmark this link) | https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile |
+| Desktop Relay (filled in automatically by the “Production” preset) | `wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws` |
 
 ---
 
-## 桌面端：5 分钟上手
+## Who Configures What
 
-适用：**已安装 ORGII 桌面应用**的同事。
+| Role | What to do | What you don't need to do |
+| --- | --- | --- |
+| **Desktop user** | Enable Mobile Remote in ORGII desktop, sign in to ORG2 Cloud, choose the “Production” preset, and generate a pairing code | Change router settings or keep track of keys or tokens |
+| **Phone user** | Open the PWA, sign in with GitHub, pair by scanning the code, and verify the security phrase | Join the same Wi-Fi as the desktop (the public Relay works over mobile networks) |
+| **Deployment maintainer** | Update the Relay and PWA on Cloudflare Workers (see the maintainer section of the [Development and Production Guide](./mobile-remote-dev-prod-guide.md)) | Handle anything during everyday use |
 
-### 1. 登录 ORG2 Cloud
+---
 
-1. 打开 **设置 → 通用**
-2. 点击 **登录**，完成 ORG2 Cloud 账号登录（与云同步、邀请等同一路径）
+## Desktop: Get Started in 5 Minutes
 
-> 所有 Relay 预设都用你的 ORG2 Cloud 身份识别桌面；「本地」与「生产」只切换 Relay 地址。
+For colleagues who have the **ORGII desktop app installed**.
 
-### 2. 开启移动遥控
+### 1. Sign in to ORG2 Cloud
 
-1. 打开 **设置 → 移动遥控**
-2. 开启 **移动遥控**
+1. Open **Settings → General**.
+2. Click **Sign in** and complete ORG2 Cloud sign-in (the same flow used for cloud sync and invitations).
 
-### 3. 连接公网 Relay
+> All Relay presets identify the desktop using your ORG2 Cloud identity. “Local” and “Production” only change the Relay address.
 
-在 **户外连接** 区域：
+### 2. Enable Mobile Remote
 
-1. 开启 **连接公网 Relay**
-2. 预设选择 **「生产」** — Relay 地址应显示为：
+1. Open **Settings → Mobile Remote**.
+2. Turn on **Mobile Remote**.
+
+### 3. Connect to the Public Relay
+
+In the **Remote connection** section:
+
+1. Turn on **Connect to public Relay**.
+2. Select the **“Production”** preset. The Relay address should be:
    ```
    wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws
    ```
-3. 确认 **ORG2 Cloud 登录** 行显示已登录账号
-4. 查看 **Relay 状态** — 应变为 **已连接**（或短暂显示「正在连接」后变为已连接）
+3. Confirm the **ORG2 Cloud sign-in** row shows your signed-in account.
+4. Check **Relay status**. It should show **Connected** (it may briefly show “Connecting” first).
 
-若状态不对，见下方 [常见问题](#常见问题)。
+If the status is wrong, see [Troubleshooting](#troubleshooting).
 
-### 4. 生成配对码
+### 4. Generate a Pairing Code
 
-1. 点击 **生成户外配对码**
-2. 屏幕上出现 **二维码** 和 **安全短语**
-3. 把二维码给手机用户扫描（或复制 **配对载荷** 文本发给对方）
+1. Click **Generate remote pairing code**.
+2. A **QR code** and **security phrase** will appear.
+3. Let the phone user scan the QR code, or copy and send them the **pairing payload** text.
 
-### 5. 确认配对
+### 5. Confirm Pairing
 
-1. 手机扫码后，双方核对 **安全短语** 是否一致
-2. 在桌面点击 **短语一致，确认配对**
-3. 配对成功后，手机会出现在 **已配对设备** 列表中
+1. After the phone scans the code, both people verify that the **security phrase** matches.
+2. On the desktop, click **The phrase matches — confirm pairing**.
+3. After pairing succeeds, the phone appears in the **Paired devices** list.
 
-**可选：** 在 **允许执行操作** 中控制手机权限 — 关闭后手机只能查看，不能发消息或审批。
+**Optional:** Use **Allow actions** to control phone permissions. When disabled, the phone can view sessions but cannot send messages or approve actions.
 
 ---
 
-## 手机端：3 分钟上手
+## Phone: Get Started in 3 Minutes
 
-适用：**任意智能手机浏览器**（Safari、Chrome 等）。建议将 PWA 添加到主屏幕，体验更接近原生 App。
+Works in any smartphone browser, including Safari and Chrome. Add the PWA to your home screen for an experience closer to a native app.
 
-### 1. 打开 PWA
+### 1. Open the PWA
 
-在手机浏览器中打开：
+On your phone, open:
 
 **https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile**
 
-（iOS：Safari 打开后 → 分享 → **添加到主屏幕**）
+(On iOS: open it in Safari → Share → **Add to Home Screen**.)
 
-### 2. 登录
+### 2. Sign In
 
-1. 首次进入会提示 **使用 GitHub 继续**
-2. 完成 GitHub OAuth（与 ORG2 Cloud 同一账号体系）
-3. 登录成功后进入欢迎页
+1. The first time you open it, choose **Continue with GitHub**.
+2. Complete GitHub OAuth (it uses the same account system as ORG2 Cloud).
+3. After sign-in, the welcome page appears.
 
-### 3. 扫码配对
+### 3. Pair by Scanning the Code
 
-1. 点击 **扫描或粘贴配对码**
-2. **扫描** 桌面设置中的二维码，或 **粘贴** 桌面复制的配对载荷文本
-3. 核对手机上显示的 **安全短语** 与桌面是否一致
-4. 等待桌面点击 **短语一致，确认配对**
-5. 配对成功后会自动进入 **会话** 列表
+1. Tap **Scan or paste pairing code**.
+2. **Scan** the QR code shown in desktop settings, or **paste** the pairing payload copied from the desktop.
+3. Verify that the **security phrase** on the phone matches the one on the desktop.
+4. Wait for the desktop user to click **The phrase matches — confirm pairing**.
+5. After pairing succeeds, the app opens the **Sessions** list.
 
-### 4. 发消息
+### 4. Send a Message
 
-1. 在 **会话** 标签选择一个桌面 Agent 会话
-2. 输入文字并发送；也可点 **添加照片** 选图，或长按麦克风按钮语音输入
-3. 若 Agent 需要你在桌面执行操作，手机会弹出 **需要你的授权** — 点 **允许** 或 **拒绝**
+1. In the **Sessions** tab, choose a desktop Agent session.
+2. Type and send a message. You can also tap **Add photo** to choose an image or press and hold the microphone button to dictate.
+3. If the Agent needs your authorization for an action on the desktop, the phone shows **Authorization required**. Tap **Allow** or **Deny**.
 
-**提示：** 若桌面显示离线（顶部横幅「桌面离线」），说明桌面未连上 Relay 或 ORGII 未运行 — 请让桌面用户检查 Relay 状态。
-
----
-
-## 权限说明
-
-### 麦克风（语音输入）
-
-首次使用语音时，浏览器会请求麦克风权限。
-
-| 场景                               | 如何开启                                |
-| ---------------------------------- | --------------------------------------- |
-| **iOS Safari（浏览器标签页）**     | 设置 → Safari → 麦克风 → 允许           |
-| **iOS 主屏幕 PWA（ORGII Mobile）** | 设置 → ORGII Mobile → 麦克风 → 允许     |
-| **Android Chrome**                 | 地址栏左侧锁图标 → 权限 → 麦克风 → 允许 |
-
-若之前点过「拒绝」，需要按上表手动开启后，回到 PWA 点 **重试**。
-
-### 选图（添加照片）
-
-- 点输入框旁的 **添加照片**，从相册选择图片（仅支持图片文件）
-- 单次最多附加多张图片（界面上会提示剩余名额）
-- 不需要额外安装 App；使用的是系统相册选择器
-
-### 桌面侧权限
-
-- **允许执行操作**（设置 → 移动遥控）：控制手机能否发消息、停止会话、处理 Agent 审批
-- 已配对设备可随时在桌面 **撤销**
+**Tip:** If the desktop is offline (the top banner says **Desktop offline**), it is not connected to the Relay or ORGII is not running. Ask the desktop user to check Relay status.
 
 ---
 
-## 常见问题
+## Permissions
 
-### Relay 显示未连接 / 401 / auth_required
+### Microphone (Voice Input)
 
-**原因：** 桌面未登录 ORG2 Cloud，或登录会话已过期。
+The browser asks for microphone permission the first time you use voice input.
 
-**处理：**
+| Platform | How to enable |
+| --- | --- |
+| **iOS Safari (browser tab)** | Settings → Safari → Microphone → Allow |
+| **iOS home-screen PWA (ORGII Mobile)** | Settings → ORGII Mobile → Microphone → Allow |
+| **Android Chrome** | Lock icon to the left of the address bar → Permissions → Microphone → Allow |
 
-1. 打开 **设置 → 通用**，确认已登录 ORG2 Cloud
-2. 若已登录仍失败，尝试 **退出后重新登录**
-3. 回到 **设置 → 移动遥控**，点刷新 Relay 状态
-4. 确认预设为 **「生产」**，地址为 `wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws`
+If you previously tapped **Deny**, enable the permission manually using the table above, then return to the PWA and tap **Retry**.
 
-### 选择「生产」后一直「正在连接」或「等待重连」
+### Choosing Images (Add Photo)
 
-**检查：**
+- Tap **Add photo** beside the input field to select an image from your photo library (image files only).
+- You can attach multiple images at once; the interface shows how many slots remain.
+- No additional app is needed; this uses the system photo picker.
 
-- 电脑能否正常访问互联网（桌面只需 **出站** 连接，不需开放路由器端口）
-- ORGII 桌面应用是否在运行
-- 公司网络是否拦截 WebSocket（`wss://`）— 可换手机热点试一次
+### Desktop Permissions
 
-### 配对失败 / 扫码无反应
-
-**检查：**
-
-1. 桌面是否已 **生成户外配对码**（配对码有时效，过期需点 **生成新的配对码**）
-2. 手机是否已完成 **GitHub 登录**
-3. 粘贴配对载荷时是否完整复制（不要漏掉开头或结尾字符）
-4. **安全短语** 两边必须完全一致，桌面需手动点 **短语一致，确认配对**
-
-### 手机显示「桌面离线」
-
-**原因：** 桌面 Relay 断开，或 ORGII 已退出。
-
-**处理：** 让桌面用户确认 ORGII 在运行，且 **Relay 状态** 为 **已连接**。
-
-### 麦克风权限被拒绝
-
-见 [权限说明 → 麦克风](#麦克风语音输入)。开启系统权限后回到 PWA 重试。
-
-### 同一 Wi-Fi 下想用局域网直连（可选）
-
-默认推荐 **公网户外连接**（预设「生产」），手机不必和电脑同一网络。
-
-若只想在办公室同一 Wi-Fi 内试用，可在桌面 **设置 → 移动遥控 → 局域网备用连接** 开启 **允许局域网连接**，按界面提示扫码。此方式不经过公网 Relay，适合内网快速体验。
+- **Allow actions** (Settings → Mobile Remote) controls whether the phone can send messages, stop sessions, and respond to Agent approvals.
+- A paired device can be **Revoked** from the desktop at any time.
 
 ---
 
-## 本地开发（工程师专用）
+## Troubleshooting
 
-本文面向 **日常使用生产环境** 的同事。若你需要：
+### Relay Shows Disconnected / 401 / `auth_required`
 
-- 本地启动 Relay 并使用 ORG2 Cloud 账号联调
-- `pnpm run tauri:dev` 联调
-- 发布 / 更新 Cloudflare Workers
+**Cause:** The desktop is not signed in to ORG2 Cloud, or its sign-in session has expired.
 
-请参阅 **[移动遥控开发与生产指南](./mobile-remote-dev-prod-guide.md)**。
+**Try this:**
+
+1. Open **Settings → General** and confirm that you are signed in to ORG2 Cloud.
+2. If you are signed in but it still fails, try **Sign out**, then sign in again.
+3. Return to **Settings → Mobile Remote** and refresh Relay status.
+4. Confirm the preset is **“Production”** and the address is `wss://orgii-mobile-relay.superficial-jasper.workers.dev/v1/mobile/ws`.
+
+### “Connecting” or “Waiting to reconnect” Does Not Change After Selecting “Production”
+
+Check that:
+
+- The computer can access the internet. The desktop only needs an **outbound** connection; no router port needs to be opened.
+- The ORGII desktop app is running.
+- The company network is not blocking WebSocket (`wss://`) traffic. Try using a phone hotspot.
+
+### Pairing Fails / Scanning Does Nothing
+
+Check that:
+
+1. The desktop has **Generated a remote pairing code**. Codes expire; if necessary, click **Generate a new pairing code**.
+2. The phone is signed in with **GitHub**.
+3. The pairing payload was copied completely, with no characters missing from the beginning or end.
+4. The **security phrase** matches exactly on both devices, and the desktop user clicked **The phrase matches — confirm pairing**.
+
+### Phone Shows “Desktop Offline”
+
+**Cause:** The desktop Relay connection is down, or ORGII has quit.
+
+**Try this:** Ask the desktop user to confirm that ORGII is running and **Relay status** is **Connected**.
+
+### Microphone Permission Was Denied
+
+See [Permissions → Microphone](#microphone-voice-input). Enable the system permission, then return to the PWA and retry.
+
+### Use a Direct LAN Connection on the Same Wi-Fi (Optional)
+
+The recommended default is **public remote access** using the “Production” preset, so the phone and computer do not need to be on the same network.
+
+To try it only on the same office Wi-Fi, on the desktop open **Settings → Mobile Remote → LAN fallback connection**, turn on **Allow LAN connections**, and scan the code shown. This method does not use the public Relay and is suitable for a quick test on an internal network.
 
 ---
 
-## 相关链接
+## Local Development (For Engineers)
 
-- 生产 PWA：https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile
-- 功能 PR：[#1150](https://github.com/org2AI/ORG2/pull/1150)
-- 开发 / 部署详解：[mobile-remote-dev-prod-guide.md](./mobile-remote-dev-prod-guide.md)
-- 仓库贡献说明：[CONTRIBUTING.md](../.github/CONTRIBUTING.md)
+This guide is for colleagues using the production environment day to day. If you need to:
+
+- Start a local Relay and test it with an ORG2 Cloud account
+- Run `pnpm run tauri:dev` for integration work
+- Release or update Cloudflare Workers
+
+See the **[Mobile Remote Development and Production Guide](./mobile-remote-dev-prod-guide.md)**.
+
+---
+
+## Related Links
+
+- Production PWA: https://orgii-mobile-relay.superficial-jasper.workers.dev/orgii/mobile
+- Feature PR: [#1150](https://github.com/org2AI/ORG2/pull/1150)
+- Development/deployment details: [mobile-remote-dev-prod-guide.md](./mobile-remote-dev-prod-guide.md)
+- Repository contribution guide: [CONTRIBUTING.md](../.github/CONTRIBUTING.md)

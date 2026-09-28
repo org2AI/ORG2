@@ -1,154 +1,153 @@
-# ORGII 死代码 + 重复实现审计（2026-06-11）
+# ORGII Dead Code and Duplicate Implementation Audit (2026-06-11)
 
-> 全局只读审计的结果。不动源码，分类登记。Phase 2 起按本目录的 findings 分阶段清理。
+> Results of a repository-wide read-only audit. No source code was changed; findings are recorded by category. Cleanup is planned in phases starting with Phase 2.
 >
-> **审计范围**：`src/`（前端 TS / React）+ `src-tauri/`（后端 Rust + Tauri 命令注册）。
-> 跳过：`packages/`、`mobile-pwa/`、`build/`、`node_modules/`、`target/`、`gen/`、`docs/`。
+> **Audit scope**: `src/` (frontend TS / React) + `src-tauri/` (backend Rust + Tauri command registration).
+> Excluded: `packages/`, `mobile-pwa/`, `build/`, `node_modules/`, `target/`, `gen/`, `docs/`.
 
 ## TL;DR
 
-按"高 ROI、低风险、零行为变更"排序的 Top-5：
+Top five, ordered by "high ROI, low risk, no behavior changes":
 
-1. **后端 `IntegrationsConfig` 跨域**（embedding + excluded_skills + Smithery key + channels + databases 同一 struct）—— anti-pattern #31。修法：拆 3-4 个 struct。
-2. **前端发送路径有 4 处 `dispatchMessageBySessionType` 调用**（`useWorkspaceChat.ts` 6 处、`useMessageDispatch.ts` 2 处、`useEditUserMessage.ts` 3 处、`next-step/index.tsx` 3 处）—— anti-pattern #21/#36/#53。修法：定单一 dispatcher，所有 UI 走 intent → 队列状态机。
-3. **前端 14 个 `src/services/**Service.ts`无人使用的`export default`**（全部用 named import）—— 直接删 `export default` 关键字。
-4. **后端 `ProviderConfig` 同名冲突**（`key-vault` 的 env-var 描述符 vs `agent-core` 的 LLM 连接参数，字段集完全不交叉）—— anti-pattern #30。修法：重命名为 `KeyVaultProviderConfig` + `LlmConnectionConfig`。
-5. **后端 `ConflictResolution` 同名冲突且同 crate**（`sync/adapter.rs` 的 resolver 决策 vs `sync/conflict_log.rs` 的用户 UI 选择）—— anti-pattern #30。修法：`AdapterResolverVerdict` + `UserConflictChoice`。
+1. **Backend `IntegrationsConfig` spans domains** (embedding + excluded_skills + Smithery key + channels + databases in one struct)—anti-pattern #31. Fix: split into 3–4 structs.
+2. **The frontend has 14 `dispatchMessageBySessionType` calls across 4 files** (`useWorkspaceChat.ts` 6, `useMessageDispatch.ts` 2, `useEditUserMessage.ts` 3, `next-step/index.tsx` 3)—anti-patterns #21/#36/#53. Fix: establish one dispatcher and route all UI sends through the intent → queue state machine.
+3. **Fourteen frontend `src/services/**Service.ts` files have unused `export default` exports** (all callers use named imports)—remove the `export default` keywords.
+4. **Backend `ProviderConfig` name collision** (`key-vault` environment-variable descriptor vs `agent-core` LLM connection parameters, with no overlapping fields)—anti-pattern #30. Fix: rename to `KeyVaultProviderConfig` and `LlmConnectionConfig`.
+5. **Backend `ConflictResolution` name collision within the same crate** (`sync/adapter.rs` resolver decision vs `sync/conflict_log.rs` user UI choice)—anti-pattern #30. Fix: use `AdapterResolverVerdict` and `UserConflictChoice`.
 
-## Baseline 漂移
+## Baseline drift
 
-**memory `workspace_dead_code_scan_landscape.md`（写于 2026-06-08）已部分过期**。本次现场 ripgrep 复核：
+**Memory file `workspace_dead_code_scan_landscape.md` (written 2026-06-08) is partly stale.** This audit rechecked it with ripgrep:
 
-| memory 中候选模块                                          | 现状                                                      | 复核结论                                    |
+| Candidate from memory                                    | Current state                                             | Review result                              |
 | ---------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------- |
-| `src/util/monitoring/apiTracker.ts` + `apiTrackerUtils.ts` | 文件已不存在                                              | `[stale → closed]`                          |
-| `src/util/core/storage/localStorage.ts`                    | 被 `src/app/root/useAppDeferredInitialization.ts:26` 引用 | `[stale → ALIVE]` 不可删                    |
-| `src/util/core/init/deferredInit.ts`                       | 被 `src/app/root/useFirstPaintSignal.ts:21` 引用          | `[stale → ALIVE]` 不可删                    |
-| `src/util/platform/tauri/gitBundle.ts`                     | 0 引用（三 pattern 均未命中）                             | `[confirmed dead]` 可删                     |
-| `src/util/dialogs/gitActionDialog.ts`                      | 12 处引用                                                 | `[stale → ALIVE]` 不可删                    |
-| `src/util/dialogs/channelActionDialog.ts`                  | 1 处引用                                                  | `[stale → ALIVE]` 不可删                    |
-| `src/util/dialogs/gitAuthenticationDialog.tsx`             | 1 处引用                                                  | `[stale → ALIVE]` 不可删                    |
-| `src/util/dialogs/openLinkDialog.ts`                       | 0 引用                                                    | `[confirmed dead]` 可删                     |
-| ~14 个 `src/services/**` 未使用 `export default`           | 全部 14 个仍然成立（无 `import X from`）                  | `[confirmed]` 删 `default` 关键字保留 named |
+| `src/util/monitoring/apiTracker.ts` + `apiTrackerUtils.ts` | Files no longer exist                                      | `[stale → closed]`                         |
+| `src/util/core/storage/localStorage.ts`                    | Referenced by `src/app/root/useAppDeferredInitialization.ts:26` | `[stale → ALIVE]` do not delete       |
+| `src/util/core/init/deferredInit.ts`                       | Referenced by `src/app/root/useFirstPaintSignal.ts:21`     | `[stale → ALIVE]` do not delete             |
+| `src/util/platform/tauri/gitBundle.ts`                     | 0 references (none of three patterns matched)             | `[confirmed dead]` removable                |
+| `src/util/dialogs/gitActionDialog.ts`                      | 12 references                                             | `[stale → ALIVE]` do not delete             |
+| `src/util/dialogs/channelActionDialog.ts`                  | 1 reference                                               | `[stale → ALIVE]` do not delete             |
+| `src/util/dialogs/gitAuthenticationDialog.tsx`             | 1 reference                                               | `[stale → ALIVE]` do not delete             |
+| ~14 `src/services/**` files with unused `export default`  | All 14 still qualify (no `import X from`)                 | `[confirmed]` remove `default`, keep named exports |
 
-**memory `workspace_force_send_queue_dispatch.md`（2026-06-10）也部分过期**：
+**Memory file `workspace_force_send_queue_dispatch.md` (2026-06-10) is also partly stale**:
 
-- 说"`holdSessionQueueForStopAtom` / `forceSendPendingQueueAtom` / `markQueueTurnSettled` 已 GONE"——错。实际：
-  - `holdSessionQueueForStopAtom` 仍然存在于 `src/store/ui/messageQueueAtom.ts:164`、`sessionTimelineBoundary.ts:20/132`、测试 4 处引用。这是 anti-pattern #51 描述的 "shadow boolean shadowing FSM phase"。
-  - `forceSendPendingQueueAtom` 现在只剩 e2e helper `inspectChatState.ts:147` 引用——确实从生产路径删干净了。
-  - `userInitiatedCancelAtom` 同时活在 `cliSessionStatusAtom.ts` / `sessionTimelineBoundary.ts` / `useQueueDispatch.ts` 多处——anti-pattern #54 ("multi-purpose cancel atom") 尚未拆。
+- It says `` `holdSessionQueueForStopAtom` / `forceSendPendingQueueAtom` / `markQueueTurnSettled` are GONE``—incorrect. In fact:
+  - `holdSessionQueueForStopAtom` remains in `src/store/ui/messageQueueAtom.ts:164` and `sessionTimelineBoundary.ts:20/132`, with four test references. This is the "shadow boolean shadowing FSM phase" described by anti-pattern #51.
+  - `forceSendPendingQueueAtom` is now referenced only by the e2e helper `inspectChatState.ts:147`; it has indeed been removed from production paths.
+  - `userInitiatedCancelAtom` remains in several places, including `cliSessionStatusAtom.ts`, `sessionTimelineBoundary.ts`, and `useQueueDispatch.ts`; the "multi-purpose cancel atom" from anti-pattern #54 has not yet been split.
 
-## 执行状态（2026-06-11 21:30 更新）
+## Execution status (updated 2026-06-11 21:30)
 
-### ✅ 已完成
+### ✅ Completed
 
-- **Phase 1** — Audit 报告落档（本目录 4 个 markdown）
-- **Phase 2** — 零风险删除
-  - 删 `src/util/platform/tauri/gitBundle.ts`（0 引用确认）
-  - 删 `src/util/dialogs/openLinkDialog.ts`（0 引用确认）
-  - 删 14 个 `src/services/**Service.ts` 的 `export default` 关键字（保留 named 导出；所有调用方都是 named import）
-  - **验收**：`pnpm tsc --noEmit` 错误数 109（与 Phase 1 baseline 一致，全是历史 `LegacyRef` 错，未引入新错）
-- **Phase 3** — ChatPanel engine 搬家
-  - 8 个文件用 `git mv` 搬到 `src/engines/ChatPanel/panels/`：ProjectPanelView / WorkItemPanelView / Workspace{Dashboard,Explore,Overview}PanelView / BenchmarkRunBuilder / LinkSessionToWorkItemModal / useBenchmarkSessionCreatorSlots
-  - 更新 ChatPanelContent.tsx（5 处）+ ChatPanelEmptyContent.tsx + index.tsx + hooks/useChatPanelSessionModals.tsx + panels/WorkItemPanelView.tsx（`./ChatView` → `../ChatView`）的 import 路径
-  - **验收**：`pnpm tsc --noEmit` 错误数仍 109，未引入新错
-- **Phase 4** — 后端 dead code 重新评估
-  - `src/api/agent/mod.rs:14/21/26` 的 3 个 `#[tauri::command]` 实际是 `#[cfg(not(debug_assertions))]` release 桩，被 e2e helpers (`projects.ts:240/287`) 调用 —— **不是死命令**。但 `handler_list.inc` 未注册 release 桩，意味着 release build 走到这里会拿 "command not found" 而不是 "only in debug build" 错误信息 —— 这是 release/debug 行为不一致的潜在 bug，列入 follow-up 而非清理目标
-  - `cursor-bridge/src/models.rs:257/258` 两个 `.expect("string serializes")` —— JSON 字符串序列化永远不失败，是 defensive code，**保留**
-  - **本 Phase 无源码改动**
+- **Phase 1** — Filed the audit reports (four Markdown files in this directory).
+- **Phase 2** — Removed zero-risk items:
+  - Deleted `src/util/platform/tauri/gitBundle.ts` (confirmed zero references).
+  - Deleted `src/util/dialogs/openLinkDialog.ts` (confirmed zero references).
+  - Removed `export default` from 14 `src/services/**Service.ts` files (kept named exports; all callers use named imports).
+  - **Verification**: `pnpm tsc --noEmit` reported 109 errors, matching the Phase 1 baseline. All were pre-existing `LegacyRef` errors; no new errors were introduced.
+- **Phase 3** — Moved files out of the ChatPanel engine:
+  - Used `git mv` to move eight files to `src/engines/ChatPanel/panels/`: ProjectPanelView / WorkItemPanelView / Workspace{Dashboard,Explore,Overview}PanelView / BenchmarkRunBuilder / LinkSessionToWorkItemModal / useBenchmarkSessionCreatorSlots.
+  - Updated imports in ChatPanelContent.tsx (five locations), ChatPanelEmptyContent.tsx, index.tsx, hooks/useChatPanelSessionModals.tsx, and panels/WorkItemPanelView.tsx (`./ChatView` → `../ChatView`).
+  - **Verification**: `pnpm tsc --noEmit` still reported 109 errors; no new errors were introduced.
+- **Phase 4** — Reassessed backend dead code:
+  - The three `#[tauri::command]` items at `src/api/agent/mod.rs:14/21/26` are actually `#[cfg(not(debug_assertions))]` release stubs called by e2e helpers (`projects.ts:240/287`)—**they are not dead commands**. However, `handler_list.inc` does not register the release stubs, so a release build would return "command not found" instead of "only in debug build." This potential release/debug behavior mismatch is a follow-up bug, not a cleanup target.
+  - The two `.expect("string serializes")` calls in `cursor-bridge/src/models.rs:257/258` are defensive code: JSON string serialization cannot fail. **Keep them.**
+  - **No source changes in this phase.**
 
-### ⛔ 已停下：Phase 5-8 需要先做现状 e2e（不能盲推）
+### ⛔ Paused: Phases 5–8 require baseline e2e first (do not proceed blindly)
 
-**理由**：这 4 个 Phase 都是真正语义/wire 变更，且 memory 已经多次警告"删错了会让 Stop 后第一条消息掉"/"改背景路径需要 e2e 验证"。在没有先跑现状 queue + send + reflection e2e 的情况下盲推会破坏现状，违反"零行为变更"红线。
+**Reason**: These four phases involve real semantic or wire changes, and memory repeatedly warns that "removing the wrong thing can drop the first message after Stop" and "background-path changes need e2e verification." Proceeding without baseline queue, send, and reflection e2e could break existing behavior and violate the "no behavior changes" constraint.
 
-| Phase                                       | 变更性质                                            | 必须先做的事                                                                                       |
+| Phase                                       | Change                                             | Required first steps                                                                              |
 | ------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Phase 5 拆 `IntegrationsConfig`             | wire JSON shape 改 + migration 函数                 | 跑现状 reflection + active_learning + consolidation e2e；定义 migration 策略（覆盖式 vs 多源回退） |
-| Phase 5 `skills_lookup` helper              | CLI session runner 不再要求 sde `selected_model_id` | 跑现状 sde session launch e2e（含 skills 解析路径）                                                |
-| Phase 6 `ProviderConfig` × 2 拆名           | 前端 Zod schema 跟进                                | grep 前端所有 `invoke()` 调用 ProviderConfig 相关命令的位置；同 PR 内更新 Zod                      |
-| Phase 6 `ConflictResolution` × 2 拆名       | sync wire 协议字段重命名                            | 跑现状 sync conflict resolve e2e                                                                   |
-| Phase 6 `TantivyIndexInfo` 字段类型对齐     | wire schema u64 vs usize                            | 跑现状 semantic search e2e（feature flag on / off 各跑一遍）                                       |
-| Phase 7 删 `holdSessionQueueForStopAtom`    | queue dispatch 语义                                 | 跑现状 messageQueueAtom.test.ts + manual Stop → 立即重发 1 条 e2e                                  |
-| Phase 7 拆 `userInitiatedCancelAtom`        | post-Stop 调度 + draft 恢复语义双拆                 | 同上 + draft 恢复手动验证                                                                          |
-| Phase 8 统一 `dispatchMessageBySessionType` | 14 处调用集中到 1 处                                | 跑 next-step / edit-user-message / useWorkspaceChat 各自的现状 e2e                                 |
+| Phase 5: split `IntegrationsConfig` | Change wire JSON shape + add migration | Run baseline reflection + active_learning + consolidation e2e; define migration strategy (overwrite vs multi-source fallback) |
+| Phase 5: `skills_lookup` helper | CLI session runner no longer requires sde `selected_model_id` | Run baseline sde session-launch e2e, including the skills-resolution path |
+| Phase 6: rename two `ProviderConfig` types | Update frontend Zod schema | Find all frontend `invoke()` calls to commands involving `ProviderConfig`; update Zod in the same PR |
+| Phase 6: rename two `ConflictResolution` types | Rename sync wire protocol fields | Run baseline sync conflict-resolution e2e |
+| Phase 6: align `TantivyIndexInfo` field types | Wire schema `u64` vs `usize` | Run semantic-search e2e with the feature flag both on and off |
+| Phase 7: remove `holdSessionQueueForStopAtom` | Queue-dispatch semantics | Run baseline `messageQueueAtom.test.ts` and manual Stop → immediately resend one message e2e |
+| Phase 7: split `userInitiatedCancelAtom` | Separate post-Stop dispatch and draft-restoration semantics | Same as above, plus manual draft-restoration verification |
+| Phase 8: unify `dispatchMessageBySessionType` | Concentrate 14 call sites into one | Run baseline e2e for next-step, edit-user-message, and useWorkspaceChat |
 
-**Action**：用户先确认想要哪种节奏（一次性大 PR / 每 Phase 单 PR + e2e）+ 是否愿意为 Phase 5-8 单独 spawn 计划。本 audit 把所有 finding + 推荐做法 + 风险都列在 4 个 markdown 里，可随时按 Phase 单独拉起。
+**Action**: Decide on the delivery cadence (one large PR or one PR per phase with e2e) and whether to create a separate plan for Phases 5–8. This audit records all findings, recommendations, and risks in four Markdown files; each phase can be started independently.
 
-### 通用
+### General
 
-- [ ] `pnpm tsc --noEmit` 0 错（每个 Phase 结束验）。
-- [ ] 各受影响 crate `cargo check -p <crate_underscore_name>` 0 错。
-- [ ] 删除/重命名前必须三 pattern ripgrep 确认零引用：`from ['"].*<basename>['"]`、`import\(.*<basename>`、`['"].*\/<basename>['"]`，且搜过 `*.rs` / `tests/` / `scripts/` / `mobile-pwa/`。
-- [ ] 无新文件创建，除非是 audit 报告 / 拆分后的目标 struct 所在文件。
+- [ ] `pnpm tsc --noEmit` reports 0 errors (check after each phase).
+- [ ] `cargo check -p <crate_underscore_name>` reports 0 errors for each affected crate.
+- [ ] Before deleting or renaming, confirm zero references with all three ripgrep patterns: `from ['"].*<basename>['"]`, `import\(.*<basename>`, and `['"].*\/<basename>['"]`; also search `*.rs`, `tests/`, `scripts/`, and `mobile-pwa/`.
+- [ ] Create no new files except audit reports or files containing the target split structs.
 
-### Phase 2（前端 dead code）
+### Phase 2 (frontend dead code)
 
-- [ ] 删除 `src/util/platform/tauri/gitBundle.ts`、`src/util/dialogs/openLinkDialog.ts`。
-- [ ] 删除 14 个 `src/services/**Service.ts` 的 `export default` 关键字（保留所有 named 导出）。
-- [ ] `pnpm check:unused-exports` 模块数 < 862。
+- [ ] Delete `src/util/platform/tauri/gitBundle.ts` and `src/util/dialogs/openLinkDialog.ts`.
+- [ ] Remove `export default` from 14 `src/services/**Service.ts` files (keep all named exports).
+- [ ] `pnpm check:unused-exports` reports fewer than 862 modules.
 
-### Phase 3（ChatPanel engine 搬家）
+### Phase 3 (move files out of the ChatPanel engine)
 
-- [ ] `src/engines/ChatPanel/` 根下只剩 chat 文件（见 `frontend-findings.md` §3）。
-- [ ] 用 `git mv` 操作，每次搬一个 PanelView + 全 import 路径同 PR 更新。
+- [ ] Keep only chat files in the `src/engines/ChatPanel/` root (see `frontend-findings.md` §3).
+- [ ] Use `git mv`; move one PanelView at a time and update all import paths in the same PR.
 
-### Phase 4（后端 dead code）
+### Phase 4 (backend dead code)
 
-- [ ] 删除 `cursor-bridge/src/routing.rs:61` 旁边的死字符串序列化 `.expect`（如果确认是死路径）。
-- [ ] `src/api/agent/mod.rs:14/21/26` 3 个 `#[tauri::command]` 验证是否未注册 → 若是死命令则删除。
-- [ ] `cursor-bridge/src/models.rs:257/258` 两个未验证的 `.expect()` 抽样确认。
+- [ ] Remove the dead string-serialization `.expect` near `cursor-bridge/src/routing.rs:61` if confirmed to be a dead path.
+- [ ] Check whether the three `#[tauri::command]` items at `src/api/agent/mod.rs:14/21/26` are unregistered; delete them if they are dead commands.
+- [ ] Sample and verify the two unchecked `.expect()` calls at `cursor-bridge/src/models.rs:257/258`.
 
-### Phase 5（后端 config 拆域 + resolver 脱钩）
+### Phase 5 (split backend config domains and decouple the resolver)
 
-- [ ] `IntegrationsConfig` 拆为 `EmbeddingConfig`（global）+ `ExcludedSkillsConfig`（global）+ `McpSmitheryConfig`（key-vault）+ `ChannelsConfig` + `DatabasesConfig`，保留 `IntegrationsConfig` 作为 facade（migration 写入新 JSON 字段）。
-- [ ] `src/agent_sessions/cli/session_runner/session.rs:1680` 的 `resolve_sde_skills` 改用新建的 `skills_lookup::resolve_skills_for(agent_id)`，不再走完整 `ResolvedAgent::resolve()`。
-- [ ] grep `ResolvedAgent::resolve` 后只剩前台 session-startup 路径 + 测试。
+- [ ] Split `IntegrationsConfig` into `EmbeddingConfig` (global) + `ExcludedSkillsConfig` (global) + `McpSmitheryConfig` (key-vault) + `ChannelsConfig` + `DatabasesConfig`; keep `IntegrationsConfig` as a facade (migration writes the new JSON fields).
+- [ ] Change `resolve_sde_skills` at `src/agent_sessions/cli/session_runner/session.rs:1680` to use a new `skills_lookup::resolve_skills_for(agent_id)` helper instead of the full `ResolvedAgent::resolve()`.
+- [ ] After grepping `ResolvedAgent::resolve`, only foreground session-startup paths and tests should remain.
 
-### Phase 6（同名冲突重命名）
+### Phase 6 (rename colliding types)
 
-- [ ] `ProviderConfig` 拆成 `KeyVaultProviderConfig` + `LlmConnectionConfig`。
-- [ ] `ConflictResolution` 拆成 `AdapterResolverVerdict` + `UserConflictChoice`。
-- [ ] `TantivyIndexInfo` 在 stubs vs real 间字段统一（`index_size_bytes` 类型一致 `u64`）。
+- [ ] Split `ProviderConfig` into `KeyVaultProviderConfig` + `LlmConnectionConfig`.
+- [ ] Split `ConflictResolution` into `AdapterResolverVerdict` + `UserConflictChoice`.
+- [ ] Align fields between the `TantivyIndexInfo` stub and real type (`index_size_bytes` should be `u64` in both).
 
-### Phase 7（队列/取消语义清理 — Anti-pattern #51/#54）
+### Phase 7 (queue/cancel semantics cleanup — anti-patterns #51/#54)
 
-- [ ] 删除 `holdSessionQueueForStopAtom`，让 FSM `stopping` phase 取代。
-- [ ] 把 `userInitiatedCancelAtom` 拆成 `postStopDispatchEpisodeAtom`（intent）+ `stopDraftRestorationPendingAtom`（draft window），每个 atom 单一 writer。
+- [ ] Remove `holdSessionQueueForStopAtom` and let the FSM `stopping` phase replace it.
+- [ ] Split `userInitiatedCancelAtom` into `postStopDispatchEpisodeAtom` (intent) + `stopDraftRestorationPendingAtom` (draft window), with a single writer for each atom.
 
-### Phase 8（发送路径统一 — Anti-pattern #21/#36/#53）
+### Phase 8 (unify send paths — anti-patterns #21/#36/#53)
 
-- [ ] 全部 UI 组件停止直接调 `dispatchMessageBySessionType`；所有发送都经过 `useMessageDispatch` 单一 dispatcher。
-- [ ] grep `dispatchMessageBySessionType` 后只剩 `useMessageDispatch.ts` 一个文件。
+- [ ] UI components no longer call `dispatchMessageBySessionType` directly; route all sends through the single dispatcher in `useMessageDispatch`.
+- [ ] After grepping `dispatchMessageBySessionType`, only `useMessageDispatch.ts` should remain.
 
-## 文件索引
+## File index
 
-- [`frontend-findings.md`](./frontend-findings.md) — 前端（TS / React / atoms）的死代码 + 重复实现
-- [`backend-findings.md`](./backend-findings.md) — 后端（Rust / Tauri 命令）的死代码 + 重复实现
-- [`cross-layer-findings.md`](./cross-layer-findings.md) — 跨层重复（前后端都在做的事）
+- [`frontend-findings.md`](./frontend-findings.md) — Frontend dead code and duplicate implementations (TS / React / atoms)
+- [`backend-findings.md`](./backend-findings.md) — Backend dead code and duplicate implementations (Rust / Tauri commands)
+- [`cross-layer-findings.md`](./cross-layer-findings.md) — Cross-layer duplication (work performed by both frontend and backend)
 
-## 不在范围
+## Out of scope
 
-- 不动 `src/hooks/workStation/browser/useOpenUrlInBrowser.ts` 和 `src/modules/WorkStation/.../DomComponentPreviewContent/index.tsx`（用户其它在飞 dirty 工作）。
-- 不动 `packages/`、`mobile-pwa/`（不在桌面构建里，见 memory `workspace_packages_and_mobile_split.md`）。
-- 不动 `docs/shared/cla-process--0602.md`（Rust 字符串字面量引用）。
-- 不引入 `knip` / `madge` / `depcheck`（仓库未装）。
-- 不删 `build/`（已 `.gitignore`）。
+- Leave `src/hooks/workStation/browser/useOpenUrlInBrowser.ts` and `src/modules/WorkStation/.../DomComponentPreviewContent/index.tsx` untouched (the user's other in-flight dirty work).
+- Leave `packages/` and `mobile-pwa/` untouched (not part of the desktop build; see memory file `workspace_packages_and_mobile_split.md`).
+- Leave `docs/shared/cla-process--0602.md` untouched (referenced by a Rust string literal).
+- Do not add `knip`, `madge`, or `depcheck` (not installed in the repository).
+- Do not delete `build/` (already in `.gitignore`).
 
-## 审计置信度
+## Audit confidence
 
-| 维度                           | 置信度   | 备注                                                 |
+| Dimension                      | Confidence | Notes                                               |
 | ------------------------------ | -------- | ---------------------------------------------------- |
-| 前端 dead module / dead export | 高       | 三 pattern ripgrep 全过                              |
-| 前端 ChatPanel engine 错放     | 高       | 现场 `list_dir` 直接列出                             |
-| 前端发送路径重复               | 高       | grep 命中 14 处                                      |
-| 前端多源真相 atom              | 高       | grep 命中 + 文件路径全列                             |
-| 前端 tab 系统残余重复          | **低**   | 本次审计未完成（前端 subagent 中断），列入 follow-up |
-| 前端空目录 / 一文件目录        | **未跑** | 列入 follow-up                                       |
-| 后端 Tauri command 矩阵        | 中       | 抽样验证，未跑全 1149 条                             |
-| 后端同名 struct/enum           | 高       | 3 处真冲突已 grep + 字段对照                         |
-| 后端 Config 跨域               | 高       | 单文件深读验证                                       |
-| 后端 `.expect()` on fallback   | 高       | 几乎全部在 `#[cfg(test)]`                            |
-| 后端 Wire protocol bloat       | 高       | 未发现                                               |
-| 后端 Init parity               | 中       | 抽样 7 个入口，未跑全                                |
-| 后端 Resolver 不对称           | **低**   | identity.rs 未深读                                   |
-| 后端 backward-compat shim      | 中       | 抽样                                                 |
+| Frontend dead modules / dead exports | High | All three ripgrep patterns checked |
+| Misplaced files in ChatPanel engine | High | Listed directly with `list_dir` |
+| Duplicated frontend send paths | High | grep found 14 locations |
+| Frontend atoms with multiple sources of truth | High | grep matches and all file paths listed |
+| Remaining frontend tab-system duplication | **Low** | Audit incomplete (frontend subagent interrupted); follow-up needed |
+| Frontend empty / single-file directories | **Not run** | Follow-up needed |
+| Backend Tauri command matrix | Medium | Sampled; not all 1,149 entries checked |
+| Backend duplicate struct/enum names | High | Three real conflicts grepped and fields compared |
+| Backend config domain overlap | High | Verified by reading the file in depth |
+| Backend `.expect()` on fallback | High | Nearly all are in `#[cfg(test)]` |
+| Backend wire-protocol bloat | High | None found |
+| Backend init parity | Medium | Seven entry points sampled; not exhaustive |
+| Backend resolver asymmetry | **Low** | `identity.rs` not read in depth |
+| Backend backward-compatibility shims | Medium | Sampled |

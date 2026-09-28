@@ -7,7 +7,7 @@
 
 **Date:** 2026-06-12
 **Auditor:** orgii-agent (session)
-**Trigger:** user pointed at the "Shared Ideas" page screenshot and said "感觉很多原生 html 组件".
+**Trigger:** the user pointed at the "Shared Ideas" page screenshot and said, "It feels like there are a lot of native HTML components."
 
 ---
 
@@ -106,7 +106,7 @@ Patterns observed during this audit that are candidates for promotion or watch-l
 2. The existing D3 typography-scale-sweep PR (covers all remaining `text-[Npx]` here).
 3. A small a11y patch PR (2 lines: `aria-label` + `type="button"`).
 
-The user's intuition ("感觉很多原生 html 组件") is half-right: the dominant debt in this page isn't actually raw HTML (most raw elements are correctly kept — DS doesn't cover their shapes). The real debt is the **categorical color lookup tables + raw Tailwind palette colors that re-implement what DS `Tag` already provides**, plus the in-file `text-[Npx]` literals that the repo-wide sweep is already tracking.
+The user's intuition ("It feels like there are a lot of native HTML components") is partly right: the main source of debt on this page isn't raw HTML (most raw elements are correctly kept because the design system doesn't cover their shapes). The real debt is the **categorical color lookup tables and raw Tailwind palette colors that re-implement what DS `Tag` already provides**, plus the in-file `text-[Npx]` literals that the repo-wide sweep is already tracking.
 
 ---
 

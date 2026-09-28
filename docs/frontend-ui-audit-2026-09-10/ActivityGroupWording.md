@@ -8,4 +8,4 @@
 
 Verdict totals: **0 fix**, **3 keep with reason**, **0 abstract**.
 
-Checks: 61 targeted component/token tests pass, including identical terminal header text/icons in both display modes, stable tense across running/completed updates, pagination position, separator tokens, and bounded expansion. Typecheck and changed-file lint pass. All 13 locale files parse; old past/progressive group-title keys are gone, and Chinese tool/pinned-skills labels contain no 已. Desktop visuals were not checked because computer control was not requested.
+Checks: 61 targeted component/token tests pass, including identical terminal header text/icons in both display modes, stable tense across running/completed updates, pagination position, separator tokens, and bounded expansion. Typecheck and changed-file lint pass. All 13 locale files parse; old past/progressive group-title keys are gone, and Chinese tool/pinned-skills labels contain no 已 (the Chinese completed-state marker). Desktop visuals were not checked because computer control was not requested.

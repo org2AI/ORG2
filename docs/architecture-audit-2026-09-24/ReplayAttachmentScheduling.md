@@ -1,81 +1,81 @@
-# 会话回放附件调度隔离：实现与验证
+# Session replay attachment scheduling isolation: implementation and verification
 
-本次实现对应中文设计 [#2114](https://github.com/org2AI/ORG2/pull/2114) 的第一步：正文同步不再等待附件能力探测、补传读取或网络上传。本次不实施完整持久附件 outbox、对象存储、逐附件界面或配额管理；线上容量不变。
+This implementation is the first step toward the design in [#2114](https://github.com/org2AI/ORG2/pull/2114): body synchronization no longer waits for attachment capability probing, backfill reads, or network uploads. This change does not implement a complete persistent attachment outbox, object storage, per-attachment UI, or quota management; production capacity is unchanged.
 
-## 根因与写入边界
+## Root cause and write boundary
 
-正文以本机规范化事件为源，经 `Org2CloudSessionSync` 提交远端正文，并写入 `org2CloudPushCursorsAtom`。#2111 已将正文提交提前，但 `pushSession` 仍等待附件，且附件补传状态会迫使正文轮次探测能力并全量读取历史。一个慢附件可以占住 sender pass，影响之后的会话或追加正文。
+The body uses locally normalized events as its source, submits the remote body through `Org2CloudSessionSync`, and writes to `org2CloudPushCursorsAtom`. #2111 moved body submission earlier, but `pushSession` still waited for attachments, and attachment backfill state forced body passes to probe capabilities and read the full history. One slow attachment could occupy a sender pass and affect later sessions or appended body content.
 
-现在正文只调度附件任务，不等待任务完成。正文已经干净时，待补传标记只触发独立附件工作，不影响正文的增量读取策略。共享文件版本标记仍是原有持久游标字段，没有改变存储格式。只有任务捕获的游标仍是当前游标，任务才能将附件标记为完成；否则保持待补传，下一轮重新评估。
+The body now only schedules attachment work and does not wait for it to finish. When the body is already clean, a pending-backfill marker triggers independent attachment work without affecting the body’s incremental-read strategy. The shared-file version marker remains an existing persistent cursor field; the storage format is unchanged. A task may mark an attachment complete only if the cursor it captured is still current; otherwise it remains pending for reevaluation in the next pass.
 
-任务由现有同步实例拥有，同时最多两个；没有新增轮询、定时器或内存等待队列。槽位用尽时保留持久待补传标记；槽位释放且此前有工作被推迟时，通知现有串行引擎补一轮同步。没有被推迟的任务不触发新轮次，隐藏/停止后不主动唤醒。取消中的任务在实际结束前仍占槽，避免连续 reset 导致真实并发失控。配额冷却仍按组织执行。
+Tasks are owned by the existing sync instance, with at most two running at a time; no polling, timers, or in-memory wait queue were added. When all slots are occupied, the persistent backfill marker remains. When a slot is released and work had been deferred, the existing serial engine is notified to run another sync pass. Tasks that were not deferred do not trigger a new pass, and hidden/stopped states are not actively awakened. A cancelled task continues to occupy its slot until it actually ends, preventing repeated resets from causing uncontrolled real concurrency. Quota cooldown remains organization-scoped.
 
-查找与上传 RPC 接受可选 AbortSignal。reset、会话撤回、降为仅元数据、组织/会话移出本机范围时取消任务；异步边界再次校验身份、端点、运行代次和可见性。隐藏窗口不启动新的附件工作，在途请求结束后不再读取或上传下一个文件。能力探测仍使用现有共享探测和 15 秒超时，不能因单个任务取消而中止其他消费者的探测；附件 RPC 保留 30 秒超时。本机历史/文件读取沿用现有 IPC，不能被 AbortSignal 中断；取消后仍占槽直至读取实际结束，之后不得发起网络上传。
+The lookup and upload RPCs accept an optional AbortSignal. Tasks are cancelled on reset, session retraction, downgrade to metadata-only, or when an organization/session leaves the local scope; identity, endpoint, run generation, and visibility are rechecked at async boundaries. A hidden window does not start new attachment work, and after an in-flight request ends it will not read or upload the next file. Capability probing continues to use the existing shared probe and 15-second timeout; cancelling one task must not abort probes used by other consumers. Attachment RPCs retain their 30-second timeout. Local history/file reads use the existing IPC and cannot be interrupted by AbortSignal; after cancellation, the task still occupies its slot until the read actually ends, and must not start a network upload afterward.
 
-历史缺失正文/附件没有被删除或修改；原发布端升级后仍需补传验证。撤销请求无法撤回服务端已经完成的写入，最终权限仍由服务端 ACL 决定。
+No history with missing body/attachments was deleted or modified; backfill still needs to be verified after upgrading the original publisher. A retraction request cannot undo a write already completed by the server; final permissions remain governed by server ACLs.
 
-## 补测发现：并发槽位释放后没有唤醒
+## Follow-up testing found no wake-up after a concurrency slot was released
 
-引擎没有周期轮询；之前假设“后续同步轮次自然会来”，导致第三个会话的待补传游标可能一直等到用户再次操作。新增真实引擎回归先在无唤醒版本复现失败（预期 3 次附件调用，实际 2 次），然后验证释放槽位自动排空 3/7 个会话。测试冻结 bootstrap/focus 定时器，等待真实异步摘要计算，既不推进时钟也不手动再调一次 pass，避免定时器造成假通过。
+The engine has no periodic polling. The previous assumption that “a later sync pass will happen naturally” could leave the third session’s pending-backfill cursor waiting until the user acted again. A new real-engine regression first reproduced the failure without a wake-up (3 attachment calls expected, 2 observed), then verified that releasing a slot automatically drains work for 3/7 sessions. The test freezes bootstrap/focus timers and waits for real async summary computation; it neither advances the clock nor manually invokes another pass, avoiding a timer-driven false pass.
 
-修复在附件任务的 `finally` 释放槽位后通知现有引擎；引擎复用原有单飞/合并机制。持久游标仍是任务发现与完成的依据，一个布尔位只合并唤醒需求。新增停止/隐藏后的负向断言；没有数据清理或历史状态迁移。
+The fix notifies the existing engine after the attachment task releases its slot in `finally`; the engine reuses its existing single-flight/coalescing mechanism. Persistent cursors remain the basis for discovering and completing tasks; one boolean only coalesces wake-up requests. Negative assertions were added for stopped/hidden states; no data cleanup or history-state migration was performed.
 
-## 十层架构检查
+## Ten-layer architecture check
 
-| 层                | 覆盖范围                                       | 结果                                                                                       |
+| Layer | Coverage | Result                                                                                       |
 | ----------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| 1 编译            | TypeScript、相关测试、lint                     | 见下方命令；未修改 Rust；为桌面 E2E 编译当前 Rust 与 sidecar                               |
-| 2 结构/重复       | 回放、评论、续聊用户输入、续聊输出的附件调用点 | 本次改回放调度；显式评论必须先有可用附件引用，续聊执行链保持原有行为，未宣称已统一所有入口 |
-| 3 命名            | scheduleReplaySharedFiles / sharedFileJobs     | 调度方法返回 void，正文不等待附件任务                                                      |
-| 4 语义            | 正文成功与附件完成                             | 两种状态独立；旧任务不能认证更新后的游标                                                   |
-| 5 默认分支        | 配额、网络、未知能力、隐藏、满槽、取消         | 待补传保持；失败仅影响附件冷却；暂停原因有按 owner 每分钟限频的诊断                        |
-| 6 领域边界        | 回放上传与执行输入                             | 不改变续聊输入附件或评论提交语义                                                           |
-| 7 可理解性        | 已提交正文但文件暂停                           | 代码注释和本文明确过渡范围；逐附件可见状态尚未实施                                         |
-| 8 线协议          | 共享文件查找、上传                             | 仅传递客户端取消信号，RPC 名称/参数/返回数据不变；线边界测试覆盖取消、权限、配额与完整性   |
-| 9 初始化/生命周期 | 原有 sender owner、reset、prune、重启、隐藏    | 有界任务集合；取消后实际结束才释放；持久游标用于恢复                                       |
-| 10 解析一致性     | full / incremental / clean 三种正文路径        | 附件缺失不再强制正文全读；不完整增量对应的附件由后台完整补传，不误标完成                   |
+| 1. Compilation | TypeScript, relevant tests, lint | See commands below; Rust was not modified; current Rust and sidecar were built for desktop E2E                               |
+| 2. Structure / duplication | Attachment call sites for replay, comments, follow-up input, and follow-up output | This change updates replay scheduling; explicit comments still require an available attachment reference, and follow-up execution retains its existing behavior. No claim is made that all entry points are unified. |
+| 3. Naming | scheduleReplaySharedFiles / sharedFileJobs | The scheduling method returns void; the body does not wait for attachment tasks.                                                      |
+| 4. Semantics | Body success and attachment completion | The states are independent; an old task cannot certify an updated cursor.                                                   |
+| 5. Default branches | Quota, network, unknown capability, hidden, full slots, cancellation | Backfill remains pending; failures affect only attachment cooldown; pause reasons have diagnostics rate-limited to once per owner per minute.                        |
+| 6. Domain boundary | Replay uploads and execution input | Follow-up input attachments and comment-submission semantics are unchanged.                                                           |
+| 7. Understandability | Body submitted while files are paused | Code comments and this report explain the transition scope; per-attachment visible status is not implemented yet.                                         |
+| 8. Wire protocol | Shared-file lookup and upload | Only the client cancellation signal is passed through; RPC names, parameters, and return data are unchanged. Wire-boundary tests cover cancellation, permissions, quota, and integrity.   |
+| 9. Initialization / lifecycle | Existing sender owner, reset, prune, restart, hidden | The task set is bounded; cancellation releases a slot only after actual completion; persistent cursors support recovery.                                       |
+| 10. Resolution consistency | The full / incremental / clean body paths | Missing attachments no longer force a full body read; attachments associated with incomplete incrementals are fully backfilled in the background and not incorrectly marked complete.                   |
 
-## 性能与生命周期
+## Performance and lifecycle
 
 | Area               | Verdict | Evidence                                   | Change or reason kept                                   | Verification                                       |
 | ------------------ | ------- | ------------------------------------------ | ------------------------------------------------------- | -------------------------------------------------- |
-| Background work    | fix     | 原 sender await 附件；新增最多两个活动任务 | 正文不等待；既有轮次触发，无新增轮询；隐藏不启动        | 悬挂上传/探测时正文继续追加；隐藏后可见轮次恢复    |
-| Memory             | fix     | 没有等待队列；活动任务最多两个             | 取消未结束仍占槽；结束释放引用；重试表沿用 256 上限     | 并发、重复轮次、reset 后槽位与迟到完成测试         |
-| Scope/isolation    | fix     | 端点、身份、代次、组织/会话和 AbortSignal  | reset/retract/metadata/prune 取消；旧游标不能写完成状态 | 账号切换、reset、撤回、降级、prune、旧上传完成测试 |
-| Rendering/hot path | keep    | 未修改 React 订阅或组件                    | 无界面渲染变更；保留逐附件 UI 为设计后续项              | 不宣称渲染性能改善                                 |
+| Background work    | fix     | The original sender awaited attachments; at most two active tasks are now added | The body does not wait; existing passes trigger work, with no new polling; hidden state does not start work        | Body append continues while upload/probe is hung; visible passes resume after hiding    |
+| Memory             | fix     | No wait queue; at most two active tasks             | A cancelled task holds its slot until completion; references are released afterward; the retry table retains its limit of 256     | Tests for concurrency, repeated passes, slots after reset, and late completion         |
+| Scope/isolation    | fix     | Endpoint, identity, generation, organization/session, and AbortSignal  | reset/retract/metadata/prune cancellation; old cursors cannot write the completion state | Tests for account switch, reset, retraction, downgrade, prune, and old upload completion |
+| Rendering/hot path | keep    | No React subscriptions or components changed                    | No UI rendering changes; per-attachment UI remains a future design item              | No rendering performance improvement is claimed                                 |
 
-| Provider          | Raw transition                           | App/UI state                     | Topology/boundary                        | Expected invariant                         | Observed evidence                              |
+| Provider | Raw transition | App/UI state | Topology/boundary | Expected invariant | Observed evidence |
 | ----------------- | ---------------------------------------- | -------------------------------- | ---------------------------------------- | ------------------------------------------ | ---------------------------------------------- |
-| 原生会话共享入口  | 规范化事件追加；无真实原始 provider 文件 | 单元环境，非渲染 UI              | 本机事件源 stub → 真实 sender → RPC mock | 附件悬挂不妨碍正文追加；旧完成不覆盖新游标 | 通过；不代表原始 provider 摄取验证             |
-| Cursor 导入入口   | 代表性原始 chunk fixture 追加            | 引擎轮次，非真实桌面             | 导入源 fixture → sender → RPC mock       | 冷却期正文仍增量，恢复后完整补传附件       | 通过；Rust 规范化为 mock，不宣称端到端摄取覆盖 |
-| 所有真实 provider | create/append/compact/rotate/delete      | 冷启动、活动窗口、隐藏、二次启动 | 隔离 A 上传 / B 接收与云端账本           | 正文及精确版本可读，无额外重写，资源释放   | not run                                        |
+| Native session-sharing entry point  | Append normalized events; no real raw provider file | Unit environment, not rendered UI              | Local event-source stub → real sender → RPC mock | A hung attachment does not block body append; old completion does not overwrite a new cursor | Passed; does not represent raw provider ingestion verification             |
+| Cursor import entry point   | Append representative raw chunk fixture            | Engine pass, not a real desktop             | Import-source fixture → sender → RPC mock       | Body remains incremental during cooldown; attachments are fully backfilled after recovery       | Passed; Rust normalization is mocked, so end-to-end ingestion coverage is not claimed |
+| All real providers | create/append/compact/rotate/delete      | Cold start, active window, hidden, second launch | Isolated A upload / B receive and cloud ledger           | Body and exact versions are readable, with no extra rewrites and resources released   | not run                                        |
 
-### 隔离桌面补测
+### Isolated desktop follow-up testing
 
-Core UI E2E 最终结果：**7 passing / 1 skipped**。两个独立桌面身份、数据目录、WebView 存储和端口，运行当前 Rust/sidecar 构建；测试云端为独立本机 PostgreSQL 数据库，应用 cloud-infra 0001–0033 迁移，经 PostgREST 与故障代理调用真实 SQL。认证使用测试 JWT，未运行 GoTrue/Realtime 服务；未写入生产。
+Final Core UI E2E result; **7 passing / 1 skipped**. Two separate desktop identities, data directories, WebView stores, and ports ran the current Rust/sidecar build. The test cloud was an isolated local PostgreSQL database with cloud-infra migrations 0001–0033 applied; real SQL was called through PostgREST and a fault proxy. Authentication used test JWTs; GoTrue/Realtime services were not run, and production was not written to.
 
-- A→B、B→A：规范化用户/agent 事件经生产分享、上传、侧栏打开和文件预览路径；接收端没有源文件，实际预览字节匹配。
-- 附件上传挂起：正文 sender pass 126 ms 返回，接收端正文及后续第三条事件均可见，附件请求仍在挂起。
-- 实际 SQL 的 1,000 文件条目配额：正文 pass 123 ms 返回，接收端正文及追加均可见；旧附件仍可预览。填充记录仅在专用测试组织中创建，并在 finally 清理。
-- 撤回共享后真实 RPC 拒绝文件读取，预览显示错误；恢复测试共享后继续。
-- 两个账户各两次冷启动：身份不串号，文件 ID 不变，接收端预览仍可读。每个场景前后检查整个测试数据库账本；旧行无删除/权限变化、事件数量不倒退、epoch 不增长，未发生重写风暴。
-- 可见与隐藏各 20 秒：两个原生进程 CPU 时间分别增加 0.01/0.03 秒、0.02/0.01 秒，RSS 约 167–206 MiB 且下降。仅测原生进程，**不包含 WebKit renderer**，不能代表整应用性能。
+- A→B / B→A; Normalized user/agent events went through production sharing, upload, sidebar open, and file-preview paths; the receiver had no source file, and the actual preview bytes matched.
+- Attachment upload hung: the body sender pass returned in 126 ms; the receiver could see the body and the subsequent third event while the attachment request remained hung.
+- Actual SQL quota of 1,000 file entries: the body pass returned in 123 ms, and the receiver could see the body and the append; old attachments remained previewable. Filler records were created only in a dedicated test organization and cleaned up in finally.
+- After sharing was retracted, the real RPC rejected file reads and the preview showed an error; testing continued after test sharing was restored.
+- Each of two accounts had two cold starts: identities did not cross, file IDs remained unchanged, and receiver previews remained readable. The entire test database ledger was checked before and after each scenario; no old rows were deleted or had permissions changed, event counts did not decrease, epochs did not increase, and no rewrite storm occurred.
+- Visible and hidden for 20 seconds each: CPU time for the two native processes increased by 0.01/0.03  seconds and 0.02/0.01 seconds, with RSS around 167–206 MiB and declining. Only native processes were measured; **the WebKit renderer is not included**, so this does not represent whole-application performance.
 
-补测也修正了两处测试观察问题：用户附件实际是 role=link 的 span；刷新列表是异步操作，必须等已提交的列表游标达到 3 再重新点击，不能用旧行触发回放。只读 E2E 检查增加 eventsCount，未注入导入状态或替换生产下载链路。
+Follow-up testing also corrected two test-observation issues: a user attachment is actually a span with role=link; refreshing the list is asynchronous, so the committed list cursor must reach 3 before clicking again, and an old row must not be used to trigger replay. The read-only E2E check now includes eventsCount; it did not inject import state or replace the production download path.
 
-运行环境的 webpack-dev-server 5 拒绝仓库当前 object 形式 proxy；本次用本地临时适配为数组启动，finally 恢复，未混入 PR。日志中保留无 Realtime 服务的 CHANNEL_ERROR、测试仓库远端不可用、故意缺失附件，以及快速场景切换产生的 orgtrack 高频读取警告；不声称无 WARN/ERROR。
+The environment’s webpack-dev-server 5 rejected the repository’s current object-form proxy; this run used a temporary local adaptation to an array form and restored it in finally, so it was not included in the PR. Logs retain CHANNEL_ERROR from the absent Realtime service, the test repo remote being unavailable, intentionally missing attachments, and orgtrack high-frequency-read warnings from rapid scenario switching; no claim is made that there were no WARN/ERROR messages.
 
-**Performance verdict: blocked**：调度边界、双端正文/文件及原生短时 idle 检查通过；完整 WebKit 资源、旧版本升级、原始 provider create/compact/rotate/delete、真实 Realtime 重连及原发布端历史恢复未覆盖。真实模型回答测试未启用，明确 skipped；不能把规范化事件 fixture 当作 provider 摄取或完整生命周期验证。
+**Performance verdict: blocked**: scheduling boundaries, body/files on both ends, and short native idle checks passed. Full WebKit resources, upgrades from older versions, raw-provider create/compact/rotate/delete, real Realtime reconnects, and history recovery by the original publisher were not covered. The real model-response test was not enabled and was explicitly skipped; normalized event fixtures do not count as provider-ingestion or full-lifecycle verification.
 
-全量历史补传仍可能读入大型会话；最多两个任务不等于字节级内存预算。持久分页 outbox、不可变文件快照、按字节预算管理及统一续聊附件 owner 仍属于设计后续实现。
+A full-history backfill may still read a large session; limiting to two tasks is not a byte-level memory budget. A persistent paginated outbox, immutable file snapshots, byte-budget management, and a unified owner for follow-up attachments remain future design work.
 
-## 验证命令
+## Verification commands
 
-- `pnpm exec vitest run --config config/vitest.config.ts src/features/Org2Cloud/org2CloudSessionSync src/features/Org2Cloud/org2CloudSyncEngine src/features/Org2Cloud/sessionSharedFile src/features/Org2Cloud/syncSessionSharedFiles.test.ts src/features/Org2Cloud/sharedSessionFilesClient.test.ts src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter`：22 个文件、253 条测试通过。
-- `pnpm typecheck:fast`：通过。
-- `CARGO_BUILD_JOBS=2 node scripts/tauri/prepare-sidecars.cjs --profile debug`：通过；WDIO 构建两个隔离身份的 `cargo build -p org2 --features webdriver`。
-- `cd tests/e2e && pnpm test -- --spec ./specs/core/cloud-dual-instance-ui.spec.mjs --mochaOpts.grep "Shared session files across two desktop accounts"`：本地隔离 fixture/端口/故障代理环境下 7 passing / 1 skipped；环境变量使用 `E2E_SHARED_FILES_FIXTURE`、`E2E_SHARED_FILES_ARTIFACTS`、`E2E_ISOLATED_RUN=1`、`E2E_PROVIDER_MODE=mock`。
-- 对本次八个 TypeScript 文件运行 `pnpm exec eslint <changed-ts-files> --max-warnings 0`，对四个生产文件运行 `pnpm exec oxlint -c src/.oxlintrc.json --max-warnings 0 <changed-production-files>`。
-- `pnpm check:circular`、`pnpm check:test-placement`、`git diff --check`，结果记录在 PR 中。
+- `pnpm exec vitest run --config config/vitest.config.ts src/features/Org2Cloud/org2CloudSessionSync src/features/Org2Cloud/org2CloudSyncEngine src/features/Org2Cloud/sessionSharedFile src/features/Org2Cloud/syncSessionSharedFiles.test.ts src/features/Org2Cloud/sharedSessionFilesClient.test.ts src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter`; 22 files, 253 tests passed.
+- `pnpm typecheck:fast`; passed.
+- `CARGO_BUILD_JOBS=2 node scripts/tauri/prepare-sidecars.cjs --profile debug`; passed; WDIO built two isolated identities with `cargo build -p org2 --features webdriver`.
+- `cd tests/e2e && pnpm test -- --spec ./specs/core/cloud-dual-instance-ui.spec.mjs --mochaOpts.grep "Shared session files across two desktop accounts"`; under the isolated local fixture/port/fault-proxy environment 7 passing / 1 skipped; using environment variables `E2E_SHARED_FILES_FIXTURE` / `E2E_SHARED_FILES_ARTIFACTS` / `E2E_ISOLATED_RUN=1` / `E2E_PROVIDER_MODE=mock`.
+- Ran `pnpm exec eslint <changed-ts-files> --max-warnings 0` for the eight TypeScript files changed in this work and `pnpm exec oxlint -c src/.oxlintrc.json --max-warnings 0 <changed-production-files>` for the four production files.
+- `pnpm check:circular`, `pnpm check:test-placement`, and `git diff --check`; results are recorded in the PR.
 
-没有数据库、配置、配额或持久格式迁移。回滚仅需回退客户端代码；未完成标记仍能被 #2111 的补传路径识别。下载接口未改变，新增上传配额依然不参与已有文件读取。
+No database, configuration, quota, or persistent-format migration was made. Rollback requires only reverting the client code; pending markers remain recognizable by the #2111 backfill path. The download API is unchanged, and the new upload quota still does not apply to reads of existing files.

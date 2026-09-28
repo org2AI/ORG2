@@ -51,19 +51,61 @@ $touch-target: 44px;
 @mixin compact-menu {
   --mobile-menu-width: 224px;
   --mobile-menu-viewport-inset: #{$space-4};
-  --mobile-menu-radius: #{$space-4};
-  --mobile-menu-padding: #{$space-2};
+  --mobile-menu-radius: #{$space-3};
+  --mobile-menu-padding: #{$space-1};
   --mobile-menu-row-height: #{$touch-target};
-  --mobile-menu-row-padding-y: #{$space-2};
-  --mobile-menu-row-padding-x: #{$space-3};
+  --mobile-menu-row-padding-y: #{$space-1};
+  --mobile-menu-row-padding-x: #{$space-2};
   --mobile-menu-row-gap: #{$space-2};
   --mobile-menu-row-radius: #{$space-2};
-  --mobile-menu-font-size: var(--mobile-type-control-size);
+  --mobile-menu-font-size: var(--mobile-type-secondary-size);
   --mobile-menu-line-height: var(--mobile-type-control-leading);
   --mobile-menu-caption-size: var(--mobile-type-caption-size);
   --mobile-menu-caption-line-height: var(--mobile-type-caption-leading);
   --mobile-menu-caption-padding-y: #{$space-1};
   --mobile-menu-icon-size: 18px;
+}
+
+// Shared appearance for mobile selection lists. Dropdown still owns portals,
+// keyboard navigation and selected checks; callers choose only width/content.
+@mixin compact-selection-menu($minimum: 10rem, $maximum: 24rem) {
+  @include adaptive-menu($minimum, $maximum);
+  @include compact-menu;
+
+  --dropdown-font-size: var(--mobile-menu-font-size);
+  padding: var(--mobile-menu-padding);
+  border: 1px solid var(--color-border-1);
+  border-radius: var(--mobile-menu-radius);
+  box-shadow: var(--shadow-dropdown-soft);
+
+  // Let the panel own the inset so desktop list padding does not stack.
+  [role="listbox"] {
+    padding: 0;
+    > .flex {
+      gap: 0;
+    }
+  }
+
+  [role="option"] {
+    min-height: var(--mobile-menu-row-height);
+    padding: var(--mobile-menu-row-padding-y) var(--mobile-menu-row-padding-x);
+    gap: var(--mobile-menu-row-gap);
+    border-radius: var(--mobile-menu-row-radius);
+    line-height: var(--mobile-menu-line-height);
+
+    > span:first-child {
+      color: var(--color-text-3);
+      svg {
+        width: var(--mobile-menu-icon-size);
+        height: var(--mobile-menu-icon-size);
+      }
+    }
+
+    // Keep labels neutral; the shared trailing check communicates selection.
+    .truncate {
+      color: var(--color-text-1);
+    }
+  }
 }
 
 // Mobile sheets portal to document.body: define these on the wrapper so both

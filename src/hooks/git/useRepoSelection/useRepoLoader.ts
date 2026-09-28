@@ -13,6 +13,7 @@ import {
   cachedReposAtom,
   lastUsedRepoAtom,
   reposAtom,
+  reposHydratedAtom,
   selectedRepoIdAtom,
   updateCachedRepos,
   validRepoIdsAtom,
@@ -80,6 +81,7 @@ function resolveStartupRepo(
 
 export function useRepoLoader(): UseRepoLoaderReturn {
   const [repos, setRepos] = useAtom(reposAtom);
+  const setReposHydrated = useSetAtom(reposHydratedAtom);
   const [selectedRepoId, setSelectedRepoId] = useAtom(selectedRepoIdAtom);
   const setValidRepoIds = useSetAtom(validRepoIdsAtom);
   const [_cachedRepos, setCachedRepos] = useAtom(cachedReposAtom);
@@ -176,6 +178,7 @@ export function useRepoLoader(): UseRepoLoaderReturn {
         });
 
         setRepos(repoList);
+        setReposHydrated(true);
         setValidRepoIds(new Set(repoList.map((repo) => repo.id)));
         loadedReposRef.current = true;
         loadSucceeded = true;
@@ -221,6 +224,7 @@ export function useRepoLoader(): UseRepoLoaderReturn {
   }, [
     repos.length,
     setRepos,
+    setReposHydrated,
     setValidRepoIds,
     setSelectedRepoId,
     setLastUsedRepo,
@@ -229,10 +233,11 @@ export function useRepoLoader(): UseRepoLoaderReturn {
 
   const forceRefreshRepos = useCallback(async () => {
     loadedReposRef.current = false;
+    setReposHydrated(false);
     setGlobalReposLoaded(false);
     setGlobalLoadInProgress(false);
     await loadRepos();
-  }, [loadRepos]);
+  }, [loadRepos, setReposHydrated]);
 
   // Handle hot reload triggered reload
   useEffect(() => {

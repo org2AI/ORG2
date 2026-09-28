@@ -31,7 +31,8 @@ export function canonicalRecoveryDelayMs(attempt: number): number {
 
 export function queuedRetryFromDelivery(
   delivery: ActiveMessageDelivery,
-  error?: unknown
+  error?: unknown,
+  executionFailed = false
 ): QueuedMessage {
   const {
     originQueueKey: _originQueueKey,
@@ -48,7 +49,8 @@ export function queuedRetryFromDelivery(
     status: "queued",
     ...(error
       ? {
-          deliveryError: error instanceof Error ? error.message : String(error),
+          [executionFailed ? "executionError" : "deliveryError"]:
+            error instanceof Error ? error.message : String(error),
         }
       : {}),
   };

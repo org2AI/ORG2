@@ -32,6 +32,10 @@ pub async fn debug_import_bundled_org2_cloud_auth(
         return Err("bundled auth import is available only in development builds".to_string());
     }
 
+    if !crate::infrastructure::shared_auth_paths::uses_default_home(&app) {
+        return Err("bundled auth import is disabled for a custom data home".to_string());
+    }
+
     #[cfg(not(target_os = "macos"))]
     {
         let _ = app;

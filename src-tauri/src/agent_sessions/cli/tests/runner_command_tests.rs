@@ -147,8 +147,12 @@ fn build_claude_code_routes_context_to_system_prompt_and_keeps_user_text_literal
     let prompt_index = cmd.iter().position(|part| part == "-p").expect("-p");
     assert_eq!(prompt_index, cmd.len() - 1);
     assert!(!cmd.contains(&user_text.to_string()));
-    assert!(cmd.windows(2).any(|args| args == ["--input-format", "stream-json"]));
-    assert!(cmd.windows(2).any(|args| args == ["--permission-prompt-tool", "stdio"]));
+    assert!(cmd
+        .windows(2)
+        .any(|args| args == ["--input-format", "stream-json"]));
+    assert!(cmd
+        .windows(2)
+        .any(|args| args == ["--permission-prompt-tool", "stdio"]));
 
     let system_index = cmd
         .iter()
@@ -795,4 +799,60 @@ fn build_codex_app_server_argv_never_exposes_mcp_profile() {
 
     assert_eq!(cmd[1..], ["app-server"]);
     assert!(!cmd.contains(&"orgii-mcp-random".to_string()));
+}
+
+#[test]
+fn codex_explicit_reserve_and_ordinary_luna_never_cross_route() {
+    for base in ["gpt-5.6-luna", "gpt-reserve"] {
+        for effort in ["low", "medium", "high", "xhigh", "max"] {
+            let model = format!("{base}-{effort}");
+            let reasoning = format!("model_reasoning_effort=\"{effort}\"");
+            for resume_id in [None, Some("thread-123")] {
+                let cmd = build_command!(
+                    ModelType::Codex,
+                    task = "test",
+                    model = Some(&model),
+                    resume_id = resume_id
+                );
+                let idx = cmd.iter().position(|arg| arg == "-m").unwrap();
+                assert_eq!(cmd[idx + 1], base);
+                assert!(cmd.windows(2).any(|args| args == ["-c", &reasoning]));
+            }
+            assert_eq!(
+                codex_app_server_thread_model(Some(&model)).as_deref(),
+                Some(base)
+            );
+            let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+            let turn = CliTurnEnvelope::new("test");
+            let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
+                agent: &ModelType::Codex,
+                launch_profile: &profile,
+                model: Some(&model),
+                turn: &turn,
+                resume_id: None,
+                api_key: None,
+                endpoint: None,
+                mode: None,
+                repo_path: None,
+                additional_dirs: &[],
+                mcp_config_path: None,
+                codex_mcp_profile: None,
+            });
+            assert!(cmd.windows(2).any(|args| args == ["-c", &reasoning]));
+            assert!(!cmd.iter().any(|arg| arg.contains("service_tier")));
+        }
+    }
+}
+
+#[test]
+fn codex_usage_retains_selected_reserve_pool() {
+    use super::command::codex_usage_model;
+    assert_eq!(
+        codex_usage_model(Some("gpt-reserve-low"), Some("gpt-5.6-luna")),
+        Some("gpt-reserve-low")
+    );
+    assert_eq!(
+        codex_usage_model(Some("gpt-5.6-luna-low"), Some("gpt-5.6-luna")),
+        Some("gpt-5.6-luna")
+    );
 }

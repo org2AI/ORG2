@@ -179,6 +179,27 @@ describe("messageQueueAtom", () => {
   // =============================================
 
   describe("forceSendMessageAtom", () => {
+    it("mints a new intent for explicit retry of an accepted execution failure", () => {
+      store.set(messageQueueAtom, [
+        {
+          id: "accepted",
+          turnIntentId: "original",
+          sessionId: "session",
+          content: "hello",
+          displayContent: "hello",
+          priority: "next",
+          status: "queued",
+          createdAt: "2026-09-24T00:00:00Z",
+          requiresExplicitDispatch: true,
+          executionError: "quota",
+        },
+      ]);
+      store.set(forceSendMessageAtom, "accepted");
+      const next = store.get(messageQueueAtom)[0];
+      expect(next.turnIntentId).not.toBe("original");
+      expect(next.executionError).toBeUndefined();
+      expect(next.requiresExplicitDispatch).toBe(false);
+    });
     it("promotes the message to priority now and clears any Stop hold", () => {
       const msg1 = makeMessage({ id: "m1" });
       const msg2 = makeMessage({ id: "m2", requiresExplicitDispatch: true });

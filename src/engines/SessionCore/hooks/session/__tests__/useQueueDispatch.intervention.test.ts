@@ -840,7 +840,7 @@ describe("useQueueDispatch Agent Org intervention", () => {
     expect(mocks.messageError).not.toHaveBeenCalled();
   });
 
-  it("holds an accepted turn that the provider failed outright as a failed row", async () => {
+  it("holds an accepted failure for retry without duplicating its terminal notification", async () => {
     mocks.dispatchCanonicalConversation.mockImplementationOnce(
       async (_store, message, callbacks) => {
         await callbacks.onAccepted(`runner-${message.id}`);
@@ -850,14 +850,17 @@ describe("useQueueDispatch Agent Org intervention", () => {
       }
     );
 
-    await mountWithMessages([makeCanonicalMessage("canonical-rejected")]);
+    await mountWithMessages([
+      makeCanonicalMessage("canonical-rejected"),
+      makeCanonicalMessage("canonical-next"),
+    ]);
 
     await vi.waitFor(() =>
       expect(store.get(messageQueueAtom)).toEqual([
         expect.objectContaining({
           id: "canonical-rejected",
           requiresExplicitDispatch: true,
-          deliveryError: "The requested model is not available",
+          executionError: "The requested model is not available",
         }),
       ])
     );
@@ -865,15 +868,21 @@ describe("useQueueDispatch Agent Org intervention", () => {
     expect(mocks.updateById).toHaveBeenCalledWith(
       "queued-user:canonical-rejected:",
       expect.objectContaining({
-        displayStatus: "failed",
+        displayStatus: "completed",
         result: expect.objectContaining({
-          deliveryStatus: "failed",
-          deliveryError: "The requested model is not available",
+          deliveryStatus: "sent",
+          executionError: "The requested model is not available",
         }),
       }),
       SESSION_ID
     );
-    expect(mocks.messageError).toHaveBeenCalledOnce();
+    expect(mocks.messageError).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2)
+    );
+    expect(mocks.dispatchCanonicalConversation.mock.calls[1][1].id).toBe(
+      "canonical-next"
+    );
   });
 
   it("retains an accepted canonical owner for recovery without immediately resending", async () => {
@@ -988,17 +997,21 @@ describe("useQueueDispatch Agent Org intervention", () => {
     );
     expect(store.get(messageQueueAtom)).toEqual([]);
     expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
-    expect(mocks.updateById).toHaveBeenCalledWith(
+    expect(mocks.updateById).toHaveBeenLastCalledWith(
       "queued-user:canonical-accepted-mismatch:",
       expect.objectContaining({
         displayStatus: "completed",
-        result: expect.objectContaining({ deliveryStatus: "sent" }),
+        result: expect.objectContaining({
+          deliveryStatus: "sent",
+          executionError: "accepted runner diverged from canonical transcript",
+          deliveryOwnerRetired: true,
+        }),
       }),
       SESSION_ID
     );
   });
 
-  it.each(["recovery-blocked", "turn-closed"])(
+  it.each(["recovery-blocked", "turn-closed", "accepted-turn-closed"])(
     "restores a reconciled-away failed row before retiring its %s owner",
     async (verdict) => {
       mocks.updateById.mockImplementation(async (_id, patch) =>
@@ -1017,6 +1030,9 @@ describe("useQueueDispatch Agent Org intervention", () => {
             throw new QueuedConversationTurnClosedError("terminal verdict");
           }
           await callbacks.onAccepted(`runner-${message.id}`);
+          if (verdict === "accepted-turn-closed") {
+            throw new QueuedConversationTurnClosedError("terminal verdict");
+          }
           throw new QueuedConversationRecoveryBlockedError("terminal verdict");
         }
       );
@@ -1031,7 +1047,10 @@ describe("useQueueDispatch Agent Org intervention", () => {
           id: `queued-user:${message.id}:`,
           result: expect.objectContaining({
             turnIntentId: message.turnIntentId,
-            deliveryStatus: "failed",
+            deliveryStatus: verdict === "turn-closed" ? "failed" : "sent",
+            ...(verdict === "turn-closed"
+              ? { deliveryError: "terminal verdict" }
+              : { executionError: "terminal verdict" }),
             deliveryOwnerRetired: true,
           }),
         }),
@@ -1118,7 +1137,9 @@ describe("useQueueDispatch Agent Org intervention", () => {
         expect.objectContaining({
           displayText: message.displayContent,
           result: expect.objectContaining({
-            deliveryStatus: "failed",
+            deliveryStatus: "sent",
+            executionError:
+              "accepted runner diverged from canonical transcript",
             deliveryOwnerRetired: true,
           }),
         }),

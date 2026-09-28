@@ -31,6 +31,15 @@ export interface SessionCommentTarget {
   anchor?: string;
 }
 
+export interface ChannelMessageTarget {
+  kind: "channel_message";
+  orgId: string;
+  channelId: string;
+  channelName: string;
+  visibility: "org" | "private";
+  messageId: string;
+}
+
 export interface WorkItemTarget {
   kind: "work_item";
   /** Owning project-org id; legacy/test rows may omit it. */
@@ -61,7 +70,7 @@ interface TeamInboxItemBase {
 
 export interface CommentMentionItem extends TeamInboxItemBase {
   kind: "comment_mention";
-  target: SessionCommentTarget | WorkItemCommentTarget;
+  target: SessionCommentTarget | WorkItemCommentTarget | ChannelMessageTarget;
   payload: {
     commentBody: string;
     context?: string;
@@ -262,6 +271,14 @@ export interface TeamInboxDataSource {
 }
 
 export type TeamInboxNavigationIntent =
+  | {
+      kind: "open_channel_message";
+      orgId: string;
+      channelId: string;
+      channelName: string;
+      visibility: "org" | "private";
+      messageId: string;
+    }
   | {
       kind: "open_session";
       sessionId: string;

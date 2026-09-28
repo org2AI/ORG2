@@ -51,6 +51,14 @@ pub fn claude_code_cli_profile_dir(account_id: &str) -> PathBuf {
     claude_code_cli_profile_root().join(sanitize_path_segment(account_id))
 }
 
+/// Config root for an ambient Claude launch in an isolated instance.
+///
+/// Discovery and the child must use the same external-history root. Without
+/// an isolation override, leave the user's normal CLI configuration untouched.
+pub fn claude_code_isolated_ambient_config_dir() -> Option<PathBuf> {
+    crate::home::external_history_home_override().map(|home| home.join(".claude"))
+}
+
 /// Account-scoped Codex CLI profile root: `~/.orgii/codex-cli-profiles/`.
 pub fn codex_cli_profile_root() -> PathBuf {
     orgii_root().join("codex-cli-profiles")

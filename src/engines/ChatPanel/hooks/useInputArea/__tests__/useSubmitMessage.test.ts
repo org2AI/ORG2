@@ -14,7 +14,10 @@ import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 import { type SmokeRoot, createSmokeRoot } from "@src/test/reactSmokeHarness";
 
 import type { InputAreaRefs } from "../types";
-import { SubmitRetainedDeliveryError } from "../types";
+import {
+  SubmitHandledByDialogError,
+  SubmitRetainedDeliveryError,
+} from "../types";
 import {
   type UseSubmitMessageOptions,
   useSubmitMessage,
@@ -604,6 +607,27 @@ describe("useSubmitMessage composer boundary", () => {
     expect(mocks.messageError).toHaveBeenCalledWith(
       "chat.failedToSendMessage: transport unavailable"
     );
+  });
+
+  it("restores the draft without an error toast when a dialog explains the block", async () => {
+    const editorHarness = createEditor("open the matching workspace first");
+    const options = optionsFor(editorHarness, {
+      onSubmitOverride: vi
+        .fn()
+        .mockRejectedValue(
+          new SubmitHandledByDialogError("A local checkout is required")
+        ),
+    });
+    await mount(options);
+
+    await act(async () => {
+      await latestSubmit!();
+    });
+
+    expect(editorHarness.readText()).toBe("open the matching workspace first");
+    expect(options.refs.setHasContent).toHaveBeenLastCalledWith(true);
+    expect(mocks.messageError).not.toHaveBeenCalled();
+    expect(options.handleSessChatSubmit).not.toHaveBeenCalled();
   });
 
   it("restores each composer payload independently when one restore fails", async () => {

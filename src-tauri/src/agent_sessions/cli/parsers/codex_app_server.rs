@@ -76,12 +76,16 @@ mod catalog;
 #[cfg(all(feature = "market-connect", target_os = "macos"))]
 mod history_bootstrap;
 mod slash;
+#[cfg(all(feature = "market-connect", target_os = "macos"))]
+pub(crate) use catalog::isolated_default_route;
 pub(crate) use catalog::{
     archive_thread, ensure_project, native_codex_app_server_command, register_thread,
     synchronize_thread, CatalogProfile,
 };
 #[cfg(all(feature = "market-connect", target_os = "macos"))]
-pub(crate) use history_bootstrap::prepare_history_store;
+pub(crate) use history_bootstrap::{
+    prepare_history_store, resolve_target_route, ResolvedCodexHistoryRoute,
+};
 
 /// How long to keep draining after `turn/interrupt` before giving up on a
 /// graceful `turn/completed`.
@@ -194,6 +198,8 @@ pub struct CodexAppServerTurn {
     pub session_id: String,
     /// Literal user-authored text rendered in the native Codex transcript.
     pub user_input: String,
+    /// Durable correlation carried by native user-message metadata, never text.
+    pub turn_intent_id: Option<String>,
     /// ORGII execution/workspace/IDE context carried on Codex's native
     /// developer channel. Never copied into `turn/start.input`.
     pub developer_instructions: Option<String>,
@@ -1340,12 +1346,28 @@ impl ContextRecovery<'_> {
     }
 }
 
+fn turn_start_params(
+    thread_id: &str,
+    input: &[Value],
+    collaboration_mode: &Value,
+    turn_intent_id: Option<&str>,
+) -> Result<Value, String> {
+    let mut params = serde_json::json!({"threadId": thread_id, "input": input, "collaborationMode": collaboration_mode});
+    if let Some(intent) = turn_intent_id {
+        let client_id = orgtrack_core::sources::imported_history::turn_correlation::client_message_id_for_turn_intent(intent)
+            .ok_or_else(|| "Invalid Codex turn correlation ID".to_string())?;
+        params["clientUserMessageId"] = Value::String(client_id);
+    }
+    Ok(params)
+}
+
 async fn start_turn(
     stdin: &mut ChildStdin,
     request_id: &mut u64,
     thread_id: &str,
     input: &[Value],
     collaboration_mode: &Value,
+    turn_intent_id: Option<&str>,
 ) -> Result<u64, String> {
     *request_id += 1;
     let turn_request_id = *request_id;
@@ -1353,7 +1375,7 @@ async fn start_turn(
         stdin,
         turn_request_id,
         "turn/start",
-        serde_json::json!({"threadId": thread_id, "input": input, "collaborationMode": collaboration_mode}),
+        turn_start_params(thread_id, input, collaboration_mode, turn_intent_id)?,
     )
     .await?;
     Ok(turn_request_id)
@@ -1547,6 +1569,7 @@ pub async fn run_app_server_turn(
             &thread_id,
             &input,
             &collaboration_mode,
+            turn.turn_intent_id.as_deref(),
         )
         .await?
     };
@@ -1691,6 +1714,7 @@ pub async fn run_app_server_turn(
                             &thread_id,
                             &input,
                             &collaboration_mode,
+                            turn.turn_intent_id.as_deref(),
                         )
                         .await?;
                         turn_started = false;

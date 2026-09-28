@@ -113,7 +113,12 @@
       "resetsAvailable_one": "Có {{count}} lượt đặt lại",
       "resetsAvailable_few": "Có {{count}} lượt đặt lại",
       "resetsAvailable_many": "Có {{count}} lượt đặt lại",
-      "resetsAvailable_other": "Có {{count}} lượt đặt lại"
+      "resetsAvailable_other": "Có {{count}} lượt đặt lại",
+      "resetsExpire": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_one": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_few": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_many": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_other": "{{count}} lượt đặt lại hết hạn vào {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Danh sách đám mây không hợp lệ",
@@ -1319,7 +1324,7 @@
     "deleteOrgTitle": "Xóa nhóm?",
     "deleteOrgMessage": "\"{{name}}\" sẽ bị xóa vĩnh viễn. Không thể hoàn tác thao tác này.",
     "cliUpdateAlerts": {
-      "label": "Cảnh báo cập nhật CLI",
+      "label": "Thông báo cập nhật CLI",
       "description": "Kiểm tra phiên bản CLI và cảnh báo khi có bản cập nhật. Tắt sẽ vô hiệu hóa việc kiểm tra"
     },
     "cliManagedConfig": {

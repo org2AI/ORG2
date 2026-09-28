@@ -365,7 +365,8 @@ export function useEditorOperations(): UseEditorOperationsResult {
     if (!host) return { parts };
     host.childNodes.forEach((node) => {
       if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent ?? "";
+        // Match extractPlainText: caret anchors are editor state, not content.
+        const text = (node.textContent ?? "").replace(/\u200B/g, "");
         if (text) parts.push({ kind: "text", text });
         return;
       }
@@ -382,7 +383,7 @@ export function useEditorOperations(): UseEditorOperationsResult {
         return;
       }
       // Fall back to plain-text extraction for any unexpected child.
-      const text = element.textContent ?? "";
+      const text = (element.textContent ?? "").replace(/\u200B/g, "");
       if (text) parts.push({ kind: "text", text });
     });
     return { parts };

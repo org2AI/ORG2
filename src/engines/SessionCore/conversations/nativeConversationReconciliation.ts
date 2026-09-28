@@ -87,13 +87,16 @@ export function mergeInterruptedConversationProjection(
   nativeEvents: readonly SessionEvent[],
   projectedEvents: readonly SessionEvent[]
 ): SessionEvent[] {
+  if (!projectedEvents.some((event) => event.source === "user")) {
+    return mergeSparseInterruptedOutput(nativeEvents, projectedEvents);
+  }
   const nativeItems = projectNativeConversationItems(nativeEvents);
   const projectedItems = projectNativeConversationItems(projectedEvents);
   if (
     nativeItems.length >= projectedItems.length ||
     !nativeConversationItemsArePrefix(nativeItems, projectedItems)
   ) {
-    return [...nativeEvents];
+    return mergeSparseInterruptedOutput(nativeEvents, projectedEvents);
   }
 
   const suffixSourceIds = new Set(
@@ -106,4 +109,61 @@ export function mergeInterruptedConversationProjection(
       !nativeEventIds.has(event.id)
   );
   return suffix.length > 0 ? [...nativeEvents, ...suffix] : [...nativeEvents];
+}
+
+/** Native sessions cache finalized output without a copy of their user history.
+ * Recover only the last interrupted native turn, anchored by its durable intent.
+ * A completed/provider-authored answer always wins over a cached partial.
+ */
+export function mergeSparseInterruptedOutput(
+  nativeEvents: readonly SessionEvent[],
+  projectedEvents: readonly SessionEvent[]
+): SessionEvent[] {
+  const unchanged = () => nativeEvents as SessionEvent[];
+  if (projectedEvents.length === 0) return unchanged();
+  let userIndex = -1;
+  for (let index = nativeEvents.length - 1; index >= 0; index -= 1) {
+    if (nativeEvents[index].source === "user") {
+      userIndex = index;
+      break;
+    }
+  }
+  if (userIndex < 0) return unchanged();
+  const anchor = nativeEvents[userIndex];
+  const intent = anchor.result?.turnIntentId;
+  if (
+    typeof intent !== "string" ||
+    !intent ||
+    nativeEvents.filter(
+      (event) =>
+        event.source === "user" && event.result?.turnIntentId === intent
+    ).length !== 1
+  )
+    return unchanged();
+  const tail = nativeEvents.slice(userIndex + 1);
+  if (
+    !tail.some((event) => event.actionType === "task_failed") ||
+    tail.some((event) => event.actionType === "task_completed") ||
+    projectNativeConversationItems(tail).length > 0
+  )
+    return unchanged();
+  const ids = new Set(nativeEvents.map((event) => event.id));
+  const suffix = projectedEvents.filter((event) => {
+    if (
+      event.sessionId !== anchor.sessionId ||
+      event.result?.turnIntentId !== intent ||
+      event.source !== "assistant" ||
+      event.actionType !== "assistant" ||
+      event.displayVariant !== "message" ||
+      event.isDelta !== false ||
+      !event.id.startsWith(`stream-msg-${anchor.sessionId}-`) ||
+      event.args?.syntheticLive === true ||
+      ids.has(event.id) ||
+      projectNativeConversationItems([event]).length !== 1
+    )
+      return false;
+    ids.add(event.id);
+    return true;
+  });
+  return suffix.length ? [...nativeEvents, ...suffix] : unchanged();
 }

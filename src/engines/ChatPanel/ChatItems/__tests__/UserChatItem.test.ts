@@ -337,6 +337,29 @@ describe("UserChatItem raw prompt affordance", () => {
 });
 
 describe("UserChatItem delivery failure", () => {
+  it("keeps explicit retry for an accepted failure without a second delivery error card", () => {
+    const event = makeSessionEvent({
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      displayText: "Continue",
+      displayStatus: "completed",
+      result: {
+        syntheticUserInput: true,
+        deliveryStatus: "sent",
+        executionError: "usage limit",
+      },
+    });
+    const markup = renderToStaticMarkup(
+      createElement(UserChatItem, {
+        chatItem: makeChatItem(event),
+        onEditSubmit: () => undefined,
+      })
+    );
+    expect(markup).toContain("common:actions.retry");
+    expect(markup).not.toContain("chat-message-delivery-failed");
+    expect(markup).not.toContain("usage limit"); // the terminal agent event owns the detail
+  });
   it("renders provider details in a default session-body alert", () => {
     const event = makeSessionEvent({
       id: "user-message-failed",

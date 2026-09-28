@@ -425,6 +425,8 @@ function TableComponent<T = unknown>(
     [ref]
   );
 
+  const hasExpandControl = !!expandable && !settings;
+
   return (
     <div ref={mergedRef} className={wrapperClasses} style={style}>
       <div className="table-container">
@@ -433,12 +435,12 @@ function TableComponent<T = unknown>(
             <table className="table">
               <TableColGroup
                 headerGroups={tableHeaderGroups}
-                hasExpandable={!!expandable}
+                hasExpandable={hasExpandControl}
                 columnWidths={settingsHeaderColumnWidths}
               />
               <TableHeader
                 headerGroups={tableHeaderGroups}
-                hasExpandable={!!expandable}
+                hasExpandable={hasExpandControl}
                 columnWidths={settingsHeaderColumnWidths}
               />
             </table>
@@ -453,12 +455,12 @@ function TableComponent<T = unknown>(
           <table className="table" ref={bodyTableRef}>
             <TableColGroup
               headerGroups={tableHeaderGroups}
-              hasExpandable={!!expandable}
+              hasExpandable={hasExpandControl}
             />
             {showHeader && !showFixedSettingsHeader && (
               <TableHeader
                 headerGroups={tableHeaderGroups}
-                hasExpandable={!!expandable}
+                hasExpandable={hasExpandControl}
               />
             )}
             <TableBody

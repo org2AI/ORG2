@@ -87,6 +87,16 @@ fn load_native_transcript_chunks(
         return Ok(None);
     };
     let imported_id = binding.imported_session_id(&cli_session_id);
+    if super::super::native_materializer::has_indexed_codex_transcript(session)? {
+        // SQLite owns the current physical generation. Neither a read failure
+        // nor an empty indexed rollout authorizes replaying an older import.
+        return super::super::native_materializer::load_materialized_cli_transcript(
+            session,
+            &cli_session_id,
+        )?
+        .map(|chunks| Some(stamp_managed_session_id(chunks, &session.session_id)))
+        .ok_or_else(|| "Indexed Codex transcript is unavailable".to_string());
+    }
     load_native_transcript_candidate(
         &session.session_id,
         &imported_id,
@@ -174,6 +184,172 @@ mod native_transcript_resolution_tests {
 
         assert!(chunks.is_none());
     }
+
+    #[test]
+    fn indexed_codex_reads_follow_current_generation_and_never_replay_stale_imports() {
+        use serde_json::json;
+        use std::{fs, path::Path};
+
+        let sandbox = crate::test_utils::test_env::sandbox();
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        for managed in [false, true] {
+            let sid = format!("cliagent-indexed-replay-{managed}");
+            let account = (!managed).then_some("indexed-account");
+            let params = serde_json::from_value(json!({
+                "platform": "codex", "accountId": account, "repoPath": sandbox.path(),
+                "model": "fixture-model", "keySource": "own_key"
+            }))
+            .unwrap();
+            persistence::create_session_with_source(
+                &sid,
+                &params,
+                managed.then_some("test:workspace"),
+            )
+            .unwrap();
+            persistence::update_cli_session_id_for_account(&sid, account, native_id).unwrap();
+            let conn = database::db::get_connection().unwrap();
+            conn.execute(
+                "UPDATE code_sessions SET transcript_source='native' WHERE session_id=?1",
+                [&sid],
+            )
+            .unwrap();
+            let home = if managed {
+                agent_cli::managed_config::launch::native_home(&sid).unwrap()
+            } else {
+                app_paths::native_transcript_home_dir().join(".codex")
+            };
+            fs::create_dir_all(home.join("sessions")).unwrap();
+            let old = home
+                .join("sessions")
+                .join(format!("rollout-{native_id}.jsonl"));
+            let current = home.join("sessions/rollout-bbbbbbbb-cccc-4ddd-8eee-ffffffffffff.jsonl");
+            let write = |path: &Path, text: &str| {
+                fs::write(path, format!("{}\n{}\n{}\n",
+                    json!({"type":"session_meta","payload":{"id":native_id,"cwd":sandbox.path()}}),
+                    json!({"type":"turn_context","payload":{}}),
+                    json!({"type":"event_msg","payload":{"type":"user_message","message":text}}),
+                )).unwrap();
+            };
+            write(&old, "stale-import-content");
+            write(&current, "fresh-native-content");
+            assert_eq!(
+                fs::metadata(&old).unwrap().len(),
+                fs::metadata(&current).unwrap().len()
+            );
+            let same_time = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1);
+            fs::File::open(&old)
+                .unwrap()
+                .set_modified(same_time)
+                .unwrap();
+            fs::File::open(&current)
+                .unwrap()
+                .set_modified(same_time)
+                .unwrap();
+            conn.execute(
+                "INSERT OR REPLACE INTO imported_history_session_cache (source, source_session_id, session_id, source_path) VALUES ('codex_app', ?1, ?2, ?3)",
+                rusqlite::params![native_id, format!("codex:{native_id}"), old.to_string_lossy()],
+            ).unwrap();
+            let index = rusqlite::Connection::open(home.join("state_5.sqlite")).unwrap();
+            index
+                .execute_batch(
+                    "CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT NOT NULL)",
+                )
+                .unwrap();
+            index
+                .execute(
+                    "INSERT INTO threads VALUES (?1, ?2)",
+                    rusqlite::params![native_id, old.to_string_lossy()],
+                )
+                .unwrap();
+            let old_revision = load_cli_transcript_revision(&sid)
+                .unwrap()
+                .revision
+                .unwrap();
+            assert!(serde_json::to_string(&load_session_chunks(&sid).unwrap())
+                .unwrap()
+                .contains("stale-import-content"));
+            index
+                .execute(
+                    "UPDATE threads SET rollout_path=?1 WHERE id=?2",
+                    rusqlite::params![current.to_string_lossy(), native_id],
+                )
+                .unwrap();
+            for _ in 0..2 {
+                let chunks = serde_json::to_string(&load_session_chunks(&sid).unwrap()).unwrap();
+                assert!(chunks.contains("fresh-native-content"));
+                assert!(!chunks.contains("stale-import-content"));
+                assert_ne!(
+                    load_cli_transcript_revision(&sid)
+                        .unwrap()
+                        .revision
+                        .unwrap(),
+                    old_revision
+                );
+                let location = load_cli_transcript_location(&sid).unwrap().path.unwrap();
+                assert_eq!(
+                    fs::canonicalize(location).unwrap(),
+                    fs::canonicalize(&current).unwrap()
+                );
+                assert_eq!(
+                    fs::canonicalize(
+                        super::super::history::native_history_path(&sid)
+                            .unwrap()
+                            .unwrap()
+                            .1
+                    )
+                    .unwrap(),
+                    fs::canonicalize(&current).unwrap(),
+                );
+            }
+            // Even a readable stale import must never rescue index failure.
+            for invalid in ["missing-row", "missing-file", "unreadable-file"] {
+                match invalid {
+                    "missing-row" => {
+                        index.execute("DELETE FROM threads", []).unwrap();
+                    }
+                    "missing-file" => {
+                        index
+                            .execute(
+                                "INSERT INTO threads VALUES (?1, ?2)",
+                                rusqlite::params![
+                                    native_id,
+                                    home.join("sessions/missing.jsonl").to_string_lossy()
+                                ],
+                            )
+                            .unwrap();
+                    }
+                    _ => {
+                        index
+                            .execute(
+                                "UPDATE threads SET rollout_path=?1",
+                                [current.to_string_lossy().as_ref()],
+                            )
+                            .unwrap();
+                        fs::write(&current, b"\xff\n").unwrap();
+                    }
+                }
+                assert!(load_session_chunks(&sid).is_err(), "{managed}/{invalid}");
+                let mut events = Vec::new();
+                assert!(
+                    super::super::history::visit_cli_history(&sid, &mut |batch| {
+                        events.extend(batch);
+                        Ok(())
+                    })
+                    .is_err()
+                );
+                if invalid != "unreadable-file" {
+                    assert!(load_cli_transcript_revision(&sid).is_err());
+                    assert!(load_cli_transcript_location(&sid).is_err());
+                    assert!(super::super::history::native_history_path(&sid).is_err());
+                }
+            }
+            fs::write(&current, b"").unwrap();
+            assert!(
+                load_session_chunks(&sid).unwrap().is_empty(),
+                "empty authority must not replay stale history"
+            );
+        }
+    }
 }
 
 /// Where a managed session's transcript of record lives, for display
@@ -184,9 +360,9 @@ pub struct CliTranscriptLocation {
     /// True when the transcript lives in the CLI's native store
     /// (`code_sessions.transcript_source = 'native'`), not `sessions.db`.
     pub native: bool,
-    /// Resolved native store path (e.g. a Codex rollout jsonl), when the
-    /// imported-history cache already knows it. `None` for chunks-mode
-    /// sessions, or for native sessions not yet scanned into the cache.
+    /// Resolved native store path (e.g. a Codex rollout jsonl). Indexed Codex
+    /// stores use the current SQLite row; legacy stores use discovery.
+    /// `None` for chunks-mode sessions or an unavailable native binding.
     pub path: Option<String>,
 }
 
@@ -260,6 +436,15 @@ fn load_cli_transcript_revision(session_id: &str) -> Result<CliTranscriptRevisio
         });
     };
 
+    if super::super::native_materializer::has_indexed_codex_transcript(&session)? {
+        return Ok(CliTranscriptRevision {
+            native: true,
+            revision: super::super::native_materializer::materialized_cli_transcript_revision(
+                &session, &native_id,
+            )?,
+        });
+    }
+
     let exact_revision = super::super::native_materializer::materialized_cli_transcript_revision(
         &session, &native_id,
     )
@@ -308,45 +493,62 @@ pub async fn cli_agent_transcript_revision(
 }
 
 /// Resolve the storage location of a session's transcript of record.
-/// Chunks-mode (legacy) sessions report `native: false` — the caller keeps
-/// showing `sessions.db`. Native sessions report the CLI store file path when
-/// the imported-history cache has it, else `native: true` with no path.
+/// Chunks-mode sessions report `native: false`. Indexed Codex sessions report
+/// their authoritative native path; other native sessions use discovery.
 #[tauri::command]
 pub async fn cli_agent_transcript_path(
     session_id: String,
 ) -> Result<CliTranscriptLocation, String> {
-    tokio::task::spawn_blocking(move || {
-        use super::super::native_transcript;
-        let is_native = persistence::get_session(&session_id)
-            .map_err(|e| format!("DB error: {}", e))?
-            .is_some_and(|session| {
-                session.transcript_source == native_transcript::TRANSCRIPT_SOURCE_NATIVE
-            });
-        if !is_native {
-            return Ok(CliTranscriptLocation {
-                native: false,
-                path: None,
-            });
+    tokio::task::spawn_blocking(move || load_cli_transcript_location(&session_id))
+        .await
+        .map_err(|e| format!("Task error: {}", e))?
+}
+
+fn load_cli_transcript_location(session_id: &str) -> Result<CliTranscriptLocation, String> {
+    use super::super::native_transcript;
+    let session = persistence::get_session(session_id).map_err(|e| format!("DB error: {}", e))?;
+    let is_native = session.as_ref().is_some_and(|session| {
+        session.transcript_source == native_transcript::TRANSCRIPT_SOURCE_NATIVE
+    });
+    if !is_native {
+        return Ok(CliTranscriptLocation {
+            native: false,
+            path: None,
+        });
+    }
+    if let Some(session) = session.as_ref() {
+        if super::super::native_materializer::has_indexed_codex_transcript(session)? {
+            let path = match native_transcript::current_native_store_key_for_session(session)? {
+                Some((_, native_id)) => Some(
+                    super::super::native_materializer::materialized_cli_transcript_path(
+                        session, &native_id,
+                    )?
+                    .ok_or("Indexed Codex transcript is unavailable")?
+                    .1
+                    .to_string_lossy()
+                    .into_owned(),
+                ),
+                None => None,
+            };
+            return Ok(CliTranscriptLocation { native: true, path });
         }
-        // Native session with no bound CLI id yet (first turn still running,
-        // or crash before bind): native, but no path to show.
-        let Some((binding, cli_session_id)) =
-            native_transcript::native_store_key_for_managed_session(&session_id)
-        else {
-            return Ok(CliTranscriptLocation {
-                native: true,
-                path: None,
-            });
-        };
-        let conn = database::db::get_connection()
-            .map_err(|err| format!("Failed to open orgtrack source cache DB: {err}"))?;
-        // Exact match first; Codex caches key on the rollout file stem, which
-        // only the `-`-bounded suffix variant matches.
-        let path = cached_native_transcript_path(&conn, binding.source, &cli_session_id)?;
-        Ok(CliTranscriptLocation { native: true, path })
-    })
-    .await
-    .map_err(|e| format!("Task error: {}", e))?
+    }
+    // Native session with no bound CLI id yet (first turn still running,
+    // or crash before bind): native, but no path to show.
+    let Some((binding, cli_session_id)) =
+        native_transcript::native_store_key_for_managed_session(session_id)
+    else {
+        return Ok(CliTranscriptLocation {
+            native: true,
+            path: None,
+        });
+    };
+    let conn = database::db::get_connection()
+        .map_err(|err| format!("Failed to open orgtrack source cache DB: {err}"))?;
+    // Exact match first; Codex caches key on the rollout file stem, which
+    // only the `-`-bounded suffix variant matches.
+    let path = cached_native_transcript_path(&conn, binding.source, &cli_session_id)?;
+    Ok(CliTranscriptLocation { native: true, path })
 }
 
 /// A failed first turn in native mode may leave no readable transcript at

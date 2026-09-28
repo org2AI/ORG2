@@ -2089,11 +2089,18 @@ mod tests {
         let header = json!({"type":"session_meta","payload":{"id":"00000000-0000-4000-8000-000000000001","history_mode":"paginated"}});
         writeln!(file, "{header}").unwrap();
         for (index, intent) in ["intent-old", "intent-new"].iter().enumerate() {
-            let user = turn_correlation::with_turn_intent("Reply only OK", intent);
+            // Old raw histories remain readable; new turns carry native metadata.
+            let user = if index == 0 {
+                format!("<ide_context>\norgii-turn-intent:{intent}\n</ide_context>\n\nReply only OK")
+            } else {
+                "Reply only OK".to_string()
+            };
+            let client_id = (index > 0)
+                .then(|| turn_correlation::client_message_id_for_turn_intent(intent).unwrap());
             let timestamp = format!("2026-09-10T09:45:0{index}.000Z");
             for row in [
                 json!({"timestamp":timestamp,"type":"event_msg","payload":{"type":"task_started","turn_id":intent}}),
-                json!({"timestamp":timestamp,"type":"event_msg","payload":{"type":"item_completed","turn_id":intent,"item":{"type":"UserMessage","id":format!("u-{index}"),"content":[{"type":"text","text":user}]}}}),
+                json!({"timestamp":timestamp,"type":"event_msg","payload":{"type":"item_completed","turn_id":intent,"item":{"type":"UserMessage","id":format!("u-{index}"),"client_id":client_id,"content":[{"type":"text","text":user}]}}}),
                 json!({"timestamp":timestamp,"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"OK"}],"phase":"final_answer"}}),
                 json!({"timestamp":timestamp,"type":"event_msg","payload":{"type":"task_complete","turn_id":intent}}),
             ] {

@@ -631,7 +631,7 @@
       "positionDown": "아래",
       "showQuickActions": "빠른 작업",
       "showSkills": "고정된 스킬",
-      "showCliUpdate": "CLI 업데이트",
+      "showCliUpdate": "CLI 업데이트 알림",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "새 세션"
@@ -1983,10 +1983,12 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} 업데이트가 있습니다",
-      "versions": "현재: {{installed}} · 최신: {{latest}}",
       "upgrade": "터미널에서 업데이트",
-      "upgradeHint": "별도 터미널에서 Cursor CLI를 업데이트합니다. 완료 후 버전을 다시 확인하세요.",
-      "upgradeTerminal": "Cursor CLI 업데이트",
+      "upgradeDocs": "공식 문서",
+      "upgradeChooseMethod": "처음 설치한 방법 선택",
+      "upgradeNative": "내장 업데이트 도구",
+      "upgradeHint": "별도 터미널에서 {{cli}} CLI를 업데이트합니다. 완료 후 버전을 다시 확인하세요.",
+      "upgradeTerminal": "{{cli}} CLI 업데이트",
       "upgradeStarted": "터미널에서 업데이트를 시작했습니다. 완료 후 버전을 다시 확인하세요.",
       "upgradeFailed": "업데이트 터미널을 열지 못했습니다. 다시 시도하세요.",
       "muteUntilNextVersion": "다음 버전까지 알리지 않음",
@@ -2622,6 +2624,10 @@
     "teamChatMode": "팀 채팅",
     "promptTooltip": "Agent에게 보내기",
     "teamChatTooltip": "팀원에게 메시지 보내기 — Agent에게 프롬프트를 보내지 않습니다",
+    "workspaceResolving": "일치하는 로컬 작업 공간을 찾는 중입니다. 잠시 후 다시 시도하세요.",
+    "workspaceRequiredTitle": "일치하는 작업 공간 열기",
+    "workspaceRequiredBody": "에이전트가 이 공유 대화를 계속하려면 저장소의 로컬 체크아웃을 여세요.",
+    "openWorkspace": "작업 공간 열기",
     "imagesUnsupported": "팀 채팅 메시지에는 이미지를 포함할 수 없습니다",
     "participantsTooltip": "대화 참여자 및 토론 메시지",
     "mentionGroup": "팀원"
@@ -2645,10 +2651,12 @@
     "limit": "최대 128개 계정 표시"
   },
   "sharedFile": {
+    "resolvingOrigin": "공유 파일의 출처 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.",
     "downloaded": "다운로드 폴더에 저장됨",
     "downloadError": "다운로드 폴더에 저장할 수 없습니다",
     "title": "공유 파일",
-    "error": "이 파일을 열 수 없습니다. 계정, 서버 및 세션 접근 권한을 확인한 후 링크를 다시 여세요.",
+    "error": "이 파일을 열 수 없습니다. 다시 시도하거나 연결, 계정, 서버 및 세션 접근 권한을 확인하세요.",
+    "notUploaded": "이 파일은 아직 공유 세션에 업로드되지 않았습니다. 보낸 사람의 기기에서 업로드를 완료해야 합니다. 다시 시도하여 확인하세요.",
     "downloadPreview": "내용을 보려면 이 파일을 다운로드하세요",
     "download": "다운로드",
     "loading": "공유 파일 로드 중…"

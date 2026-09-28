@@ -5,6 +5,7 @@
  */
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { isInternalLifecycleEvent } from "@src/engines/SessionCore/ingestion/visibilityFilters";
+import { getCliStorageCanonical } from "@src/engines/SessionCore/rendering/registry/initToolRegistry";
 
 import { conversationSenderStampOf } from "./conversationSenderMetadata";
 import type {
@@ -209,10 +210,14 @@ export function projectNativeConversationItems(
         continue;
       }
       const callId = portableToolCallId(event);
-      const name = event.functionName.trim();
-      if (!name) {
+      const rawName = event.functionName.trim();
+      if (!rawName) {
         throw new Error(`native transcript tool event ${event.id} has no name`);
       }
+      // SDE events retain built-in names (run_shell), while native replay
+      // resolves storage aliases (run_command_line). Project both through
+      // the same Rust-owned alias registry before writing or comparing IR.
+      const name = getCliStorageCanonical(rawName).toLowerCase();
       items.push({
         kind: "tool_call",
         id: `${nativeSourceEventId(event)}:call`,

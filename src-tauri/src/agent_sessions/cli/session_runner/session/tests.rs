@@ -42,29 +42,29 @@ fn codex_turns_always_use_the_desktop_visible_native_transport() {
 }
 
 #[test]
-fn only_codex_native_input_carries_the_mobile_turn_identity() {
-    let correlated =
-        native_correlated_user_input(&ModelType::Codex, "Reply only OK", Some("intent-1"));
-    assert_eq!(
-        orgtrack_core::sources::imported_history::turn_correlation::turn_intent_from_input(
-            correlated.as_ref()
-        )
-        .as_deref(),
-        Some("intent-1")
-    );
-    assert_eq!(
-        orgtrack_core::sources::imported_history::extract_user_request_body(correlated.as_ref()),
-        "Reply only OK"
-    );
+fn ambient_claude_launch_does_not_inherit_a_saved_account() {
+    let home = tempfile::tempdir().expect("temporary credential home");
+    let service = KeyService::new(Some(home.path().to_path_buf()));
+    let mut stale = ModelKey::new(ModelType::ClaudeCode);
+    stale.enabled = false;
+    stale.name = Some("old disabled Claude login".to_string());
+    let stale = service.save_key(stale).expect("save stale account");
 
-    assert!(matches!(
-        native_correlated_user_input(&ModelType::ClaudeCode, "Reply only OK", Some("intent-1")),
-        std::borrow::Cow::Borrowed("Reply only OK")
-    ));
-    assert!(matches!(
-        native_correlated_user_input(&ModelType::Codex, "Reply only OK", None),
-        std::borrow::Cow::Borrowed("Reply only OK")
-    ));
+    assert!(
+        initial_cli_key(&service, &ModelType::ClaudeCode, KeySource::OwnKey, None).is_none(),
+        "the Default Claude CLI model must use ambient auth, even when saved accounts exist"
+    );
+    assert_eq!(
+        initial_cli_key(
+            &service,
+            &ModelType::ClaudeCode,
+            KeySource::OwnKey,
+            Some(&stale.id),
+        )
+        .map(|key| key.id),
+        Some(stale.id),
+        "an explicitly selected account must retain its identity for launch validation"
+    );
 }
 
 #[test]
@@ -468,6 +468,54 @@ fn codex_auth_payload_matches_credential_type_matrix() {
         Some("oauth-refresh")
     );
     assert_eq!(payload["tokens"]["id_token"].as_str(), Some("oauth-id"));
+}
+
+#[test]
+fn codex_bearer_only_profile_remains_readable_without_refresh_authority() {
+    // Match the required token fields consumed by Codex, rather than merely
+    // checking that our own JSON writer can read its output back.
+    #[derive(serde::Deserialize)]
+    struct CodexTokens {
+        access_token: String,
+        refresh_token: String,
+        id_token: String,
+    }
+
+    with_temp_orgii_home(|_| {
+        let mut key = ModelKey::new(ModelType::Codex);
+        key.auth_method = AuthMethod::Oauth;
+        key.session_token = Some("test-access".to_string());
+        key.env_vars
+            .insert(CODEX_ID_TOKEN_ENV_KEY.to_string(), "test-id".to_string());
+        for (index, refresh) in [None, Some(""), Some("  "), Some("test-refresh")]
+            .into_iter()
+            .enumerate()
+        {
+            let account_id = format!("bearer-only-{index}");
+            key.env_vars.remove(CODEX_REFRESH_TOKEN_ENV_KEY);
+            if let Some(refresh) = refresh {
+                key.env_vars
+                    .insert(CODEX_REFRESH_TOKEN_ENV_KEY.to_string(), refresh.to_string());
+            }
+            super::super::oauth_setup::write_codex_cli_auth_file(
+                &account_id,
+                &key,
+                &HashMap::new(),
+            )
+            .unwrap();
+            let auth = read_json(&app_paths::codex_cli_profile_dir(&account_id).join("auth.json"));
+            let tokens: CodexTokens = serde_json::from_value(auth["tokens"].clone()).unwrap();
+            assert_eq!(tokens.access_token, "test-access");
+            assert_eq!(tokens.id_token, "test-id");
+            assert_eq!(
+                tokens.refresh_token,
+                refresh
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or_default()
+            );
+            assert!(auth["OPENAI_API_KEY"].is_null());
+        }
+    });
 }
 
 #[test]
@@ -1348,5 +1396,77 @@ fn managed_execution_removes_ambient_routing_without_removing_runtime_controls()
             .unwrap()
             .1,
         Some(std::ffi::OsStr::new("/owned/session"))
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn native_store_fence_survives_parent_guard_until_child_exits() {
+    use agent_cli::managed_config::native_app::codex_history::{
+        NativeStoreWriter, NATIVE_STORE_WRITER_LOCK,
+    };
+    use fs2::FileExt;
+    let home = tempfile::tempdir().unwrap();
+    let home = home.path().canonicalize().unwrap();
+    let writer = NativeStoreWriter::acquire(&home).unwrap();
+    let mut command = Command::new("/bin/sh");
+    command.args(["-c", "read release"]).stdin(Stdio::piped());
+    inherit_codex_store_writer(&mut command, &writer);
+    let mut child = command.spawn().unwrap();
+    drop(writer);
+    let probe = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(home.join(NATIVE_STORE_WRITER_LOCK))
+        .unwrap();
+    assert!(
+        probe.try_lock_exclusive().is_err(),
+        "child must retain the fence after parent guard drops"
+    );
+    drop(child.stdin.take());
+    child.wait().await.unwrap();
+    probe.try_lock_exclusive().unwrap();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn native_store_launch_waits_for_publication_and_bounds_contention() {
+    use agent_cli::managed_config::native_app::codex_history::{
+        NativeStoreWriter, NATIVE_STORE_WRITER_LOCK,
+    };
+    use fs2::FileExt;
+    let directory = tempfile::tempdir().unwrap();
+    let home = directory.path().canonicalize().unwrap();
+    drop(NativeStoreWriter::acquire(&home).unwrap());
+    let publication = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(home.join(NATIVE_STORE_WRITER_LOCK))
+        .unwrap();
+    publication.try_lock_exclusive().unwrap();
+    assert!(
+        acquire_codex_store_writer(&home, std::time::Duration::from_millis(20))
+            .await
+            .err()
+            .unwrap()
+            .contains("still publishing")
+    );
+    let release = tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(75)).await;
+        drop(publication);
+    });
+    let writer = acquire_codex_store_writer(&home, std::time::Duration::from_secs(2))
+        .await
+        .unwrap();
+    release.await.unwrap();
+    drop(writer);
+    let malformed = home.join("not-a-directory");
+    std::fs::write(&malformed, "fixture").unwrap();
+    assert!(
+        acquire_codex_store_writer(&malformed, std::time::Duration::from_secs(10))
+            .await
+            .err()
+            .unwrap()
+            .contains("Cannot fence")
     );
 }

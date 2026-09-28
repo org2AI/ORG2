@@ -9,7 +9,7 @@ import {
 import { isAgentErrorEvent } from "../chatItemPipeline/classifiers";
 import { isAssistantMessageEvent } from "../chatItemPipeline/dedup";
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
-import { turnOutputImages } from "./turnOutputImages";
+import { chatItemOutputImages } from "./chatItemOutputImages";
 
 export interface UnloadedTurnMeta {
   turnId: string;
@@ -325,7 +325,14 @@ export function projectChatGroups(
   const groups: ChatGroup[] = [];
   let current: ChatGroup = { header: null, items: [] };
 
-  for (const item of optimizedChatHistory) {
+  for (const sourceItem of optimizedChatHistory) {
+    // Media belongs to the producing item, never to the turn's final reply.
+    // Assign ownership before collapse so hidden tool text cannot move its
+    // screenshots after later assistant messages.
+    const images = chatItemOutputImages(sourceItem);
+    const item = images.length
+      ? { ...sourceItem, outputImages: images }
+      : sourceItem;
     if (item.event && isRetryAuditBoundary(item.event)) {
       if (current.header || current.items.length > 0) groups.push(current);
       current = { header: null, items: [item] };
@@ -486,17 +493,28 @@ export function projectChatGroups(
     const pinnedIndices: number[] = [];
     for (let i = 0; i < group.items.length; i++) {
       if (
-        isAgentErrorItem(group.items[i]) ||
-        (i >= Math.max(keepIndex + 1, 0) &&
-          isCompactBoundaryItem(group.items[i]))
+        i !== keepIndex &&
+        (group.items[i].outputImages?.length ||
+          isAgentErrorItem(group.items[i]) ||
+          (i >= Math.max(keepIndex + 1, 0) &&
+            isCompactBoundaryItem(group.items[i])))
       ) {
         pinnedIndices.push(i);
       }
     }
+    const collapsedItem = (index: number): OptimizedChatItem => {
+      const item = group.items[index];
+      return index !== keepIndex &&
+        item.outputImages?.length &&
+        !isAgentErrorItem(item) &&
+        !isCompactBoundaryItem(item)
+        ? { ...item, structuralOnly: true }
+        : item;
+    };
 
     if (keepIndex === -1 && pinnedIndices.length > 0) {
       const keptIndexSet = new Set(pinnedIndices);
-      const kept = pinnedIndices.map((index) => group.items[index]);
+      const kept = pinnedIndices.map(collapsedItem);
       survivingPerGroup[groupIndex] = kept;
       groupCounts[groupIndex] = kept.length;
       const firstKeptFlatIndex = runningFlatIdx;
@@ -536,7 +554,7 @@ export function projectChatGroups(
     // a successful retry must not become the apparent final result.
     const keptIndices = [keepIndex, ...pinnedIndices].sort((a, b) => a - b);
     const keptIndexSet = new Set(keptIndices);
-    const kept = keptIndices.map((index) => group.items[index]);
+    const kept = keptIndices.map(collapsedItem);
     survivingPerGroup[groupIndex] = kept;
     groupCounts[groupIndex] = kept.length;
     const keptFlatIndex = runningFlatIdx;
@@ -544,18 +562,6 @@ export function projectChatGroups(
       keptIndexSet.has(index) ? null : keptFlatIndex
     );
     runningFlatIdx += kept.length;
-  }
-
-  // Gallery ownership is independent of the activity/text collapse policy.
-  // Attach it to the final surviving row so virtualization and search indices
-  // remain unchanged, including image-only turns with a structural row.
-  for (let index = 0; index < groups.length; index++) {
-    const images = turnOutputImages(groups[index].items);
-    const surviving = survivingPerGroup[index];
-    if (images.length && surviving.length) {
-      const last = surviving.length - 1;
-      surviving[last] = { ...surviving[last], outputImages: images };
-    }
   }
 
   const flatItems = survivingPerGroup.flat();

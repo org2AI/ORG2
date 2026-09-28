@@ -632,7 +632,7 @@
       "positionDown": "Down",
       "showQuickActions": "Quick actions",
       "showSkills": "Pinned skills",
-      "showCliUpdate": "CLI update",
+      "showCliUpdate": "CLI update notifications",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "New session"
@@ -1908,10 +1908,12 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} has an update",
-      "versions": "Current: {{installed}} · Latest: {{latest}}",
       "upgrade": "Upgrade in terminal",
-      "upgradeHint": "Opens a separate terminal to upgrade Cursor CLI. Recheck the version when it finishes.",
-      "upgradeTerminal": "Upgrade Cursor CLI",
+      "upgradeDocs": "Official documentation",
+      "upgradeChooseMethod": "Choose how you originally installed it",
+      "upgradeNative": "Built-in updater",
+      "upgradeHint": "Opens a separate terminal to upgrade {{cli}} CLI. Recheck the version when it finishes.",
+      "upgradeTerminal": "Upgrade {{cli}} CLI",
       "upgradeStarted": "Upgrade started in the terminal. Recheck the version when it finishes.",
       "upgradeFailed": "Could not open the upgrade terminal. Please try again.",
       "muteUntilNextVersion": "No alert until next version",
@@ -2611,6 +2613,10 @@
     "teamChatMode": "Team chat",
     "promptTooltip": "Send to the agent",
     "teamChatTooltip": "Message teammates — does not prompt the agent",
+    "workspaceResolving": "Checking for a matching local workspace. Try again in a moment.",
+    "workspaceRequiredTitle": "Open a matching workspace",
+    "workspaceRequiredBody": "This shared conversation needs a local checkout of its repository before an agent can continue it.",
+    "openWorkspace": "Open workspace",
     "imagesUnsupported": "Team chat messages cannot include images",
     "participantsTooltip": "Conversation participants and discussion messages",
     "mentionGroup": "Teammates"
@@ -2644,10 +2650,12 @@
     "limit": "Showing up to 128 accounts"
   },
   "sharedFile": {
+    "resolvingOrigin": "The shared file’s source is still loading. Please try again shortly.",
     "downloaded": "Saved to Downloads",
     "downloadError": "Unable to save to Downloads",
     "title": "Shared file",
-    "error": "Unable to open this file. Check your account, server, and session access, then reopen the link.",
+    "error": "Unable to open this file. Retry, or check your connection, account, server, and session access.",
+    "notUploaded": "This file has not been uploaded to this shared session yet. The sender’s device needs to finish uploading it; retry to check again.",
     "downloadPreview": "Download this file to view its contents",
     "download": "Download",
     "loading": "Loading shared file…"

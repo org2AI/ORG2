@@ -76,6 +76,23 @@ it("discovers an account without receiving any website URL", async () => {
   await loadConnections(store);
   expect(mocks.authorize).toHaveBeenCalledTimes(1);
 });
+it.each(["orgii-dev", "orgii-instance93"])(
+  "starts background account discovery with the native build's %s scheme",
+  async (appScheme) => {
+    mocks.invoke.mockResolvedValueOnce({ ...status, app_scheme: appScheme });
+    expect((await loadConnections(store)).connections).toEqual([connection]);
+    expect(
+      mocks.invoke.mock.calls.find(
+        ([p]) => p.command === "market_connection_begin"
+      )?.[1]
+    ).toEqual({
+      raw: `${appScheme}://market/connect?workspace_id=ws_account&target=org2`,
+    });
+    expect(mocks.authorize.mock.calls[0][0].selection.protocol).toBe(
+      `${appScheme}:`
+    );
+  }
+);
 it("shares concurrent first-load authorization", async () => {
   const results = await Promise.all([
     loadConnections(store),

@@ -4,6 +4,10 @@ import { act, createElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProjectData } from "@src/api/http/project";
+import {
+  bumpOrg2CloudChannelMessagesVersionAtom,
+  bumpOrg2CloudChannelsVersionAtom,
+} from "@src/features/Org2Cloud/channels/channelsAtom";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import {
   type Org2CloudOrg,
@@ -488,5 +492,35 @@ describe("useTeamInboxDataSource orchestration", () => {
     await flushAsync();
 
     expect(mocks.readProjects).toHaveBeenCalledTimes(2);
+  });
+  it("refreshes on channel message signals and clears the scope immediately on channel ACL changes", async () => {
+    store.set(org2CloudAuthAtom, AUTH);
+    store.set(org2CloudOrgsAtom, [cloudOrg("org-a")]);
+    seedSidebarCloudScope(store, "org-a");
+    await mount();
+    const before = mocks.coordinatorRefresh.mock.calls.length;
+    const oldScope = refreshScopes().at(-1)?.key;
+    await act(async () =>
+      store.set(bumpOrg2CloudChannelMessagesVersionAtom, { orgId: "other-org" })
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    const settled = mocks.coordinatorRefresh.mock.calls.length;
+    expect(settled).toBeGreaterThanOrEqual(before);
+    await act(async () =>
+      store.set(bumpOrg2CloudChannelMessagesVersionAtom, { orgId: "org-a" })
+    );
+    await flushAsync();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(mocks.coordinatorRefresh.mock.calls.length).toBeGreaterThan(settled);
+    await act(async () => store.set(bumpOrg2CloudChannelsVersionAtom, "org-a"));
+    await flushAsync();
+    expect(refreshScopes().at(-1)?.key).not.toBe(oldScope);
+    expect(mocks.coordinatorEnsureScope.mock.calls.at(-1)?.[1]).toBe(
+      refreshScopes().at(-1)?.key
+    );
   });
 });

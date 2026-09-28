@@ -175,7 +175,7 @@ pub(super) fn evict_orphan_kiro_proxy_homes(
     evict_orphan_session_dirs(paths::kiro_proxy_home_root(), known_session_ids)
 }
 
-/// Walk `/tmp/orgii-{uid}/{workspace}/{session_id}/` and remove session temp
+/// Walk `<ORGII_HOME>/tmp/{workspace}/{session_id}/` and remove session temp
 /// dirs whose session id no longer exists in the durable session tables.
 pub(super) fn evict_orphan_scratchpads(
     known_session_ids: &std::collections::HashSet<String>,
@@ -189,13 +189,13 @@ pub(super) fn evict_orphan_scratchpads(
     for workspace_entry in fs::read_dir(&root)? {
         let workspace_entry = workspace_entry?;
         let workspace_path = workspace_entry.path();
-        if !workspace_path.is_dir() {
+        if !workspace_entry.file_type()?.is_dir() {
             continue;
         }
         for session_entry in fs::read_dir(&workspace_path)? {
             let session_entry = session_entry?;
             let session_path = session_entry.path();
-            if !session_path.is_dir() {
+            if !session_entry.file_type()?.is_dir() {
                 continue;
             }
             let Some(name) = session_path.file_name().and_then(|n| n.to_str()) else {

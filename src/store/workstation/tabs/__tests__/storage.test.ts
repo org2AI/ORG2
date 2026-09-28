@@ -668,3 +668,36 @@ describe("retired editor settings tabs", () => {
     expect(loadWorkstationTabsState()).toEqual(loaded);
   });
 });
+
+it("never persists shared-file capabilities, paths, or references in any partition", () => {
+  const state = emptyWorkstationTabsState();
+  const preview = tab("shared-file:private-source", "shared-file", {
+    data: {
+      reference: { path: "/private/source" },
+      getAccess: () => "bearer-secret",
+    },
+  });
+  const durable = tab("file:keep");
+  state.shared.tabs = [preview];
+  state.globalWorkspace = workspace([preview, durable]);
+  state.sessionWorkspaces = { session: workspace([preview, durable]) };
+  state.directoryWorkspaces = { "/repo": workspace([preview, durable]) };
+  state.legacySeed = workspace([preview, durable]);
+  expect(persistWorkstationTabsState(state)).toBe(true);
+  for (let index = 0; index < localStorage.length; index++) {
+    const value = localStorage.getItem(localStorage.key(index)!)!;
+    expect(value).not.toContain("shared-file");
+    expect(value).not.toContain("private-source");
+    expect(value).not.toContain("/private/source");
+    expect(value).not.toContain("bearer-secret");
+  }
+  expect(state.globalWorkspace.tabs).toHaveLength(2);
+  const restored = loadWorkstationTabsState();
+  expect(restored.globalWorkspace.tabs.map((item) => item.id)).toEqual([
+    "file:keep",
+  ]);
+  expect(restored.globalWorkspace.activeTabRef).toBeNull();
+  expect(restored.globalWorkspace.tabOrder).toEqual([
+    { partition: "workspace", tabId: "file:keep" },
+  ]);
+});

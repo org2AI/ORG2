@@ -56,8 +56,8 @@ export function createChannelPostHandler(
   deps: ChannelPostHandlerDeps
 ): ChannelPostHandler {
   const { post, translate, onError } = deps;
-  return async ({ displayText }: SubmitOverrideInput): Promise<boolean> => {
-    const body = displayText.trim();
+  return async (input: SubmitOverrideInput): Promise<boolean> => {
+    const body = input.displayText.trim();
     if (body.length === 0) return true;
 
     const result = post(body);
@@ -103,7 +103,8 @@ export function resolveCloudChannelErrorKey(error: unknown): string {
 
 export interface CloudChannelPostHandlerDeps {
   /** Posts the body; rejects with the RPC error (rollback already applied). */
-  post: (body: string) => Promise<void>;
+  post: (body: string, mentionedUserIds?: readonly string[]) => Promise<void>;
+  resolveMentions?: (input: SubmitOverrideInput) => readonly string[];
   translate: (key: string) => string;
   onError: (message: string | null) => void;
 }
@@ -119,16 +120,18 @@ export function createCloudChannelPostHandler(
   deps: CloudChannelPostHandlerDeps
 ): ChannelPostHandler {
   const { post, translate, onError } = deps;
-  return async ({ displayText }: SubmitOverrideInput): Promise<boolean> => {
-    const body = displayText.trim();
+  return async (input: SubmitOverrideInput): Promise<boolean> => {
+    const body = input.displayText.trim();
     if (body.length === 0) return true;
-    if (body.length > CHANNEL_MESSAGE_MAX_LENGTH) {
+    if (Array.from(body).length > CHANNEL_MESSAGE_MAX_LENGTH) {
       const message = translate(CHANNEL_POST_ERROR_KEYS.tooLong);
       onError(message);
       throw new Error(message);
     }
     try {
-      await post(body);
+      const recipients = deps.resolveMentions?.(input) ?? [];
+      if (recipients.length) await post(body, recipients);
+      else await post(body);
       onError(null);
       return true;
     } catch (error) {

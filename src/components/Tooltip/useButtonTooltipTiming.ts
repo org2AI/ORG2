@@ -1,4 +1,9 @@
-import { useSettingValue } from "@src/hooks/settings/useSettings";
+import { useAtomValue } from "jotai";
+
+// Read the value atoms directly, not `useSettingValue`: that hook's module
+// also carries the Tauri-backed writers, and `Tooltip` renders in
+// browser-safe shared components such as `PageNotice`.
+import { settingAtom } from "@src/store/settings/settingsValueAtoms";
 
 export interface ButtonTooltipTiming {
   enabled: boolean;
@@ -10,7 +15,7 @@ export interface ButtonTooltipTiming {
  * timing for every `<Tooltip kind="button">`.
  */
 export function useButtonTooltipTiming(): ButtonTooltipTiming {
-  const enabled = useSettingValue("general.buttonTooltipsEnabled");
-  const delayMs = useSettingValue("general.buttonTooltipDelayMs");
+  const enabled = useAtomValue(settingAtom("general.buttonTooltipsEnabled"));
+  const delayMs = useAtomValue(settingAtom("general.buttonTooltipDelayMs"));
   return { enabled, delayMs };
 }

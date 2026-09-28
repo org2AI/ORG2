@@ -571,18 +571,26 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                     />
                   </>
                 ) : (
-                  <ChatHistoryEmptyState
-                    sessionId={activeId}
-                    sessionLoadStatus={sessionLoadStatus}
-                    sessionLoadError={sessionLoadError}
-                    emptyConfirmed={emptyState.emptyConfirmed}
-                    shouldShowEmpty={emptyState.shouldShowEmpty}
-                    isRolledBack={emptyState.isRolledBack}
-                    projectionPending={
-                      projectionResult.pending && chatHistory.length > 0
-                    }
-                    onReload={handleReloadSession}
-                  />
+                  // Empty/loading surfaces need the same header reservation
+                  // as transcript rows; otherwise their first content is
+                  // painted underneath the opaque floating session header.
+                  <div
+                    className="h-full min-h-0"
+                    style={{ paddingTop: transcriptTopPaddingPx }}
+                  >
+                    <ChatHistoryEmptyState
+                      sessionId={activeId}
+                      sessionLoadStatus={sessionLoadStatus}
+                      sessionLoadError={sessionLoadError}
+                      emptyConfirmed={emptyState.emptyConfirmed}
+                      shouldShowEmpty={emptyState.shouldShowEmpty}
+                      isRolledBack={emptyState.isRolledBack}
+                      projectionPending={
+                        projectionResult.pending && chatHistory.length > 0
+                      }
+                      onReload={handleReloadSession}
+                    />
+                  </div>
                 )}
               </div>
             </div>

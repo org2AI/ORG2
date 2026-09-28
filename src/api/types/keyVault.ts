@@ -67,6 +67,7 @@ export interface VerificationData {
  * names without updating those callers.
  */
 export interface QuotaSnapshot {
+  model_quotas?: import("./keys").QuotaInfo["model_quotas"];
   remaining_percentage: number;
   used?: number;
   limit?: number;
@@ -95,7 +96,16 @@ export interface QuotaSnapshot {
   team_on_demand_enabled?: boolean;
   team_on_demand_used?: number;
 
+  /** Banked free limit resets (Codex reset credits, Claude limit resets). */
+  reset_credits?: QuotaResetCredits | null;
+
   // Provider messages
   auto_message?: string;
   named_message?: string;
+}
+
+export interface QuotaResetCredits {
+  available: number;
+  /** Known expiries of the available resets, earliest first. */
+  expirations: { count: number; expires_at: string }[];
 }

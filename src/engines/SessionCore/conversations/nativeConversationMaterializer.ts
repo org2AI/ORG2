@@ -9,7 +9,6 @@
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { loadAuthoritativeSessionEvents } from "@src/engines/SessionCore/sync/authoritativeSessionEvents";
 import { invokeTauri } from "@src/util/platform/tauri/init";
-import { isCliSession } from "@src/util/session/sessionDispatch";
 
 import {
   type LocalConversationTarget,
@@ -141,29 +140,24 @@ export async function materializeNativeConversation(params: {
     { sessionId: params.sessionId, items }
   );
   const receipt: NativeMaterializationReceipt = { ...wireReceipt, fidelity };
-  try {
-    if (receipt.itemCount !== items.length) {
-      throw new Error(
-        `native materializer wrote ${receipt.itemCount} of ${items.length} items`
-      );
-    }
-    const { events } = await loadAuthoritativeSessionEvents(params.sessionId);
-    const roundTripped = projectNativeConversationItems(events);
-    if (!nativeConversationItemsEqual(items, roundTripped)) {
-      throw new Error(
-        `native transcript round-trip verification failed; the target session was not started (${nativeConversationMismatch(items, roundTripped)})`
-      );
-    }
-    return { events, receipt };
-  } catch (error) {
-    if (isCliSession(params.sessionId)) {
-      await invokeTauri("discard_native_conversation_materialization", {
-        sessionId: params.sessionId,
-        nativeSessionId: receipt.nativeSessionId,
-      }).catch(() => undefined);
-    }
-    throw error;
+  // Rust has already published this artifact and its native binding. Keep
+  // them on a failed read/verification so Retry can read a stable revision
+  // and revalidate the prefix. Deleting only the file and binding leaves
+  // ledger/replay witnesses behind and permanently poisons canonical reads.
+  // The caller still fails closed before dispatch on every mismatch.
+  if (receipt.itemCount !== items.length) {
+    throw new Error(
+      `native materializer wrote ${receipt.itemCount} of ${items.length} items`
+    );
   }
+  const { events } = await loadAuthoritativeSessionEvents(params.sessionId);
+  const roundTripped = projectNativeConversationItems(events);
+  if (!nativeConversationItemsEqual(items, roundTripped)) {
+    throw new Error(
+      `native transcript round-trip verification failed; the target session was not started (${nativeConversationMismatch(items, roundTripped)})`
+    );
+  }
+  return { events, receipt };
 }
 
 /**

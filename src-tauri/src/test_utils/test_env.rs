@@ -44,6 +44,8 @@ fn prime_schema(_sandbox_root: &Path) {
     let _ = database::db::configure_connection(&conn);
     let _ = session_persistence::init_session_tables(&conn);
     let _ = crate::agent_sessions::cli::init_cli_agent_tables(&conn);
+    crate::agent_sessions::shared_file_outbox::init_tables(&conn)
+        .expect("shared file outbox schema");
     let _ = inbox::init_inbox_tables(&conn);
     let _ = orgtrack_core::store::sqlite::SqliteRecordStore::init_tables(&conn);
     let _ = orgtrack_core::store::sqlite::SqliteRecordStore::init_source_cache_tables(&conn);

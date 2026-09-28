@@ -168,6 +168,26 @@ mod tests {
     }
 
     #[test]
+    fn ambient_claude_launch_uses_the_isolated_discovery_root() {
+        let _lock = env_lock();
+        let _external = EnvVarGuard::set("ORGII_EXTERNAL_HISTORY_HOME", "/tmp/orgii-isolated");
+        let _native = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", "/tmp/orgii-publication");
+        assert_eq!(
+            crate::claude_code_isolated_ambient_config_dir(),
+            Some(external_history_home_dir().join(".claude")),
+        );
+    }
+
+    #[test]
+    fn ambient_claude_launch_without_isolation_preserves_native_configuration() {
+        let _lock = env_lock();
+        let _external = EnvVarGuard::unset("ORGII_EXTERNAL_HISTORY_HOME");
+        assert_eq!(crate::claude_code_isolated_ambient_config_dir(), None);
+        let _empty = EnvVarGuard::set("ORGII_EXTERNAL_HISTORY_HOME", "");
+        assert_eq!(crate::claude_code_isolated_ambient_config_dir(), None);
+    }
+
+    #[test]
     fn native_transcript_home_defaults_to_external_history_home() {
         let _lock = env_lock();
         let _native = EnvVarGuard::unset("ORGII_NATIVE_TRANSCRIPT_HOME");

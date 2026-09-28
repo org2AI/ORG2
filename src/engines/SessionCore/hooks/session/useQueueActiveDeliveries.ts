@@ -196,11 +196,14 @@ export function useQueueActiveDeliveries({
                 // Cloud failure row remains the visible terminal result. Mark
                 // that row so an explicit Retry mints a fresh intent instead
                 // of waiting for an owner that no longer exists.
+                // Retirement ends execution ownership, not delivery. A prompt
+                // already accepted by the provider remains canonical history
+                // even when its runner cannot be reconciled or Cloud closes it.
                 const retiredProjection = await setOptimisticQueueUserDelivery(
                   optimisticDeliveryProjectionParams(currentDelivery),
                   "failed",
                   error,
-                  { ownerRetired: true }
+                  { ownerRetired: true, executionFailed: accepted }
                 ).catch((projectionError) => {
                   log.error(
                     "[useQueueDispatch] could not mark retired canonical transcript row:",
@@ -275,10 +278,14 @@ export function useQueueActiveDeliveries({
               if (error instanceof QueuedConversationTurnFailedError) {
                 // The provider closed the accepted turn with a definitive
                 // failure and no tail. The optimistic row is the visible retry
-                // owner: fail it with the reason and hold it for an explicit
+                // owner: preserve its sent status and hold it for an explicit
                 // resend instead of reconnecting to a turn that cannot recover.
                 if (
-                  !(await projectActiveCanonicalFailure(currentDelivery, error))
+                  !(await projectActiveCanonicalFailure(
+                    currentDelivery,
+                    error,
+                    true
+                  ))
                 ) {
                   log.warn(
                     "[useQueueDispatch] failed transcript projection will be restored from delivery owner"
@@ -287,11 +294,14 @@ export function useQueueActiveDeliveries({
                 if (
                   !(await returnFailedCanonicalDeliveryToQueue(
                     currentDelivery,
-                    error
+                    error,
+                    true
                   ))
                 )
                   return;
-                Message.error({ content: error.message, duration: 5000 });
+                // The execution lifecycle already owns terminal notification
+                // and the transcript owns its error. Queue settlement only
+                // owns Retry; another toast would announce this failure twice.
                 return;
               }
               if (accepted) {

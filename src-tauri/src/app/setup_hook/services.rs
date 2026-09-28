@@ -136,8 +136,8 @@ pub(crate) fn start_backend_services(
     // Initialize the global WebSocket broadcaster
     api::init_broadcaster(ws_tx.clone());
 
-    // Dev-only: store AppHandle for test API endpoints
-    #[cfg(debug_assertions)]
+    // Mobile send/cancel and interaction adapters need desktop-owned state in
+    // every build. Only the test HTTP routes are gated by debug_assertions.
     api::init_app_handle(app.handle().clone());
 
     // Start unified IDE server (Git API + Search API + WebSocket) in background

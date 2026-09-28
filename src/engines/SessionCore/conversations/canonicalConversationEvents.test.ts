@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import { loadCanonicalConversationEvents } from "./canonicalConversationEvents";
+import { mergeInterruptedConversationProjection } from "./nativeConversationReconciliation";
 import { retryLineageEvent } from "./queuedRetryLineage";
 
 const mocks = vi.hoisted(() => ({
@@ -61,6 +62,54 @@ describe("loadCanonicalConversationEvents", () => {
     });
     mocks.getPersistedEvents.mockResolvedValue(projected);
     mocks.mergeInterrupted.mockReturnValue(merged);
+  });
+
+  it("cold-reads an interrupted sparse cache with unrelated failed-user sidecars", async () => {
+    mocks.mergeInterrupted.mockImplementationOnce(
+      mergeInterruptedConversationProjection
+    );
+    const user = {
+      ...event("user"),
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      result: {
+        turnIntentId: "accepted",
+        message: { role: "user", content: "continue" },
+      },
+    } as SessionEvent;
+    const aborted = {
+      ...event("abort"),
+      source: "system",
+      actionType: "task_failed",
+      functionName: "task_failed",
+      displayVariant: "tool_call",
+      result: {},
+      displayText: "",
+    } as SessionEvent;
+    const partial = {
+      ...event("stream-msg-cliagent-test-1-final"),
+      isDelta: false,
+      result: { observation: "partial", turnIntentId: "accepted" },
+    };
+    const rejected = {
+      ...user,
+      id: "queued-user:rejected:",
+      result: {
+        turnIntentId: "rejected",
+        deliveryStatus: "failed",
+        message: { role: "user", content: "retry" },
+      },
+    } as SessionEvent;
+    mocks.loadAuthoritative.mockResolvedValueOnce({
+      events: [user, aborted],
+      source: "cli_history",
+    });
+    mocks.getPersistedEvents.mockResolvedValueOnce([partial, rejected]);
+    mocks.cliStatus.mockResolvedValueOnce({ status: "cancelled" });
+    expect(
+      (await loadCanonicalConversationEvents("cliagent-test")).events
+    ).toEqual([user, aborted, partial]);
   });
 
   it("merges a persisted marker once when the authoritative replay already contains it", async () => {

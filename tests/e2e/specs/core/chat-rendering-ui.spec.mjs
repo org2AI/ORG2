@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { e2eUrl } from "../../support/core/e2eBaseUrl.mjs";
+import { createNativeWindowScreenshot } from "../../support/core/nativeWindowScreenshot.mjs";
 
 const MOUNT_TIMEOUT_MS = 60_000;
 const RENDER_TIMEOUT_MS = 12_000;
@@ -2230,6 +2231,85 @@ async function assertOneHundredRoundSkeletonRemainsNavigable() {
   await setPaginationEnabled(true);
 }
 
+async function assertImportedClaudeScreenshotChronology() {
+  const sessionId = process.env.E2E_CLAUDE_IMPORT_FIXTURE_SESSION_ID;
+  const roundCount = Number.parseInt(
+    process.env.E2E_CLAUDE_IMPORT_FIXTURE_ROUND_COUNT ?? "0",
+    10
+  );
+  if (!sessionId || !roundCount) {
+    throw new Error(
+      "Claude Code image-order fixture was not prepared before app launch"
+    );
+  }
+  const selector = `[data-testid="sidebar-session-item-${sessionId}"]`;
+  await (await browser.$(selector)).waitForExist({ timeout: MOUNT_TIMEOUT_MS });
+  await (await browser.$(selector)).click();
+  await browser.waitUntil(
+    async () =>
+      (await invokeE2E("getActiveSessionId"))?.sessionId === sessionId,
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      timeoutMsg:
+        "rendered Claude Code sidebar click did not open the imported session",
+    }
+  );
+  const answerText = `round-${roundCount} answer body`;
+  const order = async () =>
+    execJS(`
+      const gallery = document.querySelector('[data-testid="output-image-gallery"]');
+      const galleryItem = gallery?.closest('[data-chat-flat-index]');
+      const answerItem = [...document.querySelectorAll('[data-chat-flat-index]')]
+        .find((item) => (item.textContent || '').includes(${JSON.stringify(answerText)}));
+      const image = gallery?.querySelector('img');
+      return {
+        galleryIndex: galleryItem ? Number(galleryItem.getAttribute('data-chat-flat-index')) : null,
+        answerIndex: answerItem ? Number(answerItem.getAttribute('data-chat-flat-index')) : null,
+        imageLoaded: !!image && image.complete && image.naturalWidth > 0,
+        galleryVisible: !!gallery && gallery.getBoundingClientRect().height > 0,
+      };
+    `);
+  await browser.waitUntil(
+    async () => {
+      const state = await order();
+      return (
+        state.galleryIndex !== null &&
+        state.answerIndex !== null &&
+        state.imageLoaded &&
+        state.galleryVisible
+      );
+    },
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      timeoutMsg: `imported Claude screenshot or final reply did not render: ${JSON.stringify(await order())}`,
+    }
+  );
+  const state = await order();
+  expect(state.galleryIndex).toBeLessThan(state.answerIndex);
+
+  const artifacts = process.env.E2E_IMAGE_ORDER_ARTIFACTS;
+  if (artifacts) {
+    await mkdir(artifacts, { recursive: true });
+    await (
+      await browser.$('[data-testid="output-image-gallery"]')
+    ).scrollIntoView();
+    const capture = createNativeWindowScreenshot();
+    try {
+      await capture.save(
+        browser,
+        Number(process.env.E2E_IDE_SERVER_PORT),
+        path.join(artifacts, "claude-imported-image-order.png")
+      );
+      await writeFile(
+        path.join(artifacts, "order.json"),
+        JSON.stringify(state, null, 2)
+      );
+    } finally {
+      capture.cleanup();
+    }
+  }
+}
+
 /**
  * PR #561 follow-up: the 100-round skeleton scenario above seeds
  * `sdeagent-` ids through `seedChatEvents`, which never routes through
@@ -2350,7 +2430,6 @@ async function assertImportedClaudeHistoryLazyReplayAndAutoRefresh() {
       timeoutMsg: `newest round body "${newestRoundText}" never rendered after opening the imported Claude Code session`,
     }
   );
-
   // Step 2b: round 2's body must NOT already be in the DOM. Asserting this
   // BEFORE navigating is the only thing that keeps this scenario from
   // silently passing on a full-eager-load regression -- without it, a bug
@@ -3802,6 +3881,96 @@ describe("Core chat rendering UI", () => {
     }
   });
 
+  it("shows visible loading feedback after clicking a session with pending history", async function () {
+    if (!shouldRunScenario("session-loading")) return this.skip();
+    this.timeout(60_000);
+    const sessionId = `sdeagent-e2e-loading-${RUN_ID}`;
+    // Only seed the durable empty session. The real sidebar click and history
+    // loader own the loading/confirmed-empty transition; no loading atom is set.
+    const seeded = await invokeE2E("seedSidebarSession", {
+      sessionId,
+      name: "Loading feedback",
+      repoPath: E2E_REPO_PATH,
+      persist: true,
+    });
+    if (!seeded?.ok) throw new Error(`Session seed failed: ${seeded?.error}`);
+    const capture = createNativeWindowScreenshot();
+    const output = process.env.E2E_LOADING_ARTIFACTS;
+    try {
+      if (output) {
+        await mkdir(output, { recursive: true });
+        // Prime the native capture helper before the short loading window.
+        await capture.save(
+          browser,
+          Number(process.env.E2E_IDE_SERVER_PORT),
+          path.join(output, "before-click.png")
+        );
+      }
+      const rowSelector = `[data-testid="sidebar-session-item-${sessionId}"]`;
+      await browser.waitUntil(
+        () =>
+          execJS(`
+        const node = document.querySelector(${JSON.stringify(rowSelector)});
+        return !!node && node.getBoundingClientRect().height > 0;
+      `),
+        { timeout: RENDER_TIMEOUT_MS }
+      );
+      await execJS(
+        `document.querySelector(${JSON.stringify(rowSelector)}).click();`
+      );
+      await browser.waitUntil(
+        () =>
+          execJS(`
+        const node = document.querySelector('[data-testid="chat-loading-block"]');
+        return !!node && node.getBoundingClientRect().height > 0;
+      `),
+        { timeout: 3_000, interval: 100 }
+      );
+      const feedback = await execJS(`
+        const node = document.querySelector('[data-testid="chat-loading-block"]');
+        const label = node?.lastElementChild ?? node;
+        const rect = label?.getBoundingClientRect();
+        const hit = rect ? document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) : null;
+        return {text: node?.textContent?.trim(), role: node?.getAttribute('role'), busy: node?.getAttribute('aria-busy'), rect: rect?.toJSON(), exposed: !!hit && node.contains(hit), covering: hit?.className};
+      `);
+      if (output) {
+        await writeFile(
+          path.join(output, "loading-state.json"),
+          JSON.stringify(feedback)
+        );
+        await capture.save(
+          browser,
+          Number(process.env.E2E_IDE_SERVER_PORT),
+          path.join(output, "loading.png")
+        );
+      }
+      if (
+        !feedback.text ||
+        feedback.role !== "status" ||
+        feedback.busy !== "true" ||
+        !feedback.exposed
+      )
+        throw new Error(
+          `History waits without visible accessible feedback: ${JSON.stringify(feedback)}`
+        );
+      await browser.waitUntil(
+        () =>
+          execJS(`
+        return !document.querySelector('[data-testid="chat-loading-block"]');
+      `),
+        { timeout: 12_000, interval: 100 }
+      );
+      if (output)
+        await capture.save(
+          browser,
+          Number(process.env.E2E_IDE_SERVER_PORT),
+          path.join(output, "settled.png")
+        );
+    } finally {
+      capture.cleanup();
+    }
+  });
+
   it("renders all metadata-ledger tool-call classes from seeded history", async function () {
     if (!shouldRunScenario("metadata-ledger")) {
       this.skip();
@@ -4242,6 +4411,15 @@ describe("Core chat rendering UI", () => {
     ) {
       throw new Error("stream-scroll delta never entered canonical chat state");
     }
+  });
+
+  it("keeps an imported Claude Code tool screenshot before its later reply", async function () {
+    if (!shouldRunScenario("claude-imported-image-order")) {
+      this.skip();
+      return;
+    }
+
+    await assertImportedClaudeScreenshotChronology();
   });
 
   it("lazily loads an imported Claude Code round body and auto-refetches it after a replace reload", async function () {

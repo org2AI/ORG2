@@ -150,6 +150,7 @@
     "detail": {
       "assignedSubtitle": "Назначенная рабочая задача",
       "standaloneProject": "Отдельная",
+      "channelMentionSubtitle": "Вас упомянули в канале",
       "mentionSubtitle": "Упомянуто в комментарии",
       "mentionedYou": "упомянул(а) вас",
       "threadComments_one": "{{count}} комментарий в этой теме",

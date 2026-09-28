@@ -38,4 +38,7 @@ mod tests;
 #[cfg(test)]
 mod image_tests;
 
+#[cfg(test)]
+mod materialized_tests;
+
 pub use image_prefix::load_codex_image_from_path;

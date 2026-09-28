@@ -632,7 +632,7 @@
       "positionDown": "下方",
       "showQuickActions": "快捷操作",
       "showSkills": "固定 Skills",
-      "showCliUpdate": "CLI 更新",
+      "showCliUpdate": "CLI 版本更新提醒",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新建会话"
@@ -1889,10 +1889,12 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} 有新版本",
-      "versions": "当前版本：{{installed}} · 最新版本：{{latest}}",
       "upgrade": "在终端升级",
-      "upgradeHint": "在独立终端升级 Cursor 命令行工具，完成后点击重新检查",
-      "upgradeTerminal": "升级 Cursor 命令行工具",
+      "upgradeDocs": "查看官方文档",
+      "upgradeChooseMethod": "选择原来的安装方式",
+      "upgradeNative": "工具自带更新器",
+      "upgradeHint": "在独立终端升级 {{cli}} 命令行工具，完成后点击重新检查",
+      "upgradeTerminal": "升级 {{cli}} 命令行工具",
       "upgradeStarted": "已在终端启动升级，完成后点击重新检查",
       "upgradeFailed": "无法打开升级终端，请重试",
       "muteUntilNextVersion": "下一版本前不再提醒",
@@ -2611,6 +2613,10 @@
     "teamChatMode": "团队讨论",
     "promptTooltip": "发给 agent 执行",
     "teamChatTooltip": "发给队友的讨论，不触发 agent",
+    "workspaceResolving": "正在查找匹配的本地工作区，请稍后重试",
+    "workspaceRequiredTitle": "打开匹配的工作区",
+    "workspaceRequiredBody": "要让 Agent 继续这个共享对话，请先打开该仓库的本地工作区",
+    "openWorkspace": "打开工作区",
     "imagesUnsupported": "团队讨论暂不支持图片",
     "participantsTooltip": "对话参与者与讨论消息数",
     "mentionGroup": "队友"
@@ -2644,10 +2650,12 @@
     "limit": "最多显示 128 个账户"
   },
   "sharedFile": {
+    "resolvingOrigin": "共享文件的来源信息仍在加载，请稍后重试。",
     "downloaded": "已保存到下载文件夹",
     "downloadError": "无法保存到下载文件夹",
     "title": "共享文件",
-    "error": "无法打开文件，请检查账号、服务器及会话访问权限后重新打开链接",
+    "error": "无法打开此文件。请重试，或检查网络、账号、服务器和会话访问权限。",
+    "notUploaded": "该文件尚未上传到此共享会话，需要发送端完成上传。你可以重试检查上传结果。",
     "downloadPreview": "下载文件以查看其内容",
     "download": "下载",
     "loading": "正在加载共享文件…"

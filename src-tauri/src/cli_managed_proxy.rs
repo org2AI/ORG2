@@ -1647,3 +1647,21 @@ mod tests {
 #[cfg(all(test, feature = "market-connect"))]
 #[path = "cli_managed_proxy/catalog_tests.rs"]
 mod catalog_tests;
+
+// Exercise the production HTTP router without global user config or credentials.
+#[cfg(all(test, feature = "market-connect"))]
+pub(crate) fn catalog_fixture_router(key_id: String, model: String) -> Router {
+    let context = ProxyContext {
+        authentication: Authentication::Bearer,
+        key_id,
+        provider: "market".into(),
+        model,
+        api_key: String::new(),
+        upstream_base_url: "http://unused.invalid".into(),
+        proxy_token: "synthetic-history-catalog".into(),
+        protocol: ProxyProtocol::OpenAi,
+    };
+    proxy_router(ContextResolver(std::sync::Arc::new(move |_| {
+        Ok(context.clone())
+    })))
+}

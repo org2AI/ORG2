@@ -23,8 +23,8 @@ describe("ComposerSurface", () => {
     expect(markup).toContain("Review");
     expect(markup).toContain("Comment");
     expect(markup).toContain("px-1.5 pt-2.5 pb-1.5 gap-2");
-    expect(markup).toContain("h-9 min-h-9 w-full");
-    expect(markup).toContain("justify-between pt-2");
+    expect(markup).toContain("min-h-9 w-full min-w-0 flex-wrap");
+    expect(markup).toContain("justify-between gap-y-1 pt-2");
     expect(markup).not.toContain("composer-add-context-button");
   });
 
@@ -38,6 +38,6 @@ describe("ComposerSurface", () => {
     );
 
     expect(markup).toContain("Markdown editor");
-    expect(markup).not.toContain("h-9 min-h-9 w-full");
+    expect(markup).not.toContain("min-h-9 w-full min-w-0 flex-wrap");
   });
 });

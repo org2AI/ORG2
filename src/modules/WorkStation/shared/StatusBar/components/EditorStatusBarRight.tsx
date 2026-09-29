@@ -32,46 +32,57 @@ export const EditorStatusBarRight: React.FC<EditorStatusBarRightProps> = ({
   cursor,
   hasSelection,
   totalLines,
-}) => (
-  <>
-    {commitInfo && (
-      <StatusBarSegment
-        title={`${commitInfo.message}\n\n${commitInfo.author} · ${commitInfo.shortSha}`}
-        className="text-text-1"
-      >
-        <HugeiconsIcon icon={GitCommitIcon} data-icon="git-commit" size={13} />
-        <span className="max-w-[200px] truncate">{commitInfo.author}</span>
-        <span className="text-text-3">·</span>
-        <span className="text-text-3">{commitInfo.time}</span>
-      </StatusBarSegment>
-    )}
+}) => {
+  const selectionLabel =
+    cursor?.selectedLines && cursor.selectedLines > 1
+      ? t("workstation.linesSelected", {
+          count: cursor.selectedLines,
+        })
+      : t("workstation.charsSelected", {
+          count: cursor?.selectedChars ?? 0,
+        });
 
-    {cursor && (
-      <StatusBarText numeric>
-        Ln {cursor.line}, Col {cursor.column}
-      </StatusBarText>
-    )}
+  return (
+    <>
+      {commitInfo && (
+        <StatusBarSegment
+          title={`${commitInfo.message}\n\n${commitInfo.author} · ${commitInfo.shortSha}`}
+          className="text-text-1"
+        >
+          <HugeiconsIcon
+            icon={GitCommitIcon}
+            data-icon="git-commit"
+            size={13}
+          />
+          <span className="max-w-[200px] truncate">{commitInfo.author}</span>
+          <span className="text-text-3">·</span>
+          <span className="text-text-3">{commitInfo.time}</span>
+        </StatusBarSegment>
+      )}
 
-    {hasSelection && (
-      <StatusBarText numeric>
-        (
-        {cursor?.selectedLines && cursor.selectedLines > 1
-          ? t("workstation.linesSelected", {
-              count: cursor.selectedLines,
-            })
-          : t("workstation.charsSelected", {
-              count: cursor?.selectedChars ?? 0,
-            })}
-        )
-      </StatusBarText>
-    )}
+      {cursor && (
+        <StatusBarText numeric className="w-24 justify-end">
+          Ln {cursor.line}, Col {cursor.column}
+        </StatusBarText>
+      )}
 
-    {totalLines !== undefined && (
-      <StatusBarText numeric>
-        {t("workstation.nLines", { count: totalLines })}
-      </StatusBarText>
-    )}
-  </>
-);
+      {hasSelection && (
+        <StatusBarText
+          numeric
+          className="w-32 justify-end overflow-hidden whitespace-nowrap"
+          title={`(${selectionLabel})`}
+        >
+          ({selectionLabel})
+        </StatusBarText>
+      )}
+
+      {totalLines !== undefined && (
+        <StatusBarText numeric>
+          {t("workstation.nLines", { count: totalLines })}
+        </StatusBarText>
+      )}
+    </>
+  );
+};
 
 EditorStatusBarRight.displayName = "EditorStatusBarRight";

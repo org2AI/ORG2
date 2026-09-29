@@ -76,9 +76,11 @@ describe("ComposerBar", () => {
     expect(markup).toContain("flex w-full flex-col gap-2");
     expect(markup).toContain('data-editor-slot="true"');
     expect(markup).toContain(
-      "h-9 min-h-9 w-full items-center justify-between pt-2"
+      "min-h-9 w-full min-w-0 flex-wrap items-center justify-between gap-y-1 pt-2"
     );
-    expect(markup).toContain("flex min-w-0 items-center gap-0.5");
+    expect(markup).toContain(
+      "flex min-w-0 max-w-full flex-wrap items-center gap-0.5"
+    );
     expect(markup).not.toContain("display:grid");
   });
 
@@ -93,9 +95,12 @@ describe("ComposerBar", () => {
       .parseFromString(stacked, "text/html")
       .body.firstElementChild!.lastElementChild!.className.split(" ");
 
-    // Spare row height above the 28px controls only, never beside or below
-    // them, so + and send keep the inline row's position when it expands.
-    expect(toolbarClass).toEqual(expect.arrayContaining(["h-9", "pt-2"]));
+    // The shell owns horizontal inset. Extra controls wrap into another row
+    // instead of overflowing a fixed-height toolbar.
+    expect(toolbarClass).toEqual(
+      expect.arrayContaining(["min-h-9", "flex-wrap", "pt-2"])
+    );
+    expect(toolbarClass).not.toContain("h-9");
     expect(toolbarClass.some((name) => /^(p|px|pl|pr|pb|py)-/.test(name))).toBe(
       false
     );

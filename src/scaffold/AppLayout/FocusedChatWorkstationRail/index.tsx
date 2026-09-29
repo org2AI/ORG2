@@ -8,7 +8,6 @@ import {
   WorkstationTrailSurface,
 } from "@src/components/layout/blocks";
 import {
-  FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS,
   resolveFocusedChatWorkstationRailInsetStyle,
   resolveFocusedChatWorkstationRailTrackClass,
 } from "@src/engines/ChatPanel/focusedChatWorkstationLayout";
@@ -42,7 +41,6 @@ export type {
 
 export function FocusedChatWorkstationRail({
   compactMenuHost,
-  conversationMinimapHostRef,
   sessionContext,
   sources,
   onOpenSources,
@@ -174,8 +172,7 @@ export function FocusedChatWorkstationRail({
           }),
         }}
       >
-        {/* Cap the panel group so long content still leaves the minimap in
-            the column. Each panel can shrink within the available height. */}
+        {/* Each panel can shrink within the available height. */}
         <div
           data-workstation-submenu-bounds=""
           className="relative hidden max-h-full min-h-0 w-full flex-col @[1100px]/focusedchat:flex"
@@ -186,7 +183,7 @@ export function FocusedChatWorkstationRail({
             onContextMenu={handleTrailContextMenu}
             // `min-h-0` unconditionally: inside the capped group the trail
             // has to be able to shrink past its content height, whether what
-            // it would push out is the terminal or the minimap track.
+            // it would push out is the terminal.
             className={`group/workstation-trail ml-auto flex min-h-0 ${WORKSTATION_TRAIL_WIDTH.surfaceResponsiveClass}`}
           >
             <WorkstationTrailHeader
@@ -247,11 +244,6 @@ export function FocusedChatWorkstationRail({
             />
           ) : null}
         </div>
-        <div
-          ref={conversationMinimapHostRef}
-          data-focused-chat-conversation-minimap-host
-          className={FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS}
-        />
       </div>
       {subagentsSubmenuAnchor ? (
         <WorkstationSubagentsSubmenu

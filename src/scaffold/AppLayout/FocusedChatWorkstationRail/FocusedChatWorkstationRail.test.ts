@@ -189,7 +189,6 @@ describe.each(["wide rail", "compact menu"])(
                 null,
                 React.createElement(FocusedChatWorkstationRail, {
                   compactMenuHost: menuHost,
-                  conversationMinimapHostRef: () => {},
                   sessionContext,
                   sources: sources ?? [],
                   onOpenSources,

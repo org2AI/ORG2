@@ -8,15 +8,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { normalizeUserMessageText } from "@src/engines/ChatPanel/ChatItems/normalizeUserMessageText";
 import { stripExpandedPillContent } from "@src/engines/ChatPanel/InputArea/utils/pillContentParser";
+import { ChatPanelFullScreenContext } from "@src/engines/ChatPanel/chatPanelFullScreenContext";
 import type { PinnedMinimapMark } from "@src/engines/ChatPanel/chatSelections/pinnedMinimapMarks";
-import { FocusedChatWorkstationMinimapPortalContext } from "@src/engines/ChatPanel/focusedChatWorkstationMinimapPortal";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
 
 import { isAssistantMessageEvent } from "../chatItemPipeline/dedup";
@@ -27,12 +26,11 @@ import { getTurnTimingLabels } from "../utils/turnTimingFormatting";
 
 export const MAX_CONVERSATION_MINIMAP_MARKERS = 20;
 
-// The minimap is always pinned to the chat body's right edge, so the hover
-// preview must open left (into the chat) to stay inside the chat's
-// `overflow-hidden` bounds. Opening outward — toward the pane edge or a
-// neighboring panel — gets the preview clipped, regardless of dock side.
+/** Both previews open inward so the chat's overflow boundary cannot clip them. */
 export const CONVERSATION_PREVIEW_POSITION_CLASS =
   "right-full mr-3 @[640px]/chatbody:mr-1";
+const FULLSCREEN_PREVIEW_POSITION_CLASS =
+  "left-full ml-3 @[640px]/chatbody:ml-1";
 
 export function sampleConversationGroupIndices(
   groupIndices: readonly number[],
@@ -119,8 +117,7 @@ export function getNavigableConversationGroupIndices(
  *
  * Below it the rail has nowhere of its own to stand, and the scrollport
  * deliberately does NOT reserve space for it — it floats as an inset pill
- * over the transcript instead. Same rule in the trail-hosted variant, where
- * the crossover is the 1100px at which the trail column becomes real.
+ * over the transcript instead. The same rule applies to the fullscreen left edge.
  */
 export const CONVERSATION_MINIMAP_FLUSH_CONTAINER_PX = 960;
 
@@ -150,13 +147,13 @@ export function getConversationMarkerWidthClass(
 
 /**
  * The floating pill — one literal, shared by both panes so they cannot drift
- * apart. Compact markers hugging the right edge, on a bordered blurred
+ * apart. Compact markers along the chosen edge, on a bordered blurred
  * surface inset from the edge, because nothing reserves space for it here.
  */
 const MINIMAP_FLOATING_NAV_CLASS =
-  "pointer-events-auto absolute right-3 top-1/2 z-40 -translate-y-1/2 flex-col overflow-visible rounded-xl border border-border-2/60 bg-bg-1/90 px-1 py-2 shadow-lg backdrop-blur-xs transition-opacity motion-reduce:transition-none";
+  "pointer-events-auto absolute top-1/2 z-40 -translate-y-1/2 flex-col overflow-visible rounded-xl border border-border-2/60 bg-bg-1/90 px-1 py-2 shadow-lg backdrop-blur-xs transition-opacity motion-reduce:transition-none";
 const MINIMAP_FLOATING_MARKER_CLASS =
-  "relative flex h-3 w-2 shrink-0 items-center justify-end";
+  "relative flex h-3 w-2 shrink-0 items-center";
 /**
  * Pinned marks sit above the turn ticks, separated by a hairline. They are
  * solid where a turn tick is faint: a turn is sampled scenery, a pin is
@@ -173,78 +170,36 @@ const MINIMAP_PIN_DIVIDER_CLASS = "my-1 h-px w-3 shrink-0 bg-border-2/80";
  * hover bridge, and a short grace period covers a pointer that leaves the
  * rail on its way across.
  */
-const MINIMAP_PIN_PREVIEW_BRIDGE_CLASS =
-  "absolute top-1/2 right-full -translate-y-1/2 pr-3 pl-2 @[640px]/chatbody:pr-1";
+const MINIMAP_PIN_PREVIEW_BRIDGE_CLASS = "absolute top-1/2 -translate-y-1/2";
 const PIN_PREVIEW_CLOSE_DELAY_MS = 180;
 
 const MINIMAP_FLOATING_MARKER_BUTTON_CLASS =
-  "group flex h-3 w-2 cursor-pointer items-center justify-end border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-6/30";
+  "group flex h-3 w-2 cursor-pointer items-center border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-6/30";
 
-/**
- * Overrides that turn the pill into a bare flush rail once the pane gives it
- * a column of its own. Same set in both panes; only the container query
- * differs, and each has to be written out in full because Tailwind reads
- * class names literally out of the source.
- *
- * Maximized chat crosses over at 850px, where the trail track starts
- * reserving the rail's 36px. The side pane crosses over at 960px, where the
- * centered content clears the outer gutter by itself.
- */
-const MINIMAP_FLUSH_OVERRIDES = {
-  maximized: {
-    nav: "@[850px]/focusedchat:right-0 @[850px]/focusedchat:w-9 @[850px]/focusedchat:items-center @[850px]/focusedchat:rounded-none @[850px]/focusedchat:border-0 @[850px]/focusedchat:bg-transparent @[850px]/focusedchat:p-0 @[850px]/focusedchat:shadow-none @[850px]/focusedchat:backdrop-blur-none @[1100px]/focusedchat:top-2 @[1100px]/focusedchat:translate-y-0",
-    marker: "@[850px]/focusedchat:w-9 @[850px]/focusedchat:justify-center",
-    markerButton:
-      "@[850px]/focusedchat:w-9 @[850px]/focusedchat:justify-center",
-  },
-  side: {
-    nav: "@[960px]/chatbody:right-0 @[960px]/chatbody:w-9 @[960px]/chatbody:items-center @[960px]/chatbody:rounded-none @[960px]/chatbody:border-0 @[960px]/chatbody:bg-transparent @[960px]/chatbody:p-0 @[960px]/chatbody:shadow-none @[960px]/chatbody:backdrop-blur-none",
-    marker: "@[960px]/chatbody:w-9 @[960px]/chatbody:justify-center",
-    markerButton: "@[960px]/chatbody:w-9 @[960px]/chatbody:justify-center",
-  },
-} as const;
+/** The same chat-body breakpoint keeps either edge clear of centered messages. */
+const MINIMAP_FLUSH_NAV_CLASS =
+  "@[960px]/chatbody:w-9 @[960px]/chatbody:items-center @[960px]/chatbody:rounded-none @[960px]/chatbody:border-0 @[960px]/chatbody:bg-transparent @[960px]/chatbody:p-0 @[960px]/chatbody:shadow-none @[960px]/chatbody:backdrop-blur-none";
+const MINIMAP_FLUSH_MARKER_CLASS =
+  "@[960px]/chatbody:w-9 @[960px]/chatbody:justify-center";
 
-/**
- * When the rail is on screen.
- *
- * While it floats it follows the side pane's rule in both panes: it appears
- * on scroll or hover, and otherwise only once the body is wide enough to
- * carry it. Once a maximized pane gives it a column of its own it is always
- * up — worth stating separately, because a wide trail can leave the body
- * under 640px while the pane itself is well past 850px.
- *
- * The two container queries set the same declaration, so whichever Tailwind
- * emits last is irrelevant: the rail shows if either matches.
- */
 export function resolveConversationMinimapVisibilityClass({
   showFloatingMinimap,
-  inWorkstationRail,
 }: {
   showFloatingMinimap: boolean;
-  inWorkstationRail: boolean;
 }): string {
-  if (showFloatingMinimap) return "flex";
-  return inWorkstationRail
-    ? "hidden @[640px]/chatbody:flex @[850px]/focusedchat:flex"
-    : "hidden @[640px]/chatbody:flex";
+  return showFloatingMinimap ? "flex" : "hidden @[640px]/chatbody:flex";
 }
 
-/**
- * One rail in two arrangements: a floating pill while it would cover the
- * transcript, a bare flush rail once it has space of its own. The floating
- * half is identical in both panes — they differ only in the width at which
- * they cross over.
- */
-export function getConversationMinimapPlacementClasses(
-  inWorkstationRail: boolean
-) {
-  const flush = inWorkstationRail
-    ? MINIMAP_FLUSH_OVERRIDES.maximized
-    : MINIMAP_FLUSH_OVERRIDES.side;
+/** Fullscreen uses the left edge; ordinary split chat retains the right edge. */
+export function getConversationMinimapPlacementClasses(fullScreen: boolean) {
   return {
-    nav: `${MINIMAP_FLOATING_NAV_CLASS} ${flush.nav}`,
-    marker: `${MINIMAP_FLOATING_MARKER_CLASS} ${flush.marker}`,
-    markerButton: `${MINIMAP_FLOATING_MARKER_BUTTON_CLASS} ${flush.markerButton}`,
+    nav: `${MINIMAP_FLOATING_NAV_CLASS} ${fullScreen ? "left-3 @[960px]/chatbody:left-0" : "right-3 @[960px]/chatbody:right-0"} ${MINIMAP_FLUSH_NAV_CLASS}`,
+    marker: `${MINIMAP_FLOATING_MARKER_CLASS} ${fullScreen ? "justify-start" : "justify-end"} ${MINIMAP_FLUSH_MARKER_CLASS}`,
+    markerButton: `${MINIMAP_FLOATING_MARKER_BUTTON_CLASS} ${fullScreen ? "justify-start" : "justify-end"} ${MINIMAP_FLUSH_MARKER_CLASS}`,
+    preview: fullScreen
+      ? FULLSCREEN_PREVIEW_POSITION_CLASS
+      : CONVERSATION_PREVIEW_POSITION_CLASS,
+    pinPreview: `${MINIMAP_PIN_PREVIEW_BRIDGE_CLASS} ${fullScreen ? "left-full pl-3 pr-2 @[640px]/chatbody:pl-1" : "right-full pr-3 pl-2 @[640px]/chatbody:pr-1"}`,
   };
 }
 
@@ -312,9 +267,7 @@ const ConversationMinimap: React.FC<ConversationMinimapProps> = memo(
     const { t } = useTranslation();
     const tooltipId = useId();
     const pinTooltipId = useId();
-    const workstationRailHost = useContext(
-      FocusedChatWorkstationMinimapPortalContext
-    );
+    const fullScreen = useContext(ChatPanelFullScreenContext);
     const [previewGroupIndex, setPreviewGroupIndex] = useState<number | null>(
       null
     );
@@ -425,12 +378,9 @@ const ConversationMinimap: React.FC<ConversationMinimapProps> = memo(
       isPointerOver ||
       previewGroupIndex !== null ||
       previewPinId !== null;
-    const inWorkstationRail = workstationRailHost !== null;
-    const placementClasses =
-      getConversationMinimapPlacementClasses(inWorkstationRail);
+    const placementClasses = getConversationMinimapPlacementClasses(fullScreen);
     const visibilityClass = resolveConversationMinimapVisibilityClass({
       showFloatingMinimap,
-      inWorkstationRail,
     });
     // A pinned passage keeps the rail up even in a conversation too short to
     // be worth navigating; the marks are the reason it is there.
@@ -484,7 +434,7 @@ const ConversationMinimap: React.FC<ConversationMinimapProps> = memo(
 
             {previewPinId === mark.id && (
               <div
-                className={MINIMAP_PIN_PREVIEW_BRIDGE_CLASS}
+                className={placementClasses.pinPreview}
                 onMouseEnter={cancelPinPreviewClose}
                 onMouseLeave={schedulePinPreviewClose}
               >
@@ -580,7 +530,7 @@ const ConversationMinimap: React.FC<ConversationMinimapProps> = memo(
                 <div
                   id={tooltipId}
                   role="tooltip"
-                  className={`${DROPDOWN_CLASSES.panel} ${CONVERSATION_PREVIEW_POSITION_CLASS} pointer-events-none absolute top-1/2 w-56 -translate-y-1/2 p-3 text-left @[640px]/chatbody:w-80`}
+                  className={`${DROPDOWN_CLASSES.panel} ${placementClasses.preview} pointer-events-none absolute top-1/2 w-56 -translate-y-1/2 p-3 text-left @[640px]/chatbody:w-80`}
                 >
                   <div className="truncate text-sm font-medium text-text-1">
                     {previewTitle || previewFallback}
@@ -606,9 +556,7 @@ const ConversationMinimap: React.FC<ConversationMinimapProps> = memo(
       </nav>
     );
 
-    return workstationRailHost
-      ? createPortal(minimap, workstationRailHost)
-      : minimap;
+    return minimap;
   }
 );
 

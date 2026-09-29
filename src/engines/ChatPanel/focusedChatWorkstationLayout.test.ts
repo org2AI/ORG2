@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS,
   isSameFocusedChatGitEnvironment,
   resolveFocusedChatWorkstationRailInsetStyle,
   resolveFocusedChatWorkstationRailTrackClass,
@@ -45,23 +44,21 @@ describe("shouldMountFocusedChatWorkstationControls", () => {
 describe("resolveFocusedChatWorkstationRailTrackClass", () => {
   it("drives the expanded column from the resizable track-width variable", () => {
     expect(resolveFocusedChatWorkstationRailTrackClass(false)).toBe(
-      "w-0 @[850px]/focusedchat:w-9 @[1100px]/focusedchat:w-(--workstation-trail-track-width) @[1100px]/focusedchat:px-1 @[1100px]/focusedchat:pb-1 @[1100px]/focusedchat:mr-2"
+      "w-0 @[1100px]/focusedchat:w-(--workstation-trail-track-width) @[1100px]/focusedchat:px-1 @[1100px]/focusedchat:pb-1 @[1100px]/focusedchat:mr-2"
     );
   });
 
   it("keeps the collapsed track at the fixed button-controlled width", () => {
     expect(resolveFocusedChatWorkstationRailTrackClass(true)).toBe(
-      "w-0 @[850px]/focusedchat:w-9 @[1100px]/focusedchat:w-11 @[1100px]/focusedchat:px-1 @[1100px]/focusedchat:pb-1"
+      "w-0 @[1100px]/focusedchat:w-11 @[1100px]/focusedchat:px-1 @[1100px]/focusedchat:pb-1"
     );
   });
 
-  it("reserves the minimap rail's column only once the pane can spare it", () => {
-    // Under 850px a maximized pane is as tight as a side pane: the column is
-    // zero and the rail floats, rather than taking 36px off the transcript.
+  it("does not reserve a right-hand column for the fullscreen minimap", () => {
     for (const collapsed of [false, true]) {
       const track = resolveFocusedChatWorkstationRailTrackClass(collapsed);
       expect(track).toContain("w-0");
-      expect(track).toContain(`@[850px]/focusedchat:w-9`);
+      expect(track).not.toContain(`@[850px]/focusedchat:w-9`);
     }
   });
 });
@@ -80,31 +77,6 @@ describe("resolveFocusedChatWorkstationRailInsetStyle", () => {
 
   it("does not alter non-overlay rail placement", () => {
     expect(resolveFocusedChatWorkstationRailInsetStyle(0)).toEqual({});
-  });
-});
-
-describe("FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS", () => {
-  it("floats over the transcript while the pane is too tight for a column", () => {
-    // Pinned flush at the pane edge and 36px wide — the same box the side
-    // pane's rail floats in, so the pill's own `right-3` lands on the
-    // identical spot in both panes.
-    expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain("absolute");
-    expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain("right-0");
-    expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain("w-9");
-  });
-
-  it("joins the flow at the width where the track reserves its column", () => {
-    expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain(
-      `@[850px]/focusedchat:relative`
-    );
-  });
-
-  it("stays centered on the fixed trailing rail column when expanded", () => {
-    expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain("w-9");
-    expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain(
-      `@[850px]/focusedchat:ml-auto`
-    );
-    expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).not.toContain("w-full");
   });
 });
 

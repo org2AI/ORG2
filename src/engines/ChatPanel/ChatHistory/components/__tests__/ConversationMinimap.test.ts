@@ -15,95 +15,38 @@ import {
 } from "../ConversationMinimap";
 
 describe("getConversationMinimapPlacementClasses", () => {
-  const railed = getConversationMinimapPlacementClasses(true);
-  const side = getConversationMinimapPlacementClasses(false);
-
-  it("floats the identical pill in both panes", () => {
-    // The floating half is one shared literal: a maximized pane that is too
-    // narrow for a column must look exactly like the side pane, not like a
-    // wider variant of itself.
-    const floatingHalf = (classes: string) =>
-      classes
-        .split(" ")
-        .filter((token) => !token.startsWith("@["))
-        .join(" ");
-
-    expect(floatingHalf(railed.nav)).toBe(floatingHalf(side.nav));
-    expect(floatingHalf(railed.marker)).toBe(floatingHalf(side.marker));
-    expect(floatingHalf(railed.markerButton)).toBe(
-      floatingHalf(side.markerButton)
+  it("places fullscreen on the left and split chat on the right at either width", () => {
+    const full = getConversationMinimapPlacementClasses(true);
+    const side = getConversationMinimapPlacementClasses(false);
+    expect(full.nav).toContain("left-3");
+    expect(full.nav).toContain(
+      `@[${CONVERSATION_MINIMAP_FLUSH_CONTAINER_PX}px]/chatbody:left-0`
     );
+    expect(full.nav).not.toContain("right-");
+    expect(side.nav).toContain("right-3");
+    expect(side.nav).toContain("@[960px]/chatbody:right-0");
+    expect(side.nav).not.toContain("left-");
+    expect(full.markerButton).toContain("justify-start");
+    expect(side.markerButton).toContain("justify-end");
   });
-
-  it("gives the floating pill compact right-hugging markers", () => {
-    for (const classes of [railed, side]) {
-      expect(classes.nav).toContain("right-3");
-      expect(classes.nav).toContain("rounded-xl");
-      expect(classes.marker).toContain("w-2");
-      expect(classes.marker).toContain("justify-end");
-    }
-  });
-
-  it("crosses over to a flush rail at each pane's own width", () => {
-    expect(railed.nav).toContain("@[850px]/focusedchat:right-0");
-    expect(railed.nav).toContain("@[850px]/focusedchat:shadow-none");
-    expect(railed.marker).toContain("@[850px]/focusedchat:w-9");
-    expect(railed.nav).toContain("@[1100px]/focusedchat:top-2");
-
-    expect(side.nav).toContain(
-      `@[${CONVERSATION_MINIMAP_FLUSH_CONTAINER_PX}px]/chatbody:right-0`
-    );
-    expect(side.nav).toContain("@[960px]/chatbody:shadow-none");
-    expect(side.marker).toContain("@[960px]/chatbody:w-9");
+  it("opens both turn and pinned previews inward", () => {
+    const full = getConversationMinimapPlacementClasses(true);
+    const side = getConversationMinimapPlacementClasses(false);
+    expect(full.preview).toContain("left-full");
+    expect(full.pinPreview).toContain("left-full");
+    expect(side.preview).toBe(CONVERSATION_PREVIEW_POSITION_CLASS);
+    expect(side.preview).toContain("right-full");
+    expect(side.pinPreview).toContain("right-full");
   });
 });
-
 describe("resolveConversationMinimapVisibilityClass", () => {
-  it("shows the rail outright while scrolling or hovering, in either pane", () => {
-    for (const inWorkstationRail of [true, false]) {
-      expect(
-        resolveConversationMinimapVisibilityClass({
-          showFloatingMinimap: true,
-          inWorkstationRail,
-        })
-      ).toBe("flex");
-    }
-  });
-
-  it("uses the side pane's idle rule while the maximized rail floats", () => {
-    // Floating is floating: a narrow maximized pane must not keep the rail
-    // up when the side pane would have hidden it.
-    const maximized = resolveConversationMinimapVisibilityClass({
-      showFloatingMinimap: false,
-      inWorkstationRail: true,
-    });
-    const side = resolveConversationMinimapVisibilityClass({
-      showFloatingMinimap: false,
-      inWorkstationRail: false,
-    });
-
-    expect(side).toBe("hidden @[640px]/chatbody:flex");
-    expect(maximized.startsWith(side)).toBe(true);
-  });
-
-  it("keeps the rail up once a maximized pane gives it a column", () => {
-    // A wide trail can leave the body under 640px, so the column state has
-    // to say so itself rather than relying on the body-width rule.
+  it("preserves the same body-width and interaction visibility rules", () => {
     expect(
-      resolveConversationMinimapVisibilityClass({
-        showFloatingMinimap: false,
-        inWorkstationRail: true,
-      })
-    ).toContain("@[850px]/focusedchat:flex");
-  });
-});
-
-describe("CONVERSATION_PREVIEW_POSITION_CLASS", () => {
-  it("opens the preview into the chat interior regardless of dock side", () => {
-    // Minimap is pinned to the chat's right edge, so the preview opens left
-    // (into the chat) rather than outward where the pane edge would clip it.
-    expect(CONVERSATION_PREVIEW_POSITION_CLASS).toContain("right-full");
-    expect(CONVERSATION_PREVIEW_POSITION_CLASS).not.toContain("left-full");
+      resolveConversationMinimapVisibilityClass({ showFloatingMinimap: true })
+    ).toBe("flex");
+    expect(
+      resolveConversationMinimapVisibilityClass({ showFloatingMinimap: false })
+    ).toBe("hidden @[640px]/chatbody:flex");
   });
 });
 

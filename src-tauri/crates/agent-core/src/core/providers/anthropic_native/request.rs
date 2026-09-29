@@ -9,7 +9,9 @@
 
 use serde_json::{json, Value};
 
-use crate::providers::model_capabilities::is_claude_fable_5_1;
+use crate::providers::model_capabilities::{
+    is_claude_fable_5_1, is_claude_forced_tool_choice_unsupported,
+};
 
 use super::client::{AnthropicAuthMode, AnthropicClient};
 use super::messages::extract_system;
@@ -57,7 +59,6 @@ pub(super) fn prepare_request(
     };
     let resolved_model =
         crate::providers::model_hints::wire_model_name(client.provider_spec, &parsed.base_model);
-    let fable_51 = is_claude_fable_5_1(&resolved_model);
     let (system, mut anthropic_messages) = extract_system(messages, skip_cache_write);
 
     // Extract tool_choice override (from side_query structured output)
@@ -104,8 +105,11 @@ pub(super) fn prepare_request(
     }
 
     let tool_choice = if let Some(ovr) = tool_choice_override {
-        if fable_51 && matches!(ovr["type"].as_str(), Some("tool" | "any")) {
-            // Forced choices return 400 on 5.1. Follow its migration guide:
+        if is_claude_forced_tool_choice_unsupported(&resolved_model)
+            && matches!(ovr["type"].as_str(), Some("tool" | "any"))
+        {
+            // Forced choices return 400 on Fable 5.1 and Claude 5.5. Follow
+            // the migration guidance:
             // request auto plus an explicit instruction on the current turn.
             // The side-query caller still validates the returned tool call.
             let instruction = if let Some(name) = ovr["name"].as_str() {
@@ -428,6 +432,7 @@ mod tests {
         assert!(model_uses_effort_beta("claude-sonnet-4-6", "anthropic"));
         assert!(!model_uses_effort_beta("claude-haiku-4-5", "anthropic"));
         assert!(model_uses_effort_beta("claude-sonnet-5", "anthropic"));
+        assert!(model_uses_effort_beta("claude-sonnet-5-5", "anthropic"));
         assert!(!model_uses_effort_beta("gpt-5.4", "openai"));
     }
 
@@ -458,6 +463,7 @@ mod tests {
             "claude-opus-4-6",
             "claude-sonnet-4-6",
             "claude-sonnet-5",
+            "claude-sonnet-5-5",
             "claude-haiku-4-5",
             "claude-opus-4-5",
         ] {

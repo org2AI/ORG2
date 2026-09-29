@@ -106,6 +106,15 @@ fn opus_5_5_requires_thinking_while_opus_5_can_disable_it() {
     );
 }
 
+#[test]
+fn sonnet_5_5_supports_optional_thinking_and_a_1m_context() {
+    for model in ["claude-sonnet-5-5", "anthropic/claude-sonnet-5-5-high"] {
+        let caps = resolve(model, None);
+        assert_eq!(caps.thinking, ThinkingSupport::Optional, "{model}");
+        assert_eq!(caps.context_window, 1_000_000, "{model}");
+    }
+}
+
 // ── OpenAI family ──
 
 #[test]

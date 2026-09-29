@@ -699,26 +699,43 @@ fn live_claude_catalog_remains_account_visible_only() {
 }
 
 #[test]
-fn claude_opus_5_fallback_exposes_effort_variants() {
-    use crate::commands::crud::KeyInfo;
+fn current_claude_fallback_exposes_effort_variants() {
+    use crate::commands::crud::{
+        KeyInfo, CLAUDE_CODE_OAUTH_DEFAULT_ENABLED_MODELS, CLAUDE_CODE_OAUTH_MODELS,
+    };
     use crate::key_store::{AuthMethod, ModelKey, ModelType};
+
+    assert!(CLAUDE_CODE_OAUTH_MODELS.contains(&"claude-sonnet-5-5"));
+    assert!(CLAUDE_CODE_OAUTH_DEFAULT_ENABLED_MODELS.contains(&"claude-sonnet-5-5"));
 
     let mut key = ModelKey::new(ModelType::ClaudeCode);
     key.auth_method = AuthMethod::Oauth;
     key.session_token = Some("access-token".to_string());
-    key.available_models = vec!["claude-opus-5".to_string(), "claude-opus-5-5".to_string()];
+    key.available_models = vec![
+        "claude-opus-5".to_string(),
+        "claude-opus-5-5".to_string(),
+        "claude-sonnet-5-5".to_string(),
+    ];
 
     let info = KeyInfo::from(key);
-    for base in ["claude-opus-5", "claude-opus-5-5"] {
+    for base in ["claude-opus-5", "claude-opus-5-5", "claude-sonnet-5-5"] {
         let variants: Vec<_> = info
             .model_variants
             .iter()
             .filter(|variant| variant.base_model == base)
             .collect();
-        assert_eq!(variants.len(), 5);
+        assert_eq!(
+            variants.len(),
+            if base == "claude-sonnet-5-5" { 10 } else { 5 }
+        );
         assert!(variants
             .iter()
             .any(|variant| variant.model == format!("{base}-max")));
+        if base == "claude-sonnet-5-5" {
+            assert!(variants
+                .iter()
+                .any(|variant| variant.model == format!("{base}-thinking-high")));
+        }
         assert!(info.default_variants.iter().any(|variant| {
             variant.base_model == base && variant.model == format!("{base}-high")
         }));
@@ -836,6 +853,7 @@ fn sonnet_ladders_follow_reference_effort_limits() {
     key.available_models = vec![
         "claude-sonnet-4-6".to_string(),
         "claude-sonnet-5".to_string(),
+        "claude-sonnet-5-5".to_string(),
     ];
 
     let info = KeyInfo::from(key);
@@ -855,6 +873,10 @@ fn sonnet_ladders_follow_reference_effort_limits() {
         .model_variants
         .iter()
         .any(|variant| variant.model == "claude-sonnet-5-thinking-xhigh"));
+    assert!(info
+        .model_variants
+        .iter()
+        .any(|variant| variant.model == "claude-sonnet-5-5-thinking-xhigh"));
 }
 
 #[test]
@@ -876,6 +898,7 @@ fn current_oauth_generations_are_preselected_without_overriding_provider_default
                 "claude-opus-6",
                 "claude-sonnet-4-10",
                 "claude-sonnet-5",
+                "claude-sonnet-5-5",
                 "claude-haiku-6",
                 "claude-mythos-6",
                 "claude-fable-5",

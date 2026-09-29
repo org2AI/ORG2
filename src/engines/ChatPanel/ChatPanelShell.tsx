@@ -5,6 +5,7 @@ import { VerticalResizeHandle } from "@src/scaffold/Resize";
 import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
 import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
+import { ChatPanelCompanionLayout } from "./ChatPanelCompanionLayout";
 import { UnifiedChatPanelTabContent } from "./TabContent/UnifiedChatPanelTabContent";
 import { ChatPanelFullScreenContext } from "./chatPanelFullScreenContext";
 
@@ -17,6 +18,8 @@ interface ChatPanelShellProps {
   chatPanelOpacityStyle: ChatPanelShellStyle;
   chatWidth: number;
   chatWidthStyleValue: string | number;
+  /** Space occupied by floating pane chrome, shared with transcript and rail. */
+  chromeTopInset?: number;
   focusedWorkstationRail?: React.ReactNode;
   /** The pane fills the app window; hosted tab content may use compact chrome. */
   fullScreen: boolean;
@@ -47,6 +50,7 @@ export function ChatPanelShell({
   chatPanelOpacityStyle,
   chatWidth,
   chatWidthStyleValue,
+  chromeTopInset = 0,
   focusedWorkstationRail,
   fullScreen,
   hasTabBar,
@@ -105,20 +109,21 @@ export function ChatPanelShell({
       }}
     >
       {headerSection}
-      <div className="flex min-h-0 min-w-0 flex-1">
-        <div className="flex min-h-0 min-w-0 flex-1">
-          <ChatPanelFullScreenContext.Provider value={fullScreen}>
-            <UnifiedChatPanelTabContent
-              activeTab={activeTab}
-              chatColumn={chatColumn}
-              hasTabBar={hasTabBar}
-              isTerminalTabActive={isTerminalTabActive}
-              terminalTabs={terminalTabs}
-            />
-          </ChatPanelFullScreenContext.Provider>
-        </div>
-        {focusedWorkstationRail}
-      </div>
+      <ChatPanelCompanionLayout
+        activeTab={activeTab}
+        topInset={chromeTopInset}
+        rail={focusedWorkstationRail}
+      >
+        <ChatPanelFullScreenContext.Provider value={fullScreen}>
+          <UnifiedChatPanelTabContent
+            activeTab={activeTab}
+            chatColumn={chatColumn}
+            hasTabBar={hasTabBar}
+            isTerminalTabActive={isTerminalTabActive}
+            terminalTabs={terminalTabs}
+          />
+        </ChatPanelFullScreenContext.Provider>
+      </ChatPanelCompanionLayout>
       {panelOverlay}
     </div>
   );

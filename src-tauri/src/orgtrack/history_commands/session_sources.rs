@@ -1,4 +1,4 @@
-//! `session_source_messages`: every user message of one session, reduced to
+//! `session_source_messages`: explicit resources of one conversation, reduced to
 //! what the workstation trail's Sources list reads (reference lines and
 //! lazily loadable image refs).
 //!
@@ -64,10 +64,6 @@ fn load_session_source_messages(session_id: &str) -> Result<Vec<UserSourceMessag
         let chunks = crate::agent_sessions::cli::commands::load_session_chunks(session_id)?;
         return Ok(user_source_messages_from_chunks(&chunks));
     }
-    let stored = session_persistence::load_stored_user_messages(session_id)
-        .map_err(|err| format!("Read session user messages: {err}"))?;
-    Ok(stored
-        .into_iter()
-        .filter_map(|message| UserSourceMessage::new(message.id, &message.text, message.images))
-        .collect())
+    session_persistence::load_stored_source_messages(session_id)
+        .map_err(|err| format!("Read session sources: {err}"))
 }

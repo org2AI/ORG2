@@ -30,6 +30,7 @@ export type WorkStationTabType =
   | "terminal"
   | "search" // Repository-wide search tab
   | "search-sessions" // Session search + table (reuses SessionTable; launchpad tab)
+  | "session-sources" // Durable input resources associated with one conversation
   | "url-preview" // URL preview (agent-triggered webview in editor)
   // Browser tabs
   | "browser-session"
@@ -234,6 +235,7 @@ export function getWorkstationTabOwnership(
     case "dom-component-preview":
     case "search":
     case "search-sessions":
+    case "session-sources":
     case "url-preview":
     case "subagent-detail":
     case "canvas-preview":

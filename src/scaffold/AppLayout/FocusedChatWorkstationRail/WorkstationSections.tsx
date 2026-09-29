@@ -39,7 +39,7 @@ export function WorkstationSections({
       role={compact ? "menu" : undefined}
     >
       {sections.map((section) => {
-        // Every section folds behind its heading, in both presentations.
+        // Folding hides previews; explicitly retained section navigation stays reachable.
         const groupCollapsed = collapsedGroupKeys?.has(section.key) === true;
 
         // In the wide rail, the panel header is also the heading for the first
@@ -173,17 +173,20 @@ export function WorkstationSections({
                 onRequestClose={onRequestClose}
               />
             ) : null}
-            {!groupCollapsed &&
-              section.items
-                .filter((item) => item !== changesItem)
-                .map((item) => (
-                  <WorkstationItemRow
-                    key={item.key}
-                    compact={compact}
-                    item={item}
-                    onRequestClose={onRequestClose}
-                  />
-                ))}
+            {section.items
+              .filter(
+                (item) =>
+                  item !== changesItem &&
+                  (!groupCollapsed || item.visibleWhenCollapsed)
+              )
+              .map((item) => (
+                <WorkstationItemRow
+                  key={item.key}
+                  compact={compact}
+                  item={item}
+                  onRequestClose={onRequestClose}
+                />
+              ))}
           </section>
         );
       })}

@@ -76,7 +76,9 @@ export function useColumnResize({
       setIsResizing(true);
 
       const startX = event.clientX;
-      const startWidth = width;
+      // CSS may cap a right pane after a viewport change. Start from its
+      // rendered layout width so the first drag does not jump or have a dead zone.
+      const startWidth = columnRef.current?.offsetWidth || width;
       pendingWidthRef.current = startWidth;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {

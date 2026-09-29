@@ -133,6 +133,12 @@ describe.each(["wide rail", "compact menu"])(
         mainPane: {
           tabs: [
             {
+              id: "session-sources:current",
+              type: "session-sources",
+              title: "Sources duplicate tab",
+              data: { sessionId: "current" },
+            },
+            {
               id: "file:readme",
               type: "file",
               title: "README.md",
@@ -167,7 +173,8 @@ describe.each(["wide rail", "compact menu"])(
     async function mount(
       subagents?: FocusedChatRailSubagent[],
       sessionContext?: FocusedChatSessionContext,
-      sources?: FocusedChatRailSource[]
+      sources?: FocusedChatRailSource[],
+      onOpenSources?: () => void
     ) {
       await act(async () => {
         root.render(
@@ -185,6 +192,7 @@ describe.each(["wide rail", "compact menu"])(
                   conversationMinimapHostRef: () => {},
                   sessionContext,
                   sources: sources ?? [],
+                  onOpenSources,
                   subagentIcon: resolveAgentIcon(SDE_AGENT_ICON_ID),
                   subagents: subagents ?? [],
                 })
@@ -616,6 +624,50 @@ describe.each(["wide rail", "compact menu"])(
       ).toBeNull();
     });
 
+    it.each([0, 3])(
+      "keeps View all reachable with %s sources while folded and after refolding",
+      async (count) => {
+        const openSources = vi.fn();
+        await mount(
+          undefined,
+          undefined,
+          Array.from({ length: count }, (_, index) => ({
+            kind: "link" as const,
+            key: `link:${index}`,
+            url: `https://example.com/${index}`,
+            label: `Source ${index}`,
+          })),
+          openSources
+        );
+        const host = view === "wide rail" ? container : menuHost;
+        expect(host.textContent).not.toContain("Sources duplicate tab");
+        const toggle = host.querySelector<HTMLButtonElement>(
+          '[data-workstation-group-toggle="sources"]'
+        )!;
+        const section = toggle.closest("section")!;
+        const viewAll = () =>
+          [...section.querySelectorAll("button")].filter((button) =>
+            button.textContent?.includes("View all")
+          );
+
+        expect(toggle.getAttribute("aria-expanded")).toBe("false");
+        expect(viewAll()).toHaveLength(1);
+        expect(section.textContent).not.toContain("Source 0");
+        act(() => viewAll()[0].click());
+        expect(openSources).toHaveBeenCalledTimes(1);
+        expect(toggle.getAttribute("aria-expanded")).toBe("false");
+
+        act(() => toggle.click());
+        expect(viewAll()).toHaveLength(1);
+        if (count > 0) expect(section.textContent).toContain("Source 0");
+        act(() => toggle.click());
+        expect(section.textContent).not.toContain("Source 0");
+        expect(viewAll()).toHaveLength(1);
+        act(() => viewAll()[0].click());
+        expect(openSources).toHaveBeenCalledTimes(2);
+      }
+    );
+
     it("folds sources by default and opens links in the Browser and images in the viewer", async () => {
       openLinkMocks.openInBrowserApp.mockClear();
       const image = (index: number): FocusedChatRailSource => ({
@@ -630,26 +682,47 @@ describe.each(["wide rail", "compact menu"])(
         url: `https://example.com/page-${index}`,
         label: `example.com/page-${index}`,
       });
-      await mount(undefined, undefined, [
-        link(0),
-        image(0),
-        image(1),
-        link(1),
-        link(2),
-        image(2),
-        link(3),
-      ]);
+      const openSources = vi.fn();
+      await mount(
+        undefined,
+        undefined,
+        [
+          ...["exec", "cua_repl", "apply_patch"].map(
+            (group): FocusedChatRailSource => ({
+              kind: "tool-group",
+              key: `tool-group:${group}`,
+              group,
+              operations: [],
+            })
+          ),
+          link(0),
+          image(0),
+          image(1),
+          link(1),
+          link(2),
+          image(2),
+          link(3),
+        ],
+        openSources
+      );
 
       const host = view === "wide rail" ? container : menuHost;
       const sourceSection = () =>
         [...host.querySelectorAll("section")].find((section) =>
-          section.textContent?.includes("7 Sources")
+          section.textContent?.includes("10 Sources")
         );
 
-      // Default collapsed: heading only, no rows and no image reads.
+      // Default collapsed: no preview rows or image reads, but navigation remains available.
       expect(sourceSection()).toBeDefined();
       expect(sourceSection()?.textContent).not.toContain("example.com");
       expect(sourceSection()?.querySelector("img")).toBeNull();
+      expect(sourceSection()?.textContent).toContain("View all");
+      act(() =>
+        [...sourceSection()!.querySelectorAll("button")]
+          .find((row) => row.textContent?.includes("View all"))!
+          .click()
+      );
+      expect(openSources).toHaveBeenCalledTimes(1);
 
       act(() =>
         host
@@ -660,57 +733,41 @@ describe.each(["wide rail", "compact menu"])(
       );
 
       const expanded = sourceSection()!;
-      for (const label of [
-        "example.com/page-0",
-        "Image",
-        "shot-1.png",
-        "example.com/page-1",
-        "example.com/page-2",
-      ]) {
+      for (const label of ["example.com/page-0", "Image", "shot-1.png"]) {
         expect(expanded.textContent).toContain(label);
       }
       expect(expanded.textContent).not.toContain("shot-2.png");
-      expect(expanded.textContent).toContain("Load more (+2)");
+      expect(expanded.textContent).toContain("View all");
       expect(expanded.querySelectorAll("img")).toHaveLength(2);
 
       // A link opens in My Station's Browser.
       const linkRow = [...expanded.querySelectorAll("button")].find((button) =>
-        button.textContent?.includes("example.com/page-1")
+        button.textContent?.includes("example.com/page-0")
       )!;
       act(() => linkRow.click());
       expect(openLinkMocks.openInBrowserApp).toHaveBeenCalledWith(
-        "https://example.com/page-1"
+        "https://example.com/page-0"
       );
 
-      // The last row opens the full list; an image there opens the viewer
-      // with every image of the session as its gallery.
+      // View all delegates to the session-scoped workstation tab opener.
       act(() =>
-        sourceSection()!
-          .querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!
+        [...sourceSection()!.querySelectorAll("button")]
+          .find((row) => row.textContent?.includes("View all"))!
           .click()
       );
-      const submenu = document.querySelector(
-        '[data-testid="workstation-trail-sources-submenu"]'
+      expect(openSources).toHaveBeenCalledTimes(2);
+      // Summary thumbnails share the entire session gallery, not only the preview.
+      act(() =>
+        [...sourceSection()!.querySelectorAll("button")]
+          .find((row) => row.textContent?.includes("shot-1.png"))!
+          .click()
       );
-      expect(submenu).not.toBeNull();
-      expect(submenu!.textContent).toContain("shot-2.png");
-      expect(submenu!.textContent).toContain("example.com/page-3");
-      const imageRow = [...submenu!.querySelectorAll('[role="menuitem"]')].find(
-        (row) => row.textContent?.includes("shot-2.png")
-      ) as HTMLElement;
-      act(() => imageRow.click());
-
-      expect(
-        document.querySelector(
-          '[data-testid="workstation-trail-sources-submenu"]'
-        )
-      ).toBeNull();
       const preview = document.querySelector(
         '[data-testid="source-image-preview"]'
       );
-      expect(preview?.getAttribute("data-src")).toBe("data:image/png;base64,2");
+      expect(preview?.getAttribute("data-src")).toBe("data:image/png;base64,1");
       expect(preview?.getAttribute("data-count")).toBe("3");
-      expect(preview?.getAttribute("data-index")).toBe("2");
+      expect(preview?.getAttribute("data-index")).toBe("1");
     });
 
     it("keeps pins excluded while collapsed and restores them only on release", async () => {

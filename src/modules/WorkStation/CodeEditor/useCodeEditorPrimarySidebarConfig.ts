@@ -23,6 +23,7 @@ export function useCodeEditorPrimarySidebarConfig({
 }: UseCodeEditorPrimarySidebarConfigOptions) {
   const activeTabHasNoSidebar =
     activeTab?.type === "shared-file" ||
+    activeTab?.type === "session-sources" ||
     activeTab?.type === "agent-config" ||
     activeTab?.type === "chat-session" ||
     activeTab?.type === "github-issue-detail" ||

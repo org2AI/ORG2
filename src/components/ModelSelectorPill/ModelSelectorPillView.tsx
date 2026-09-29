@@ -24,7 +24,6 @@ import PillGroup, { type PillGroupSegment } from "@src/components/PillGroup";
 import SelectorPill, {
   type SelectorPillPaddingX,
 } from "@src/components/SelectorPill";
-import Tooltip from "@src/components/Tooltip";
 import type { ModelEffortSegmentState } from "@src/hooks/models/useModelEffortSegment";
 import { AiSettingIcon, FlashIcon, HugeiconsIcon } from "@src/icons";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
@@ -126,7 +125,6 @@ const ModelSelectorPillView = forwardRef<
     );
 
     const [effortOpen, setEffortOpen] = useState(false);
-    const [disabledTooltipOpen, setDisabledTooltipOpen] = useState(false);
 
     const {
       label: modelLabel,
@@ -235,6 +233,7 @@ const ModelSelectorPillView = forwardRef<
         active,
         danger: !disabled && !hasModelSelection,
         disabled,
+        disabledTooltip,
         onClick,
         dataTestId: dataTestId,
         buttonRef: modelSegmentRef,
@@ -242,7 +241,7 @@ const ModelSelectorPillView = forwardRef<
         leadingFlush: triggerLeadingFlush,
       };
 
-      if (disabled || !effortEditable || !effortModelId) {
+      if (!effortEditable || !effortModelId) {
         return [modelSegment];
       }
 
@@ -259,6 +258,7 @@ const ModelSelectorPillView = forwardRef<
         renderButton: (buttonProps) =>
           separateEffortPill ? (
             <ModelSettingsMenu
+              disabled={disabled}
               anchorRef={effortPillRef}
               modelLabel={resolvedModelLabel}
               value={effortModelId}
@@ -277,6 +277,7 @@ const ModelSelectorPillView = forwardRef<
                 return (
                   <SelectorPill
                     ref={effortPillRef}
+                    disabled={disabled}
                     icon={
                       variant?.fast ? (
                         <HugeiconsIcon
@@ -360,6 +361,7 @@ const ModelSelectorPillView = forwardRef<
       dataTestId,
       defaultLabel,
       disabled,
+      disabledTooltip,
       effortAriaLabel,
       effortDataTestId,
       effortEditable,
@@ -384,9 +386,40 @@ const ModelSelectorPillView = forwardRef<
       variantOptions,
     ]);
 
-    if (!disabled && !separateEffortPill) {
+    // An empty selection has no settings/effort menu. Keep one trigger tree
+    // through binding hydration instead of swapping disabled PillGroup for
+    // enabled SelectorPill, which changes geometry on every conversation switch.
+    if (!hasModelSelection) {
+      return (
+        <SelectorPill
+          ref={modelSegmentRef}
+          icon={modelIcon}
+          label={resolvedModelLabel}
+          labelContent={
+            <span className="truncate font-medium">{resolvedModelLabel}</span>
+          }
+          title={modelTitle}
+          active={active}
+          activeTone="neutral"
+          ariaLabel={ariaLabel ?? defaultLabel}
+          dataTestId={dataTestId}
+          disabled={disabled}
+          disabledTooltip={disabledTooltip}
+          tooltip={modelTooltip}
+          tooltipFramed
+          tooltipFramedWide
+          className={`max-w-full shrink-0 ${triggerClassName ?? ""} ${className ?? ""}`}
+          leadingFlush={triggerLeadingFlush}
+          paddingX={paddingX}
+          onClick={onClick}
+        />
+      );
+    }
+
+    if (!separateEffortPill) {
       return (
         <ModelSettingsMenu
+          disabled={disabled}
           anchorRef={modelSegmentRef}
           modelLabel={resolvedModelLabel}
           value={effortModelId}
@@ -414,6 +447,8 @@ const ModelSelectorPillView = forwardRef<
             return (
               <SelectorPill
                 ref={modelSegmentRef}
+                disabled={disabled}
+                disabledTooltip={disabledTooltip}
                 icon={
                   variant?.fast ? (
                     <HugeiconsIcon
@@ -470,28 +505,6 @@ const ModelSelectorPillView = forwardRef<
         segmentClassName={`h-[28px] ${disabled ? "cursor-not-allowed [&>span]:opacity-50" : ""} ${triggerClassName ?? ""}`.trim()}
       />
     );
-
-    if (disabled && disabledTooltip) {
-      return (
-        <Tooltip
-          content={disabledTooltip}
-          position="top"
-          open={disabledTooltipOpen}
-          onOpenChange={setDisabledTooltipOpen}
-        >
-          <span
-            tabIndex={0}
-            onFocus={() => setDisabledTooltipOpen(true)}
-            onBlur={() => setDisabledTooltipOpen(false)}
-            aria-label={`${ariaLabel ?? defaultLabel}: ${disabledTooltip}`}
-            aria-disabled="true"
-            className="inline-flex min-w-0 cursor-not-allowed"
-          >
-            {pill}
-          </span>
-        </Tooltip>
-      );
-    }
 
     return pill;
   }

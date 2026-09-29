@@ -411,10 +411,9 @@ const ModelPillComponent: React.FC = () => {
       (Boolean(conversationBinding.target) ||
         Boolean(conversationBinding.runtimeSelection) ||
         Boolean(pendingRuntimeSelection)));
-  const modelDefaultLabel =
-    conversationBinding?.readiness === "loading"
-      ? t("common:actions.loading")
-      : t("sessions:creator.selectModel");
+  // Loading is an interaction gate, not a different action label. Empty
+  // conversations keep the same trigger while their execution binding resolves.
+  const modelDefaultLabel = t("sessions:creator.selectModel");
   const visiblePillSelection = conversationTargetReady ? pillSelection : null;
   const effectiveModelOpen = isModelOpen && conversationTargetReady;
   const runtimeSelection =

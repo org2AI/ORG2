@@ -972,6 +972,12 @@
       "sourceImage": "Image",
       "viewAllSources": "View all",
       "searchSources": "Search sources",
+      "sourceSort": "Sort sources",
+      "sourceSortOptions": {
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "provided-first": "I provided first"
+      },
       "sourcesLoadFailed": "Could not load sources",
       "sourcesUnavailable": "Sources are unavailable",
       "noSources": "No sources in this conversation",

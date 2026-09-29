@@ -1139,6 +1139,12 @@
       "sourceImage": "Obraz",
       "viewAllSources": "Pokaż wszystko",
       "searchSources": "Szukaj źródeł",
+      "sourceSort": "Sortuj źródła",
+      "sourceSortOptions": {
+        "newest": "Od najnowszych",
+        "oldest": "Od najstarszych",
+        "provided-first": "Moje źródła najpierw"
+      },
       "sourcesLoadFailed": "Nie udało się wczytać źródeł",
       "sourcesUnavailable": "Źródła są niedostępne",
       "noSources": "Brak źródeł w tej rozmowie",

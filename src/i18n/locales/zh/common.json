@@ -972,6 +972,12 @@
       "sourceImage": "图片",
       "viewAllSources": "查看全部",
       "searchSources": "搜索来源",
+      "sourceSort": "来源排序",
+      "sourceSortOptions": {
+        "newest": "最新优先",
+        "oldest": "最早优先",
+        "provided-first": "我提供的优先"
+      },
       "sourcesLoadFailed": "无法加载来源",
       "sourcesUnavailable": "来源暂不可用",
       "noSources": "此会话暂无来源",

@@ -1139,6 +1139,12 @@
       "sourceImage": "이미지",
       "viewAllSources": "모두 보기",
       "searchSources": "소스 검색",
+      "sourceSort": "출처 정렬",
+      "sourceSortOptions": {
+        "newest": "최신순",
+        "oldest": "오래된순",
+        "provided-first": "내가 제공한 항목 우선"
+      },
       "sourcesLoadFailed": "소스를 불러오지 못했습니다",
       "sourcesUnavailable": "소스를 사용할 수 없습니다",
       "noSources": "이 대화에 소스가 없습니다",

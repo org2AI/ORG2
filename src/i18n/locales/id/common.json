@@ -972,6 +972,12 @@
       "sourceImage": "Gambar",
       "viewAllSources": "Lihat semua",
       "searchSources": "Cari sumber",
+      "sourceSort": "Urutkan sumber",
+      "sourceSortOptions": {
+        "newest": "Terbaru dahulu",
+        "oldest": "Terlama dahulu",
+        "provided-first": "Sumber yang saya berikan terlebih dahulu"
+      },
       "sourcesLoadFailed": "Tidak dapat memuat sumber",
       "sourcesUnavailable": "Sumber tidak tersedia",
       "noSources": "Tidak ada sumber dalam percakapan ini",

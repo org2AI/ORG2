@@ -972,6 +972,12 @@
       "sourceImage": "छवि",
       "viewAllSources": "सभी देखें",
       "searchSources": "स्रोत खोजें",
+      "sourceSort": "स्रोत क्रमबद्ध करें",
+      "sourceSortOptions": {
+        "newest": "नवीनतम पहले",
+        "oldest": "सबसे पुराने पहले",
+        "provided-first": "मेरे दिए स्रोत पहले"
+      },
       "sourcesLoadFailed": "स्रोत लोड नहीं हो सके",
       "sourcesUnavailable": "स्रोत उपलब्ध नहीं हैं",
       "noSources": "इस बातचीत में कोई स्रोत नहीं है",

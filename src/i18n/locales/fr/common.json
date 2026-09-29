@@ -1139,6 +1139,12 @@
       "sourceImage": "Image",
       "viewAllSources": "Tout afficher",
       "searchSources": "Rechercher des sources",
+      "sourceSort": "Trier les sources",
+      "sourceSortOptions": {
+        "newest": "Plus récentes",
+        "oldest": "Plus anciennes",
+        "provided-first": "Mes sources en premier"
+      },
       "sourcesLoadFailed": "Impossible de charger les sources",
       "sourcesUnavailable": "Sources indisponibles",
       "noSources": "Aucune source dans cette conversation",

@@ -21,5 +21,5 @@ The previous placement was presentation-only: the maximized navigator portaled b
 - `pnpm typecheck:fast`: passed.
 - ESLint with `--max-warnings 0` passed for all changed production files and tests; final two-file alignment changes rechecked.
 - Scoped `git diff --check`: passed. Production JSX inspected: shared Button controls retained; no raw button or clickable-element substitutes added.
-- Browser fixture using the real minimap/context: verified ordinary 680px right placement, fullscreen 1100px left placement, fullscreen 480px left pill, inward preview and navigation selection. Screenshots in `docs/verification-2026-09-29/minimap-placement/minimap-{normal-right,fullscreen-left,fullscreen-narrow}.png`.
-- Desktop application integration was not visually exercised: current unbundled dev app is absent from the computer-use app inventory. Fixture screenshots verify the production component's CSS and interactions with sample conversation data; they are not full-app screenshots.
+- Browser fixture using the real minimap/context: verified ordinary 680px right placement, fullscreen 1100px left placement, fullscreen 480px left pill, inward preview and navigation selection.
+- Desktop application integration was not visually exercised: current unbundled dev app is absent from the computer-use app inventory. Component-fixture checks cover CSS and interactions with sample conversation data only; no actual application screenshots are included.

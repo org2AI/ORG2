@@ -143,6 +143,8 @@ export function useWorkstationRailTabs({
           tab.type !== "terminal" &&
           tab.type !== "start" &&
           tab.type !== "explorer" &&
+          // Sources already has its dedicated View all entry in this rail.
+          tab.type !== "session-sources" &&
           tab.type !== "source-control"
       )
       .slice(0, 6)

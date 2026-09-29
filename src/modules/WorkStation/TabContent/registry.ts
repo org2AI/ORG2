@@ -74,6 +74,10 @@ const SearchSessionsEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/searchSessions")),
 };
 
+const SessionSourcesEntry: RendererEntry = {
+  Component: lazy(() => import("./renderers/sessionSources")),
+};
+
 const UrlPreviewEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/urlPreview")),
 };
@@ -182,6 +186,7 @@ export const REGISTRY: TabContentRegistry = {
   terminal: TerminalEntry,
   search: SearchEntry,
   "search-sessions": SearchSessionsEntry,
+  "session-sources": SessionSourcesEntry,
   "url-preview": UrlPreviewEntry,
 
   // Browser

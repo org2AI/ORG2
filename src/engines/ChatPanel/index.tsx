@@ -449,6 +449,7 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
         chatPanelOpacityStyle={chatPanelOpacityStyle}
         chatWidth={chatWidth}
         chatWidthStyleValue={chatWidthStyleValue}
+        chromeTopInset={chromeTopInsetPx}
         fullScreen={isChatFocus}
         focusedWorkstationRail={
           showFocusedWorkstationControls ? (

@@ -6,6 +6,8 @@ import { IMPORTED_HISTORY_SOURCE_DESCRIPTORS } from "@src/api/tauri/externalHist
 import { formatAgentType } from "@src/assets/providers";
 import { getIconProviderFromType } from "@src/components/ModelIcon/config";
 import { resolveAgentIcon } from "@src/config/agentIcons";
+import { SessionSourcesFileScope } from "@src/engines/ChatPanel/sessionSources/SessionSourcesFileScope";
+import { openSessionSources } from "@src/engines/ChatPanel/sessionSources/openSessionSources";
 import { useSessionSources } from "@src/engines/ChatPanel/sessionSources/useSessionSources";
 import { useSubagentSessions } from "@src/engines/Simulator/hooks/useSubagentSessions";
 import { useChannelWorkItem } from "@src/features/DiscussionChannels/ChannelPanelView/useChannelWorkItem";
@@ -197,6 +199,7 @@ interface ConnectedSessionWorkstationRailProps extends Omit<
   /** Session scope shared with the unlinked rail; `workItem` is replaced. */
   sessionContext: FocusedChatSessionContext;
   sources: FocusedChatRailSource[];
+  onOpenSources?: () => void;
   subagentIcon: FocusedChatRailIcon;
   subagents: FocusedChatRailSubagent[];
   workItemId: string;
@@ -207,6 +210,7 @@ const ConnectedSessionWorkstationRail: React.FC<
 > = ({
   compactMenuHost,
   orgId,
+  onOpenSources,
   projectSlug,
   sessionContext: baseSessionContext,
   sources,
@@ -252,6 +256,7 @@ const ConnectedSessionWorkstationRail: React.FC<
       compactMenuHost={compactMenuHost}
       sessionContext={sessionContext}
       sources={sources}
+      onOpenSources={onOpenSources}
       subagentIcon={subagentIcon}
       subagents={subagents}
       topInset={topInset}
@@ -259,7 +264,7 @@ const ConnectedSessionWorkstationRail: React.FC<
   );
 };
 
-const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
+const SessionWorkstationRailContent: React.FC<SessionWorkstationRailProps> = ({
   compactMenuHost,
   session,
   sessionId,
@@ -276,6 +281,9 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
   );
   // Same freshness signal: a new user message advances the session row.
   const sources = useSessionSources(sessionId, session?.updated_at);
+  const handleOpenSources = useCallback(() => {
+    if (sessionId) openSessionSources(sessionId, t("common:git.rail.sources"));
+  }, [sessionId, t]);
   // A subagent runs on its parent's harness, so the parent's mark identifies
   // every child row — resolved through the same projection the sidebar and
   // chat tab use, which means a Codex session's subagents carry the Codex
@@ -321,11 +329,13 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
   if (context.workItemId) {
     return (
       <ConnectedSessionWorkstationRail
+        key={sessionId}
         compactMenuHost={compactMenuHost}
         orgId={context.orgId}
         projectSlug={context.projectSlug ?? ""}
         sessionContext={baseSessionContext}
         sources={sources}
+        onOpenSources={sessionId ? handleOpenSources : undefined}
         subagentIcon={subagentIcon}
         subagents={subagents}
         topInset={topInset}
@@ -336,9 +346,11 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
 
   return (
     <FocusedChatWorkstationRail
+      key={sessionId}
       compactMenuHost={compactMenuHost}
       sessionContext={baseSessionContext}
       sources={sources}
+      onOpenSources={sessionId ? handleOpenSources : undefined}
       subagentIcon={subagentIcon}
       subagents={subagents}
       topInset={topInset}
@@ -346,4 +358,12 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
   );
 };
 
-export default SessionWorkstationRail;
+export default function SessionWorkstationRail(
+  props: SessionWorkstationRailProps
+) {
+  return (
+    <SessionSourcesFileScope session={props.session}>
+      <SessionWorkstationRailContent key={props.sessionId} {...props} />
+    </SessionSourcesFileScope>
+  );
+}

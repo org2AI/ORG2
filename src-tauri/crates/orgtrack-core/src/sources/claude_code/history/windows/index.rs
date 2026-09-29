@@ -43,9 +43,6 @@ pub(in crate::sources::claude_code::history) struct ClaudeIndexedTurn {
     /// full-stream provider derives in `build_initial_window_from_turns` —
     /// without materializing the whole round body.
     pub(in crate::sources::claude_code::history) last_assistant_text_line: Option<(u64, usize)>,
-    /// The user row carries image blocks. `user_chunk` keeps URL refs only
-    /// (bounded); inline bytes stay in the source row.
-    pub(in crate::sources::claude_code::history) has_images: bool,
 }
 
 pub(in crate::sources::claude_code::history) fn claude_window_turn_id(start_offset: u64) -> String {
@@ -255,7 +252,6 @@ pub(in crate::sources::claude_code::history) fn index_claude_user_turns(
             user_chunk,
             following_line_count: 0,
             last_assistant_text_line: None,
-            has_images,
         });
     }
     Ok(turns)

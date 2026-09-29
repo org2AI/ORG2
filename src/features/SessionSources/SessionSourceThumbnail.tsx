@@ -1,15 +1,15 @@
 /**
- * RailImageThumbnail — an attached image drawn in a rail row's icon slot.
+ * SessionSourceThumbnail — the lazy image shared by source summaries and rows.
  *
  * The bytes are read only while the row is mounted and released with it, so
- * a folded Sources section or a closed submenu holds no image data.
+ * a folded Sources section or an inactive full view holds no image data.
  */
 import { memo } from "react";
 
 import { useResolvedImageSrc } from "@src/engines/ChatPanel/ChatImageThumbnail";
 import { HugeiconsIcon, Image01Icon, ImageNotFound01Icon } from "@src/icons";
 
-export const RailImageThumbnail = memo(function RailImageThumbnail({
+export const SessionSourceThumbnail = memo(function SessionSourceThumbnail({
   imageRef,
   size,
 }: {

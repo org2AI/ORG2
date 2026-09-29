@@ -92,14 +92,12 @@ export function MobileModelPicker({
     [currentModelId, t]
   );
 
-  const editable = config?.modelEditable === true && !disabled;
+  const editable = config?.modelEditable === true;
   const selection = useMemo(
     () => (config ? toMobileLastModelSelection(config) : null),
     [config]
   );
-  const defaultLabel = loading
-    ? t("modelPicker.loading")
-    : t("modelPicker.selectModel");
+  const defaultLabel = t("modelPicker.selectModel");
   const modelLabel = useMemo(() => {
     const displayParts = resolveModelPillDisplayParts(
       selection ?? {},
@@ -205,7 +203,9 @@ export function MobileModelPicker({
           dataTestId="mobile-model-picker-pill"
           triggerClassName="mobile-composer-model-trigger"
           ariaLabel={t("modelPicker.selectModel")}
-          className={`max-w-full ${pickerDisabled ? "pointer-events-none opacity-60" : ""}`}
+          disabled={pickerDisabled}
+          disabledTooltip={loading || patching ? t("modelPicker.loading") : ""}
+          className="max-w-full"
         />
       </div>
       <MobileModelListDropdown

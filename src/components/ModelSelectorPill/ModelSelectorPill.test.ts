@@ -128,6 +128,99 @@ describe("ModelSelectorPill combined settings", () => {
     act(() => vi.runOnlyPendingTimers());
   });
 
+  it("retains the empty-model trigger DOM and geometry through hydration gates", () => {
+    const renderEmpty = (disabled: boolean) =>
+      act(() =>
+        root.render(
+          React.createElement(
+            Provider,
+            { store },
+            React.createElement(ModelSelectorPill, {
+              selection: null,
+              defaultLabel: "Select model",
+              active: false,
+              onClick: openModel,
+              disabled,
+              disabledTooltip: "Loading...",
+              dataTestId: "model-pill",
+              paddingX: "compact",
+            })
+          )
+        )
+      );
+    renderEmpty(false);
+    const original = element("model-pill") as HTMLButtonElement;
+    const parent = original.parentElement;
+    const classes = original.className;
+    for (const separate of [false, true]) {
+      act(() => store.set(separateEffortPillAtom, separate));
+      renderEmpty(true);
+      expect(element("model-pill")).toBe(original);
+      expect(original.parentElement).toBe(parent);
+      expect(original.textContent).toBe("Select model");
+      expect(original.disabled).toBe(true);
+      act(() => original.click());
+      expect(openModel).not.toHaveBeenCalled();
+      renderEmpty(false);
+      expect(element("model-pill")).toBe(original);
+      expect(original.className).toBe(classes);
+      expect(original.disabled).toBe(false);
+    }
+    act(() => store.set(separateEffortPillAtom, false));
+    act(() => original.click());
+    expect(openModel).toHaveBeenCalledOnce();
+  });
+
+  it.each([false, true])(
+    "preserves selected model controls while disabled (split=%s)",
+    (split) => {
+      const previous = store.get(separateEffortPillAtom);
+      const draw = (disabled: boolean) =>
+        act(() =>
+          root.render(
+            React.createElement(
+              Provider,
+              { store },
+              React.createElement(ModelSelectorPill, {
+                selection: { model: "gpt-5.6-sol-xhigh" },
+                defaultLabel: "Select model",
+                active: false,
+                disabled,
+                disabledTooltip: "Loading",
+                onClick: openModel,
+                onVariantApply: apply,
+                dataTestId: "model-pill",
+                effortDataTestId: "effort-pill",
+              })
+            )
+          )
+        );
+      try {
+        act(() => store.set(separateEffortPillAtom, split));
+        draw(false);
+        const before = [...container.querySelectorAll("button")];
+        const labels = before.map((button) => button.textContent);
+        act(() => before.at(-1)!.click());
+        expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+        draw(true);
+        expect(document.querySelector('[role="dialog"]')).toBeNull();
+        expect([...container.querySelectorAll("button")]).toEqual(before);
+        expect(before.map((button) => button.textContent)).toEqual(labels);
+        for (const button of before) {
+          expect(button.disabled).toBe(true);
+          act(() => button.click());
+        }
+        expect(openModel).not.toHaveBeenCalled();
+        expect(apply).not.toHaveBeenCalled();
+        draw(false);
+        expect([...container.querySelectorAll("button")]).toEqual(before);
+        expect(before.every((button) => !button.disabled)).toBe(true);
+      } finally {
+        act(() => store.set(separateEffortPillAtom, previous));
+      }
+    }
+  );
+
   function render(
     initial = "gpt-5.6-sol-xhigh",
     editable = true,

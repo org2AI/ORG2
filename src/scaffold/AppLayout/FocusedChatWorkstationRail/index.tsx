@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -11,13 +11,12 @@ import {
   resolveFocusedChatWorkstationRailInsetStyle,
   resolveFocusedChatWorkstationRailTrackClass,
 } from "@src/engines/ChatPanel/focusedChatWorkstationLayout";
+import { SessionSourceImagePreview } from "@src/features/SessionSources/SessionSourceImagePreview";
 
 import { WorkstationCollapsedDiffStats } from "./WorkstationCollapsedDiffStats";
 import { WorkstationCollapsedRailItems } from "./WorkstationCollapsedRailItems";
 import { WorkstationCompactMenu } from "./WorkstationCompactMenu";
 import { WorkstationSections } from "./WorkstationSections";
-import { WorkstationSourceImagePreview } from "./WorkstationSourceImagePreview";
-import { WorkstationSourcesSubmenu } from "./WorkstationSourcesSubmenu";
 import { WorkstationSubagentsSubmenu } from "./WorkstationSubagentsSubmenu";
 import { WorkstationTrailHeaderActions } from "./WorkstationTrailHeaderActions";
 import { WorkstationTrailTerminal } from "./WorkstationTrailTerminal";
@@ -44,6 +43,7 @@ export function FocusedChatWorkstationRail({
   compactMenuHost,
   sessionContext,
   sources,
+  onOpenSources,
   subagentIcon,
   subagents,
   topInset = 0,
@@ -96,30 +96,14 @@ export function FocusedChatWorkstationRail({
     subagentsSubmenuWidth,
   } = useWorkstationRailSubagents({ setMenuOpen, subagentIcon, subagents, t });
 
-  const {
-    closeImagePreview,
-    closeSourcesSubmenu,
-    imagePreview,
-    openSource,
-    sourceItems,
-    sourcesSubmenuAnchor,
-    sourcesSubmenuMaxHeight,
-    sourcesSubmenuPanelRef,
-    sourcesSubmenuWidth,
-  } = useWorkstationRailSources({ setMenuOpen, sources, t });
-
-  // Both "load more" panels belong to the compact menu they open from.
-  const compactMenuInsideRefs = useMemo(
-    () => [...subagentsSubmenuInsideRefs, sourcesSubmenuPanelRef],
-    [sourcesSubmenuPanelRef, subagentsSubmenuInsideRefs]
-  );
-  const handleMenuVisibleChange = useCallback(
-    (visible: boolean) => {
-      handleSubagentsMenuVisibleChange(visible);
-      if (!visible) closeSourcesSubmenu();
-    },
-    [closeSourcesSubmenu, handleSubagentsMenuVisibleChange]
-  );
+  const { closeImagePreview, imagePreview, sourceItems } =
+    useWorkstationRailSources({
+      setMenuOpen,
+      sources,
+      t,
+      onOpenSources,
+      basePath: sessionContext?.worktreePath ?? sessionContext?.repoPath,
+    });
 
   const environmentLabel = t("navigation:labels.sessionEnvironment");
   const {
@@ -151,7 +135,7 @@ export function FocusedChatWorkstationRail({
 
   const compactMenu = compactMenuHost ? (
     <WorkstationCompactMenu
-      additionalInsideRefs={compactMenuInsideRefs}
+      additionalInsideRefs={subagentsSubmenuInsideRefs}
       collapseGroupLabel={t("common:actions.collapse")}
       collapsedGroupKeys={collapsedGroupKeys}
       expandGroupLabel={t("common:actions.expand")}
@@ -160,7 +144,7 @@ export function FocusedChatWorkstationRail({
       menuOpen={menuOpen}
       onRequestClose={() => setMenuOpen(false)}
       onToggleGroup={toggleGroup}
-      onVisibleChange={handleMenuVisibleChange}
+      onVisibleChange={handleSubagentsMenuVisibleChange}
       sections={compactSections}
     />
   ) : null;
@@ -273,19 +257,8 @@ export function FocusedChatWorkstationRail({
           width={subagentsSubmenuWidth}
         />
       ) : null}
-      {sourcesSubmenuAnchor ? (
-        <WorkstationSourcesSubmenu
-          anchor={sourcesSubmenuAnchor}
-          maxHeight={sourcesSubmenuMaxHeight}
-          onClose={closeSourcesSubmenu}
-          onOpenSource={openSource}
-          panelRef={sourcesSubmenuPanelRef}
-          sources={sources}
-          width={sourcesSubmenuWidth}
-        />
-      ) : null}
       {imagePreview ? (
-        <WorkstationSourceImagePreview
+        <SessionSourceImagePreview
           images={imagePreview.images}
           index={imagePreview.index}
           onClose={closeImagePreview}

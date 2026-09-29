@@ -230,16 +230,16 @@ describe("getLabelColorStyle", () => {
 // formatTimeAgo
 // ============================================================
 describe("formatTimeAgo", () => {
+  const dayMs = 24 * 60 * 60 * 1000;
+
   function daysAgo(n: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return d.toISOString();
+    return new Date(Date.now() - n * dayMs).toISOString();
   }
 
   function monthsAgo(n: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() - n * 30);
-    return d.toISOString();
+    // formatRelativeTime defines a month as 30 elapsed days. Subtract elapsed
+    // time here too, so a DST transition cannot turn 11 months into 10.
+    return new Date(Date.now() - n * 30 * dayMs).toISOString();
   }
 
   it('returns "Today" for the current date', () => {

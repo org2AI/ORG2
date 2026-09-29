@@ -84,3 +84,6 @@ pub use commands::{
 pub(crate) static ORGII_HOME_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 mod auxiliary_usage;
+
+mod source_messages;
+pub use source_messages::load_stored_source_messages;

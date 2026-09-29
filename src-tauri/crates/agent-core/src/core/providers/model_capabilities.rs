@@ -177,6 +177,12 @@ const FAMILY_RULES: &[FamilyRule] = &[
         context_window: 200_000,
         thinking: ThinkingSupport::Optional,
     },
+    // https://platform.claude.com/docs/en/models/sonnet-5-5/overview
+    FamilyRule {
+        pattern: "claude-sonnet-5-5",
+        context_window: 1_000_000,
+        thinking: ThinkingSupport::Optional,
+    },
     FamilyRule {
         pattern: "claude-sonnet-5",
         context_window: 1_000_000,
@@ -629,6 +635,18 @@ pub(crate) fn is_claude_fable_5_1(model: &str) -> bool {
         .to_ascii_lowercase()
         .split_once("claude-fable-5-1")
         .is_some_and(|(_, rest)| rest.is_empty() || rest.starts_with('-') || rest.starts_with(':'))
+}
+
+/// These models reject forced `tool_choice` values (`tool` and `any`).
+pub(crate) fn is_claude_forced_tool_choice_unsupported(model: &str) -> bool {
+    let lower = model.to_ascii_lowercase();
+    ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5"]
+        .iter()
+        .any(|id| {
+            lower.split_once(id).is_some_and(|(_, rest)| {
+                rest.is_empty() || rest.starts_with('-') || rest.starts_with(':')
+            })
+        })
 }
 
 /// Resolve capabilities for `model`, optionally consulting the KeyVault

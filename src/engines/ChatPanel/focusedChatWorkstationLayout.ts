@@ -4,18 +4,6 @@ import {
 } from "@src/components/layout/tokens/workstationTrailTokens";
 import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
-/**
- * Host for the conversation minimap inside the trail column.
- *
- * In-flow from 850px up, where the track reserves the rail's 36px (see
- * `resolveFocusedChatWorkstationRailTrackClass`). Below that the track is
- * zero-width and the host is a 36px box pinned to the pane's right edge —
- * the same box the side pane's rail floats in, so the pill inside lands on
- * the identical spot in both.
- */
-export const FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS =
-  "pointer-events-none absolute right-0 top-0 h-full w-9 @[850px]/focusedchat:relative @[850px]/focusedchat:ml-auto @[850px]/focusedchat:h-auto @[850px]/focusedchat:min-h-0 @[850px]/focusedchat:flex-1";
-
 export function resolveFocusedChatWorkstationSectionOrder(
   hasOpenTabs: boolean,
   hasSessionEnvironment: boolean,
@@ -84,20 +72,13 @@ export function shouldMountFocusedChatWorkstationControls({
   return isChatFocus && activeTabType === "session" && showSessionContent;
 }
 
-/**
- * Width of the trail column, in three steps.
- *
- * Under 850px the pane is too tight to spend 36px on chrome, so the column
- * is zero and the minimap floats over the transcript exactly as it does in a
- * non-maximized pane. From 850px the column reserves the minimap's rail. At
- * 1100px the trail surface itself arrives and takes over the width.
- */
+/** The trail reserves width only when its surface becomes visible. */
 export function resolveFocusedChatWorkstationRailTrackClass(
   collapsed: boolean
 ): string {
   return collapsed
-    ? `w-0 @[850px]/focusedchat:w-9 ${WORKSTATION_TRAIL_WIDTH.collapsedResponsiveClass} ${FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS}`
-    : `w-0 @[850px]/focusedchat:w-9 ${WORKSTATION_TRAIL_WIDTH.resizableResponsiveClass} ${FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS} @[1100px]/focusedchat:mr-2`;
+    ? `w-0 ${WORKSTATION_TRAIL_WIDTH.collapsedResponsiveClass} ${FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS}`
+    : `w-0 ${WORKSTATION_TRAIL_WIDTH.resizableResponsiveClass} ${FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS} @[1100px]/focusedchat:mr-2`;
 }
 
 /** Keep the rail below overlaid chat chrome while the transcript scrolls behind it. */

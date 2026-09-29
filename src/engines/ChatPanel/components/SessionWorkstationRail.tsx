@@ -39,7 +39,6 @@ import { resolveSessionRowIcon } from "@src/util/session/sessionSidebarRow";
 
 interface SessionWorkstationRailProps {
   compactMenuHost: HTMLSpanElement | null;
-  conversationMinimapHostRef: (node: HTMLDivElement | null) => void;
   session: Session | null | undefined;
   sessionId: string | null | undefined;
   topInset?: number;
@@ -207,7 +206,6 @@ const ConnectedSessionWorkstationRail: React.FC<
   ConnectedSessionWorkstationRailProps
 > = ({
   compactMenuHost,
-  conversationMinimapHostRef,
   orgId,
   projectSlug,
   sessionContext: baseSessionContext,
@@ -252,7 +250,6 @@ const ConnectedSessionWorkstationRail: React.FC<
   return (
     <FocusedChatWorkstationRail
       compactMenuHost={compactMenuHost}
-      conversationMinimapHostRef={conversationMinimapHostRef}
       sessionContext={sessionContext}
       sources={sources}
       subagentIcon={subagentIcon}
@@ -264,7 +261,6 @@ const ConnectedSessionWorkstationRail: React.FC<
 
 const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
   compactMenuHost,
-  conversationMinimapHostRef,
   session,
   sessionId,
   topInset,
@@ -326,7 +322,6 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
     return (
       <ConnectedSessionWorkstationRail
         compactMenuHost={compactMenuHost}
-        conversationMinimapHostRef={conversationMinimapHostRef}
         orgId={context.orgId}
         projectSlug={context.projectSlug ?? ""}
         sessionContext={baseSessionContext}
@@ -342,7 +337,6 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
   return (
     <FocusedChatWorkstationRail
       compactMenuHost={compactMenuHost}
-      conversationMinimapHostRef={conversationMinimapHostRef}
       sessionContext={baseSessionContext}
       sources={sources}
       subagentIcon={subagentIcon}

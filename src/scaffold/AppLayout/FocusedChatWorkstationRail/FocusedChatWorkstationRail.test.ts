@@ -182,7 +182,6 @@ describe.each(["wide rail", "compact menu"])(
                 null,
                 React.createElement(FocusedChatWorkstationRail, {
                   compactMenuHost: menuHost,
-                  conversationMinimapHostRef: () => {},
                   sessionContext,
                   sources: sources ?? [],
                   subagentIcon: resolveAgentIcon(SDE_AGENT_ICON_ID),

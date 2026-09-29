@@ -59,7 +59,6 @@ import {
 } from "./components/SessionViewSwitcher";
 import SessionWorkstationRail from "./components/SessionWorkstationRail";
 import { shouldMountFocusedChatWorkstationControls } from "./focusedChatWorkstationLayout";
-import { FocusedChatWorkstationMinimapPortalContext } from "./focusedChatWorkstationMinimapPortal";
 import {
   resolveChatPanelChromeTopInsetPx,
   shouldCollapseChatPanelTabRow,
@@ -188,14 +187,6 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
     const focusedWorkstationMenuHostRef = useCallback(
       (node: HTMLSpanElement | null) => {
         setFocusedWorkstationMenuHost(node);
-      },
-      []
-    );
-    const [focusedWorkstationMinimapHost, setFocusedWorkstationMinimapHost] =
-      useState<HTMLDivElement | null>(null);
-    const focusedWorkstationMinimapHostRef = useCallback(
-      (node: HTMLDivElement | null) => {
-        setFocusedWorkstationMinimapHost(node);
       },
       []
     );
@@ -451,48 +442,41 @@ const ChatPanel: React.FC<ChatPanelProps> = memo(
     );
 
     return (
-      <FocusedChatWorkstationMinimapPortalContext.Provider
-        value={
-          showFocusedWorkstationControls ? focusedWorkstationMinimapHost : null
+      <ChatPanelShell
+        activeTab={activeTab}
+        borderClasses={borderClasses}
+        chatColumn={chatColumn}
+        chatPanelOpacityStyle={chatPanelOpacityStyle}
+        chatWidth={chatWidth}
+        chatWidthStyleValue={chatWidthStyleValue}
+        fullScreen={isChatFocus}
+        focusedWorkstationRail={
+          showFocusedWorkstationControls ? (
+            <SessionWorkstationRail
+              compactMenuHost={focusedWorkstationMenuHost}
+              session={currentSession}
+              sessionId={currentSessionId}
+              topInset={chromeTopInsetPx}
+            />
+          ) : null
         }
-      >
-        <ChatPanelShell
-          activeTab={activeTab}
-          borderClasses={borderClasses}
-          chatColumn={chatColumn}
-          chatPanelOpacityStyle={chatPanelOpacityStyle}
-          chatWidth={chatWidth}
-          chatWidthStyleValue={chatWidthStyleValue}
-          fullScreen={isChatFocus}
-          focusedWorkstationRail={
-            showFocusedWorkstationControls ? (
-              <SessionWorkstationRail
-                compactMenuHost={focusedWorkstationMenuHost}
-                conversationMinimapHostRef={focusedWorkstationMinimapHostRef}
-                session={currentSession}
-                sessionId={currentSessionId}
-                topInset={chromeTopInsetPx}
-              />
-            ) : null
-          }
-          hasTabBar={!tabRowCollapsed}
-          headerSection={headerSection}
-          isDragging={isDragging}
-          isLeftPosition={isLeftPosition}
-          isTerminalTabActive={isTerminalTabActive}
-          onResizeMouseDown={handleMouseDown}
-          panelRef={panelRef}
-          panelOverlay={<SessionSwipeIndicator {...swipeIndicator} />}
-          resizeIndicatorHost={resizeIndicatorHost}
-          renderResizeTooltipExtra={renderResizeTooltipExtra}
-          resizeTooltipLabel={t("chat.hideWorkstation")}
-          resizeTooltipShortcut={maximizeShortcut}
-          sessionModals={sessionModals}
-          showResizeHandle={showResizeHandle}
-          terminalTabs={terminalTabs}
-          useExternalWidth={useExternalWidth}
-        />
-      </FocusedChatWorkstationMinimapPortalContext.Provider>
+        hasTabBar={!tabRowCollapsed}
+        headerSection={headerSection}
+        isDragging={isDragging}
+        isLeftPosition={isLeftPosition}
+        isTerminalTabActive={isTerminalTabActive}
+        onResizeMouseDown={handleMouseDown}
+        panelRef={panelRef}
+        panelOverlay={<SessionSwipeIndicator {...swipeIndicator} />}
+        resizeIndicatorHost={resizeIndicatorHost}
+        renderResizeTooltipExtra={renderResizeTooltipExtra}
+        resizeTooltipLabel={t("chat.hideWorkstation")}
+        resizeTooltipShortcut={maximizeShortcut}
+        sessionModals={sessionModals}
+        showResizeHandle={showResizeHandle}
+        terminalTabs={terminalTabs}
+        useExternalWidth={useExternalWidth}
+      />
     );
   }
 );

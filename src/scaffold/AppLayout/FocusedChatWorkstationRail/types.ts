@@ -83,7 +83,6 @@ export interface FocusedChatWorkstationRailProps {
   /** Header host for the narrow-layout pinned trigger. */
   compactMenuHost: HTMLSpanElement | null;
   /** Rail-column host for the conversation scroll navigator. */
-  conversationMinimapHostRef: (node: HTMLDivElement | null) => void;
   /** Active session scope moved out of the transcript's former context row. */
   sessionContext?: FocusedChatSessionContext;
   /** Images and links the user sent in the active session, newest first. */

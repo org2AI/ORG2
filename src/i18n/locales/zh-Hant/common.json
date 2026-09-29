@@ -1139,6 +1139,12 @@
       "sourceImage": "圖片",
       "viewAllSources": "查看全部",
       "searchSources": "搜尋來源",
+      "sourceSort": "來源排序",
+      "sourceSortOptions": {
+        "newest": "最新優先",
+        "oldest": "最早優先",
+        "provided-first": "我提供的優先"
+      },
       "sourcesLoadFailed": "無法載入來源",
       "sourcesUnavailable": "來源暫時無法使用",
       "noSources": "此對話尚無來源",

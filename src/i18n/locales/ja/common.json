@@ -1139,6 +1139,12 @@
       "sourceImage": "画像",
       "viewAllSources": "すべて表示",
       "searchSources": "ソースを検索",
+      "sourceSort": "ソースの並び順",
+      "sourceSortOptions": {
+        "newest": "新しい順",
+        "oldest": "古い順",
+        "provided-first": "自分が提供したものを優先"
+      },
       "sourcesLoadFailed": "ソースを読み込めませんでした",
       "sourcesUnavailable": "ソースを利用できません",
       "noSources": "この会話にはソースがありません",

@@ -1,13 +1,19 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import PageNotice from "@src/components/PageNotice";
+import Select from "@src/components/Select";
 import { ListPanelScrollArea } from "@src/components/layout/blocks";
 import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
 import type { SessionSource } from "@src/engines/ChatPanel/sessionSources/extractSessionSources";
 
 import { SessionSourceCategory } from "./SessionSourceCategory";
 import { SessionSourceImagePreview } from "./SessionSourceImagePreview";
+import {
+  SOURCE_SORTS,
+  type SourceSort,
+  sortSessionSources,
+} from "./sortSessionSources";
 import { useSessionSourceNavigation } from "./useSessionSourceNavigation";
 
 const CATEGORIES = [
@@ -32,16 +38,21 @@ export function SessionSourcesView({
   onRetry: () => void;
 }) {
   const { t } = useTranslation();
+  const [sort, setSort] = useState<SourceSort>("newest");
+  const orderedSources = useMemo(
+    () => sortSessionSources(sources, sort),
+    [sources, sort]
+  );
   const categories = useMemo(
     () =>
       CATEGORIES.map((category) => ({
         ...category,
-        items: sources.filter((source) => source.kind === category.kind),
+        items: orderedSources.filter((source) => source.kind === category.kind),
       })).filter((category) => category.items.length > 0),
-    [sources]
+    [orderedSources]
   );
   const { openSource, imagePreview, closeImagePreview } =
-    useSessionSourceNavigation(sources, basePath);
+    useSessionSourceNavigation(orderedSources, basePath);
 
   return (
     <section
@@ -50,6 +61,26 @@ export function SessionSourcesView({
       data-testid="workstation-sources-view"
       aria-busy={loading}
     >
+      {sources.length > 0 ? (
+        <div className="flex shrink-0 justify-end px-2 py-2">
+          <Select
+            size="small"
+            value={sort}
+            ariaLabel={t("common:git.rail.sourceSort")}
+            options={SOURCE_SORTS.map((value) => ({
+              value,
+              label: t(`common:git.rail.sourceSortOptions.${value}`),
+            }))}
+            onChange={(value) => {
+              if (
+                typeof value === "string" &&
+                SOURCE_SORTS.includes(value as SourceSort)
+              )
+                setSort(value as SourceSort);
+            }}
+          />
+        </div>
+      ) : null}
       <ListPanelScrollArea listPaddingTop="none">
         {error ? (
           <PageNotice

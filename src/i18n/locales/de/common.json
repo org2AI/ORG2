@@ -1139,6 +1139,12 @@
       "sourceImage": "Bild",
       "viewAllSources": "Alle anzeigen",
       "searchSources": "Quellen durchsuchen",
+      "sourceSort": "Quellen sortieren",
+      "sourceSortOptions": {
+        "newest": "Neueste zuerst",
+        "oldest": "Älteste zuerst",
+        "provided-first": "Von mir bereitgestellt zuerst"
+      },
       "sourcesLoadFailed": "Quellen konnten nicht geladen werden",
       "sourcesUnavailable": "Quellen sind nicht verfügbar",
       "noSources": "Keine Quellen in dieser Unterhaltung",

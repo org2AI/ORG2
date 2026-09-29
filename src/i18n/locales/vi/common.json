@@ -1139,6 +1139,12 @@
       "sourceImage": "Hình ảnh",
       "viewAllSources": "Xem tất cả",
       "searchSources": "Tìm nguồn",
+      "sourceSort": "Sắp xếp nguồn",
+      "sourceSortOptions": {
+        "newest": "Mới nhất trước",
+        "oldest": "Cũ nhất trước",
+        "provided-first": "Nguồn tôi cung cấp trước"
+      },
       "sourcesLoadFailed": "Không thể tải nguồn",
       "sourcesUnavailable": "Nguồn không khả dụng",
       "noSources": "Cuộc trò chuyện này chưa có nguồn",

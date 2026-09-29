@@ -1139,6 +1139,12 @@
       "sourceImage": "Изображение",
       "viewAllSources": "Показать все",
       "searchSources": "Поиск источников",
+      "sourceSort": "Сортировка источников",
+      "sourceSortOptions": {
+        "newest": "Сначала новые",
+        "oldest": "Сначала старые",
+        "provided-first": "Мои источники сначала"
+      },
       "sourcesLoadFailed": "Не удалось загрузить источники",
       "sourcesUnavailable": "Источники недоступны",
       "noSources": "В этом разговоре нет источников",

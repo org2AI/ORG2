@@ -22,6 +22,35 @@ vi.mock("./SessionSourceThumbnail", () => ({
 vi.mock("./SessionSourceImagePreview", () => ({
   SessionSourceImagePreview: () => null,
 }));
+vi.mock("@src/components/Select", () => ({
+  default: ({
+    value,
+    onChange,
+    options,
+    ariaLabel,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    options: { value: string; label: string }[];
+    ariaLabel: string;
+  }) =>
+    React.createElement(
+      "select",
+      {
+        value,
+        "aria-label": ariaLabel,
+        onChange: (event: React.ChangeEvent<HTMLSelectElement>) =>
+          onChange(event.target.value),
+      },
+      options.map((option) =>
+        React.createElement(
+          "option",
+          { key: option.value, value: option.value },
+          option.label
+        )
+      )
+    ),
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -71,6 +100,61 @@ afterEach(() => {
 });
 
 describe("SessionSourcesView", () => {
+  it("sorts provided sources first within each category and resets for another session", async () => {
+    const mixed: SessionSource[] = [
+      {
+        kind: "file",
+        key: "assistant-file",
+        path: "/tmp/new.md",
+        fileName: "new.md",
+        isDirectory: false,
+        origin: "assistant-reference",
+      },
+      {
+        kind: "file",
+        key: "provided-file",
+        path: "/tmp/old.md",
+        fileName: "old.md",
+        isDirectory: false,
+        origin: "assistant-reference",
+        origins: ["assistant-reference", "provided-file"],
+      },
+      {
+        kind: "link",
+        key: "assistant-link",
+        url: "https://example.com/new",
+        label: "New link",
+        origin: "assistant-reference",
+      },
+      {
+        kind: "link",
+        key: "provided-link",
+        url: "https://example.com/old",
+        label: "Old link",
+        origin: "provided-link",
+      },
+    ];
+    await render({ sources: mixed });
+    const fileRows = () =>
+      [...container.querySelectorAll('[data-source-category="file"] li')].map(
+        (row) => row.textContent
+      );
+    expect(fileRows()[0]).toContain("new.md");
+    const select = container.querySelector(
+      'select[aria-label="common:git.rail.sourceSort"]'
+    )! as HTMLSelectElement;
+    await act(async () => {
+      select.value = "provided-first";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(fileRows()[0]).toContain("old.md");
+    expect(
+      container.querySelector('[data-source-category="link"] li')?.textContent
+    ).toContain("Old link");
+    expect(mixed[0].key).toBe("assistant-file");
+    await render({ sources: mixed }, "session-b");
+    expect(fileRows()[0]).toContain("new.md");
+  });
   it("bounds image reads, opens source rows and reveals further pages on request", async () => {
     await render();
     expect(container.querySelectorAll("[data-thumbnail]")).toHaveLength(30);

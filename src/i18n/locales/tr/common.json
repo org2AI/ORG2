@@ -1139,6 +1139,12 @@
       "sourceImage": "Görsel",
       "viewAllSources": "Tümünü görüntüle",
       "searchSources": "Kaynaklarda ara",
+      "sourceSort": "Kaynakları sırala",
+      "sourceSortOptions": {
+        "newest": "Önce en yeni",
+        "oldest": "Önce en eski",
+        "provided-first": "Sağladıklarım önce"
+      },
       "sourcesLoadFailed": "Kaynaklar yüklenemedi",
       "sourcesUnavailable": "Kaynaklar kullanılamıyor",
       "noSources": "Bu konuşmada kaynak yok",

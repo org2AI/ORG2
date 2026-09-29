@@ -37,6 +37,7 @@ export function useWorkstationRailSections({
   environmentLabel,
   openTabItems,
   primaryWorkspaceTitle,
+  pullRequestItems,
   sessionContext,
   sessionItems,
   sourceCount,
@@ -49,6 +50,7 @@ export function useWorkstationRailSections({
   environmentLabel: string;
   openTabItems: FocusedChatRailItem[];
   primaryWorkspaceTitle: string;
+  pullRequestItems: FocusedChatRailItem[];
   sessionContext: FocusedChatSessionContext | undefined;
   sessionItems: FocusedChatRailItem[];
   sourceCount: number;
@@ -61,7 +63,7 @@ export function useWorkstationRailSections({
   const hasSessionEnvironment =
     hasFocusedChatSessionEnvironment(sessionContext);
   const sections = useMemo<FocusedChatRailSection[]>(() => {
-    return resolveFocusedChatWorkstationSectionOrder(
+    const environmentSections = resolveFocusedChatWorkstationSectionOrder(
       openTabItems.length > 0,
       hasSessionEnvironment,
       subagentItems.length > 0,
@@ -94,9 +96,20 @@ export function useWorkstationRailSections({
         },
       ];
     });
+    return pullRequestItems.length > 0
+      ? [
+          {
+            key: "pull-request",
+            label: t("common:labels.pullRequest"),
+            items: pullRequestItems,
+          },
+          ...environmentSections,
+        ]
+      : environmentSections;
   }, [
     hasSessionEnvironment,
     openTabItems,
+    pullRequestItems,
     sessionContext,
     sessionItems,
     sourceCount,
@@ -118,22 +131,25 @@ export function useWorkstationRailSections({
   );
   const cloudSessionFirst =
     hasSessionEnvironment && sessionContext?.environmentKind === "cloud";
-  const wideHeaderSectionKey = cloudSessionFirst ? "session" : "workspace";
-  const wideHeaderTitle = cloudSessionFirst
-    ? environmentLabel
-    : primaryWorkspaceTitle;
+  const hasPullRequestSection = pullRequestItems.length > 0;
+  const wideHeaderSectionKey = hasPullRequestSection
+    ? "pull-request"
+    : cloudSessionFirst
+      ? "session"
+      : "workspace";
+  const wideHeaderTitle = hasPullRequestSection
+    ? t("common:labels.pullRequest")
+    : cloudSessionFirst
+      ? environmentLabel
+      : primaryWorkspaceTitle;
   const wideSections = useMemo<FocusedChatRailSection[]>(
     () =>
-      cloudSessionFirst
-        ? sections.map((section) =>
-            section.key === "session"
-              ? { ...section, label: null }
-              : section.key === "workspace"
-                ? { ...section, label: primaryWorkspaceTitle }
-                : section
-          )
-        : sections,
-    [cloudSessionFirst, primaryWorkspaceTitle, sections]
+      compactSections.map((section) =>
+        section.key === wideHeaderSectionKey
+          ? { ...section, label: null }
+          : section
+      ),
+    [compactSections, wideHeaderSectionKey]
   );
 
   return {

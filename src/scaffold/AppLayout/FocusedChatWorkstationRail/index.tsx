@@ -66,7 +66,7 @@ export function FocusedChatWorkstationRail({
   const { browserTab, openTabItems, openWorkstationHost, openWorkstationTab } =
     useWorkstationRailTabs({ miniTerminalClaimedIds, showMiniTerminal, t });
 
-  const { activeBranchName, sessionItems, workspaceItems } =
+  const { activeBranchName, pullRequestItems, sessionItems, workspaceItems } =
     useWorkstationRailGitHub({ sessionContext, t });
 
   const {
@@ -115,6 +115,7 @@ export function FocusedChatWorkstationRail({
     environmentLabel,
     openTabItems,
     primaryWorkspaceTitle,
+    pullRequestItems,
     sessionContext,
     sessionItems,
     sourceCount: sources.length,

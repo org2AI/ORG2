@@ -36,6 +36,7 @@ import {
 const GITHUB_ENDPOINT = "https://github.com";
 
 interface BranchPullRequestStatusState extends BranchPullRequestStatusSnapshot {
+  error: boolean;
   compareUrl: string | null;
   defaultBranch: string | null;
   lastFetchedAt: number | null;
@@ -46,6 +47,7 @@ interface BranchPullRequestStatusState extends BranchPullRequestStatusSnapshot {
 }
 
 const EMPTY_STATE: BranchPullRequestStatusState = {
+  error: false,
   compareUrl: null,
   defaultBranch: null,
   lastFetchedAt: null,
@@ -60,6 +62,8 @@ const EMPTY_STATE: BranchPullRequestStatusState = {
 
 export interface UseBranchPullRequestStatusOptions {
   branchName?: string;
+  /** Include the latest closed/merged PR for conversation summaries. */
+  includeClosed?: boolean;
   /** Local HEAD identity; a change forces a fresh PR-head/check read. */
   headRevision?: string;
   repoId?: string;
@@ -107,15 +111,25 @@ function resolveAuthScope(
 async function fetchStatusSnapshot(
   repoFullName: string,
   branchName: string,
-  headChecksOptions: LoadPullRequestHeadChecksOptions
+  headChecksOptions: LoadPullRequestHeadChecksOptions,
+  includeClosed: boolean
 ): Promise<BranchPullRequestStatusSnapshot> {
-  const foundPr = await findPullRequestLocal(repoFullName, branchName);
+  const foundPr = await findPullRequestLocal(
+    repoFullName,
+    branchName,
+    includeClosed
+  );
   const pr =
-    foundPr?.state.toLowerCase() === "open" && foundPr.number > 0
+    foundPr &&
+    (includeClosed || foundPr.state.toLowerCase() === "open") &&
+    foundPr.number > 0
       ? foundPr
       : null;
   if (!pr) {
     return { pr: null, checks: null, checksUnavailable: false };
+  }
+  if (pr.state.toLowerCase() !== "open") {
+    return { pr, checks: null, checksUnavailable: false };
   }
 
   let checks: GitHubChecksSummary | null = null;
@@ -141,6 +155,7 @@ async function fetchStatusSnapshot(
 export function useBranchPullRequestStatus({
   branchName,
   headRevision,
+  includeClosed = false,
   repoId,
   repoPath,
   poll = false,
@@ -168,7 +183,7 @@ export function useBranchPullRequestStatus({
   } | null>(null);
   const scopeKey =
     repoPath && branchName
-      ? `${repoId ?? "default"}|${repoPath}|${branchName}`
+      ? `${repoId ?? "default"}|${repoPath}|${branchName}|${includeClosed}`
       : null;
 
   useEffect(() => {
@@ -235,6 +250,16 @@ export function useBranchPullRequestStatus({
       ) {
         return;
       }
+      setState((current) => {
+        const scoped = current.scopeKey === scopeKey ? current : EMPTY_STATE;
+        return {
+          ...scoped,
+          scopeKey,
+          error: false,
+          loading: !scoped.pr,
+          refreshing: Boolean(scoped.pr),
+        };
+      });
       const force = options?.force === true;
       const mutationVersion = remoteMutationVersionRef.current;
       const generation = ++generationRef.current;
@@ -260,14 +285,18 @@ export function useBranchPullRequestStatus({
       );
       if (!origin?.url || !isGitHubRemote(origin.url)) {
         clearPollTimer();
-        setState(EMPTY_STATE);
+        setState((current) =>
+          remotes === null && current.scopeKey === scopeKey
+            ? { ...current, error: true, loading: false, refreshing: false }
+            : { ...EMPTY_STATE, scopeKey, error: remotes === null }
+        );
         return;
       }
 
       const repoFullName = parseGithubRepoFullName(origin.url);
       if (!repoFullName) {
         clearPollTimer();
-        setState(EMPTY_STATE);
+        setState({ ...EMPTY_STATE, scopeKey });
         return;
       }
 
@@ -282,15 +311,17 @@ export function useBranchPullRequestStatus({
         activeAuthScope: authScope,
         repoFullName,
       });
-      const cacheKey = buildBranchPullRequestStatusKey({
-        authScope,
-        branchName,
-        repoFullName,
-      });
+      const cacheKey =
+        buildBranchPullRequestStatusKey({
+          authScope,
+          branchName,
+          repoFullName,
+        }) + (includeClosed ? "|all" : "");
       const cached = getCachedBranchPullRequestStatus(cacheKey);
       const cachedIsFresh = !force && isBranchPullRequestStatusFresh(cached);
 
       setState({
+        error: false,
         compareUrl,
         defaultBranch,
         repoFullName,
@@ -326,12 +357,19 @@ export function useBranchPullRequestStatus({
               };
         const snapshot = await loadBranchPullRequestStatusCoalesced(
           requestKey,
-          () => fetchStatusSnapshot(repoFullName, branchName, headChecksOptions)
+          () =>
+            fetchStatusSnapshot(
+              repoFullName,
+              branchName,
+              headChecksOptions,
+              includeClosed
+            )
         );
         if (!isCurrent()) return;
         const fetchedAt = Date.now();
         setCachedBranchPullRequestStatus(cacheKey, snapshot, fetchedAt);
         setState({
+          error: false,
           compareUrl,
           defaultBranch,
           repoFullName,
@@ -351,6 +389,7 @@ export function useBranchPullRequestStatus({
         clearPollTimer();
         setState((current) => ({
           ...current,
+          error: true,
           loading: false,
           refreshing: false,
         }));
@@ -459,7 +498,15 @@ export function useBranchPullRequestStatus({
         handleRemoteMutation
       );
     };
-  }, [branchName, headRevision, poll, repoId, repoPath, scopeKey]);
+  }, [
+    branchName,
+    headRevision,
+    includeClosed,
+    poll,
+    repoId,
+    repoPath,
+    scopeKey,
+  ]);
 
   const visibleState =
     state.scopeKey === scopeKey
@@ -467,6 +514,7 @@ export function useBranchPullRequestStatus({
       : {
           ...EMPTY_STATE,
           scopeKey,
+          loading: Boolean(scopeKey),
         };
 
   const ciStatus = useMemo(

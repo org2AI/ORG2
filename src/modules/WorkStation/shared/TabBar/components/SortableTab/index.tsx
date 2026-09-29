@@ -92,10 +92,6 @@ export const SortableTab: React.FC<SortableTabProps> = memo(
           return `${filePath || tab.title} (Working Tree)`;
         case "terminal":
           return `Terminal: ${sessionName || tab.title}`;
-        case "github-pr-detail": {
-          const prTitle = tab.data.prTitle as string | undefined;
-          return prTitle ? `#${tab.data.prNumber} ${prTitle}` : tab.title;
-        }
         default:
           return getWorkstationTabDisplayTitle(tab, t);
       }

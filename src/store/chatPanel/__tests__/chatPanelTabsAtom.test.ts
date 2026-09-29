@@ -1848,6 +1848,40 @@ describe("GitHub chat-panel detail tabs", () => {
     vi.useRealTimers();
   });
 
+  it("focuses repeated remote PRs without merging equal numbers from different repositories", async () => {
+    const { chatPanelTabsAtom, openGitHubPrInChatPanelTabAtom, store } =
+      await loadChatPanelTabAtoms();
+    const pr = {
+      prNumber: 42,
+      prTitle: "First",
+      prUrl: "https://github.com/acme/one/pull/42",
+      prStatus: "open",
+      headBranch: "feature",
+      repoPath: "",
+    };
+    const first = store.set(openGitHubPrInChatPanelTabAtom, pr);
+    const second = store.set(openGitHubPrInChatPanelTabAtom, {
+      ...pr,
+      prUrl: "https://github.com/acme/two/pull/42",
+    });
+    expect(second).not.toBe(first);
+    expect(
+      store.set(openGitHubPrInChatPanelTabAtom, {
+        ...pr,
+        prTitle: "Updated",
+        prUrl: "https://github.com/ACME/One/pull/42/files",
+      })
+    ).toBe(first);
+    const state = store.get(chatPanelTabsAtom);
+    expect(state.activeTabId).toBe(first);
+    expect(state.tabs.filter((tab) => tab.type === "github-pr")).toHaveLength(
+      2
+    );
+    expect(state.tabs.find((tab) => tab.id === first)?.title).toBe(
+      "#42 Updated"
+    );
+  });
+
   it("opens and deduplicates issues and pull requests by repository", async () => {
     const {
       chatPanelTabsAtom,

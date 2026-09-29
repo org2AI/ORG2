@@ -9,6 +9,7 @@ import type {
   GitHubIssueDetailTabData,
   GitHubPrDetailTabData,
 } from "@src/types/githubDetail";
+import { githubPullRequestTabKey } from "@src/util/git/githubPullRequestUrl";
 
 import {
   buildChannelTabKey,
@@ -57,8 +58,8 @@ export const openGitHubPrInChatPanelTabAtom = atom(
     openOrFocusChatPanelTab(get, set, {
       isMatch: (tab) =>
         tab.type === "github-pr" &&
-        tab.githubPr?.repoPath === pr.repoPath &&
-        tab.githubPr.prNumber === pr.prNumber,
+        Boolean(tab.githubPr) &&
+        githubPullRequestTabKey(tab.githubPr!) === githubPullRequestTabKey(pr),
       refresh: (tab) => ({
         ...tab,
         title: `#${pr.prNumber} ${pr.prTitle}`,

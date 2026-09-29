@@ -236,13 +236,15 @@ export async function resolvePrWorktreeBase(params: {
 
 export async function findPullRequestLocal(
   repoFullName: string,
-  headBranch: string
+  headBranch: string,
+  includeClosed = false
 ): Promise<LocalFindPRResponse | null> {
   return invokeWithAuth<LocalFindPRResponse | null>(
     "github_find_pull_request",
     {
       repoFullName,
       headBranch,
+      includeClosed,
     }
   );
 }

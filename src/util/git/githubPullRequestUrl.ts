@@ -23,3 +23,16 @@ export function parseGitHubPullRequestUrl(
   if (!Number.isSafeInteger(number) || number <= 0) return null;
   return { owner: match[1], repo: match[2], number };
 }
+
+/** Keep local tab identities stable; remote-only PRs must include their repository. */
+export function githubPullRequestTabKey(pr: {
+  repoPath: string;
+  prUrl: string;
+  prNumber: number;
+}): string {
+  if (pr.repoPath) return `${pr.repoPath}:${pr.prNumber}`;
+  const ref = parseGitHubPullRequestUrl(pr.prUrl);
+  return ref && ref.number === pr.prNumber
+    ? `github.com/${ref.owner.toLowerCase()}/${ref.repo.toLowerCase()}:${ref.number}`
+    : `${pr.prUrl}:${pr.prNumber}`;
+}

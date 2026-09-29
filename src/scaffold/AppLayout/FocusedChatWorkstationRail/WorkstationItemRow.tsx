@@ -58,6 +58,11 @@ export function WorkstationItemRow({
       disabled={!item.onClick}
       role={compact ? "menuitem" : undefined}
       aria-haspopup={item.submenu ? "menu" : undefined}
+      aria-label={
+        item.title
+          ? [item.title, item.status?.title].filter(Boolean).join(" · ")
+          : undefined
+      }
     >
       <span
         className={`${WORKSTATION_TRAIL_ROW.content} ${compact ? WORKSTATION_TRAIL_ROW.compactContent : WORKSTATION_TRAIL_ROW.wideContent}`}
@@ -124,13 +129,17 @@ export function WorkstationItemRow({
     <div
       className={`group ${WORKSTATION_TRAIL_ROW.shell} ${compact ? WORKSTATION_TRAIL_ROW.compact : WORKSTATION_TRAIL_ROW.wide} ${WORKSTATION_TRAIL_ROW_HOVER_CLASS}`}
     >
-      {item.shortcut ? (
+      {item.shortcut || item.title ? (
         <Tooltip
           content={
-            <KeyboardShortcutTooltipContent
-              label={item.label}
-              shortcut={item.shortcut}
-            />
+            item.shortcut ? (
+              <KeyboardShortcutTooltipContent
+                label={item.title ?? item.label}
+                shortcut={item.shortcut}
+              />
+            ) : (
+              item.title
+            )
           }
           position="left"
           framedPanel

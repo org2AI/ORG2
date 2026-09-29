@@ -20,6 +20,8 @@ mod index;
 pub mod materialized_tool;
 mod meta;
 mod normalize;
+mod pull_requests;
+pub use pull_requests::load_codex_pull_requests_from_path;
 mod transcript;
 
 pub use index::load_codex_context_usage_for_session;

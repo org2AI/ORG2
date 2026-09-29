@@ -22,6 +22,8 @@ export type FocusedChatRailIcon =
 export type FocusedChatRailItem = {
   key: string;
   label: string;
+  /** Full descriptive tooltip for truncated resource titles. */
+  title?: string;
   icon: FocusedChatRailIcon;
   /** Keyboard hint shown in a tooltip (e.g. "⌘E"). */
   shortcut?: string;
@@ -107,6 +109,8 @@ export interface FocusedChatWorkstationRailProps {
 }
 
 export interface FocusedChatSessionContext {
+  sessionId?: string;
+  updatedAt?: string;
   /** Agent runtime that executes the session (for example, Codex or ORG2). */
   agentHarness?: {
     icon: FocusedChatRailIcon;

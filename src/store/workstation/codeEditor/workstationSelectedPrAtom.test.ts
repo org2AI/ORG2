@@ -17,6 +17,40 @@ beforeEach(() => {
 });
 
 describe("workstationPrScopeKey", () => {
+  it("isolates remote PRs by URL while keeping local keys unchanged", () => {
+    const one = workstationPrScopeKey(
+      undefined,
+      "",
+      9,
+      "https://github.com/Org/One/pull/9"
+    );
+    const two = workstationPrScopeKey(
+      undefined,
+      "",
+      9,
+      "https://github.com/org/two/pull/9"
+    );
+    expect(one).not.toBe(two);
+    expect(workstationSelectedPrAtomFamily(one)).not.toBe(
+      workstationSelectedPrAtomFamily(two)
+    );
+    expect(one).toBe(
+      workstationPrScopeKey(
+        undefined,
+        "",
+        9,
+        "https://github.com/org/one/pull/9/files"
+      )
+    );
+    expect(
+      workstationPrScopeKey(
+        "repo-1",
+        "/repo",
+        9,
+        "https://github.com/org/one/pull/9"
+      )
+    ).toBe(scope(9));
+  });
   it("separates PRs within one repo", () => {
     expect(scope(1)).not.toBe(scope(2));
   });

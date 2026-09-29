@@ -51,11 +51,14 @@ export interface LoadPullRequestHeadChecksOptions {
   bypassInFlight?: boolean;
   /** Identifies the reader in the event its answer is published with. */
   source?: unknown;
+  /** Receive metadata as soon as it arrives, without waiting for CI checks. */
+  onDetail?: (detail: Record<string, unknown>) => void;
 }
 
 /** `order` ranks answers by when they were asked for, not when they landed. */
 type RecentEntry = PullRequestHeadChecks & { order: number };
 let nextOrder = 0;
+let generation = 0;
 
 export interface PullRequestHeadChecksEvent {
   repoFullName: string;
@@ -82,6 +85,15 @@ const recent = new BoundedMap<string, RecentEntry>({
   maxSize: MAX_TRACKED_PULL_REQUESTS,
   name: "pullRequestHeadChecks.recent",
 });
+// A known title remains useful while CI refreshes or fails. This seed never
+// satisfies a checks request and has the same bounded ownership as full reads.
+const metadata = new BoundedMap<
+  string,
+  { detail: Record<string, unknown>; order: number }
+>({
+  maxSize: MAX_TRACKED_PULL_REQUESTS,
+  name: "pullRequestHeadChecks.metadata",
+});
 /** Bumped by `invalidate`; a request remembers the epoch it started in. */
 const epochs = new BoundedMap<string, number>({
   maxSize: MAX_TRACKED_PULL_REQUESTS,
@@ -89,11 +101,15 @@ const epochs = new BoundedMap<string, number>({
 });
 const inFlight = new Map<
   string,
-  { epoch: number; request: Promise<PullRequestHeadChecks> }
+  {
+    epoch: number;
+    request: Promise<PullRequestHeadChecks>;
+    detail: Promise<Record<string, unknown>>;
+  }
 >();
 
 function keyOf(repoFullName: string, prNumber: number): string {
-  return `${repoFullName}#${prNumber}`;
+  return `${repoFullName.toLowerCase()}#${prNumber}`;
 }
 
 function readHeadSha(detail: Record<string, unknown>): string | null {
@@ -105,12 +121,22 @@ function readHeadSha(detail: Record<string, unknown>): string | null {
 
 async function fetchHeadChecks(
   repoFullName: string,
-  prNumber: number
+  detailRequest: Promise<Record<string, unknown>>
 ): Promise<PullRequestHeadChecks> {
-  const detail = await getPRLocal(repoFullName, prNumber);
+  const detail = await detailRequest;
   const headSha = readHeadSha(detail);
   const checks = headSha ? await getChecksLocal(repoFullName, headSha) : null;
   return { detail, headSha, checks, fetchedAt: Date.now() };
+}
+
+function deliverDetail(
+  detail: Promise<Record<string, unknown>>,
+  onDetail: LoadPullRequestHeadChecksOptions["onDetail"]
+): void {
+  if (!onDetail) return;
+  // Each consumer observes the same metadata promise, including late joiners.
+  // A callback failure must not reject the shared request or leak a rejection.
+  void detail.then(onDetail).catch(() => undefined);
 }
 
 export function loadPullRequestHeadChecks(
@@ -120,6 +146,7 @@ export function loadPullRequestHeadChecks(
     maxAgeMs = 0,
     bypassInFlight = false,
     source,
+    onDetail,
   }: LoadPullRequestHeadChecksOptions = {}
 ): Promise<PullRequestHeadChecks> {
   const key = keyOf(repoFullName, prNumber);
@@ -128,23 +155,47 @@ export function loadPullRequestHeadChecks(
   if (maxAgeMs > 0) {
     const cached = recent.get(key);
     if (cached && Date.now() - cached.fetchedAt <= maxAgeMs) {
+      deliverDetail(Promise.resolve(cached.detail), onDetail);
       return Promise.resolve(cached);
     }
   }
 
+  const seed = metadata.get(key);
+  if (seed) deliverDetail(Promise.resolve(seed.detail), onDetail);
+
   const pending = inFlight.get(key);
   if (pending && pending.epoch === epoch && !bypassInFlight) {
+    deliverDetail(pending.detail, onDetail);
     return pending.request;
   }
 
   const order = (nextOrder += 1);
-  const request = fetchHeadChecks(repoFullName, prNumber)
+  const requestGeneration = generation;
+  const detail = getPRLocal(repoFullName, prNumber);
+  void detail
+    .then((value) => {
+      const newer = metadata.peek(key);
+      if (
+        generation === requestGeneration &&
+        (epochs.get(key) ?? 0) === epoch &&
+        (!newer || newer.order < order)
+      ) {
+        metadata.set(key, { detail: value, order });
+      }
+    })
+    .catch(() => undefined);
+  deliverDetail(detail, onDetail);
+  const request = fetchHeadChecks(repoFullName, detail)
     .then((result) => {
       // Invalidated while on the wire: hand the answer to whoever asked, but
       // never let anyone else take it for current. Likewise a slow request
       // must not replace the answer to one that was asked after it.
       const newer = recent.peek(key);
-      if ((epochs.get(key) ?? 0) === epoch && (!newer || newer.order < order)) {
+      if (
+        generation === requestGeneration &&
+        (epochs.get(key) ?? 0) === epoch &&
+        (!newer || newer.order < order)
+      ) {
         recent.set(key, { ...result, order });
         publish({ repoFullName, prNumber, snapshot: result, source });
       }
@@ -153,11 +204,22 @@ export function loadPullRequestHeadChecks(
     .finally(() => {
       if (inFlight.get(key)?.request === request) inFlight.delete(key);
     });
-  inFlight.set(key, { epoch, request });
+  inFlight.set(key, { epoch, request, detail });
   return request;
 }
 
-/** Something changed the pull request: forget what was read before it. */
+/**
+ * A display-only seed, never evidence that the PR or its checks are fresh.
+ * Callers still load the current snapshot; full cache clear removes this too.
+ */
+export function getPullRequestMetadata(
+  repoFullName: string,
+  prNumber: number
+): Record<string, unknown> | undefined {
+  return metadata.get(keyOf(repoFullName, prNumber))?.detail;
+}
+
+/** Invalidate freshness after a mutation, retaining the last-known display seed. */
 export function invalidatePullRequestHeadChecks(
   repoFullName: string,
   prNumber: number
@@ -165,6 +227,8 @@ export function invalidatePullRequestHeadChecks(
   const key = keyOf(repoFullName, prNumber);
   epochs.set(key, (epochs.get(key) ?? 0) + 1);
   recent.delete(key);
+  // Preserve the last-known title while the required fresh read is pending.
+  // The advanced epoch still prevents pre-invalidation requests from caching.
 }
 
 /** Capture before a read that will later be offered through `prime`. */
@@ -189,7 +253,9 @@ export function primePullRequestHeadChecks(
   const key = keyOf(repoFullName, prNumber);
   if ((epochs.get(key) ?? 0) !== epoch) return;
   const result = { ...snapshot, fetchedAt: Date.now() };
-  recent.set(key, { ...result, order: (nextOrder += 1) });
+  const order = (nextOrder += 1);
+  recent.set(key, { ...result, order });
+  metadata.set(key, { detail: snapshot.detail, order });
   publish({ repoFullName, prNumber, snapshot: result, source: undefined });
 }
 
@@ -207,7 +273,9 @@ export function subscribePullRequestHeadChecks(listener: Listener): () => void {
 }
 
 export function clearPullRequestHeadChecks(): void {
+  generation += 1;
   recent.clear();
+  metadata.clear();
   epochs.clear();
   inFlight.clear();
 }

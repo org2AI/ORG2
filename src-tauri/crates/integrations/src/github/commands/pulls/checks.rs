@@ -35,6 +35,42 @@ pub(crate) fn parse_check_run(v: &Value) -> GitHubCheckRun {
     }
 }
 
+/// GitHub can return superseded workflow runs from different check suites on
+/// the same commit, even with its default `filter=latest`. Project the latest
+/// run for each reporting app/check name before either displaying or rolling up
+/// the result. Missing identities are kept conservatively. The API does not
+/// expose workflow identity here: equal job names in separate workflows of the
+/// same app share GitHub's check-name identity, as in the CLI checks summary.
+fn latest_check_runs(values: &[Value]) -> Vec<GitHubCheckRun> {
+    let mut newest = std::collections::HashMap::<(u64, &str), u64>::new();
+    fn identity(value: &Value) -> Option<(u64, &str)> {
+        Some((
+            value["app"]["id"].as_u64().filter(|id| *id > 0)?,
+            value["name"].as_str().filter(|name| !name.is_empty())?,
+        ))
+    }
+    for value in values {
+        if let (Some(key), Some(id)) = (identity(value), value["id"].as_u64().filter(|id| *id > 0))
+        {
+            newest
+                .entry(key)
+                .and_modify(|latest| *latest = (*latest).max(id))
+                .or_insert(id);
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    values
+        .iter()
+        .filter(
+            |value| match (identity(value), value["id"].as_u64().filter(|id| *id > 0)) {
+                (Some(key), Some(id)) => newest.get(&key) == Some(&id) && seen.insert((key, id)),
+                _ => true,
+            },
+        )
+        .map(parse_check_run)
+        .collect()
+}
+
 /// A legacy commit-status context (Travis-era statuses, still used by some
 /// integrations). Mirrors entries in `GET /repos/{repo}/commits/{ref}/status`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -122,7 +158,7 @@ pub async fn github_get_checks(
     )
     .await
     {
-        Ok(values) => values.iter().map(parse_check_run).collect(),
+        Ok(values) => latest_check_runs(&values),
         Err(err) if err.contains("GitHubReAuthRequired") => return Err(err),
         // Some repos / refs 404 or 422 for check-runs — treat as "no runs".
         Err(err) => {
@@ -155,4 +191,57 @@ pub async fn github_get_checks(
         statuses,
         state,
     })
+}
+
+#[cfg(test)]
+mod normalization_tests {
+    use super::*;
+    use serde_json::json;
+    fn run(id: u64, app: u64, name: &str, conclusion: &str) -> Value {
+        json!({"id": id, "app": {"id":app,"name":"GitHub Actions"}, "name":name, "status":"completed", "conclusion":conclusion})
+    }
+    #[test]
+    fn superseded_cancelled_contract_does_not_override_successful_replacement() {
+        // Actual PR response shape: one head SHA, separate suites, older
+        // cancelled contract and its successful replacement returned together.
+        let values = [
+            run(108043289504, 15368, "Enforce PR contract", "cancelled"),
+            run(108043300246, 15368, "Enforce PR contract", "success"),
+            run(108044295956, 57789, "CodeQL", "neutral"),
+            run(108043377754, 15368, "Rust (cargo audit)", "skipped"),
+        ];
+        let parsed = latest_check_runs(&values);
+        assert_eq!(parsed.len(), 3);
+        assert_eq!(roll_up_checks_state(&parsed, &[]), "success");
+    }
+    #[test]
+    fn newest_failure_wins_and_different_apps_remain_independent() {
+        let values = [
+            run(10, 1, "test", "success"),
+            run(11, 1, "test", "failure"),
+            run(12, 2, "test", "success"),
+        ];
+        let parsed = latest_check_runs(&values);
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(roll_up_checks_state(&parsed, &[]), "failure");
+    }
+    #[test]
+    fn older_failure_replaced_by_pending_remains_pending() {
+        let old = run(10, 1, "test", "failure");
+        let mut new = run(11, 1, "test", "success");
+        new["status"] = json!("in_progress");
+        new["conclusion"] = Value::Null;
+        assert_eq!(
+            roll_up_checks_state(&latest_check_runs(&[new, old]), &[]),
+            "pending"
+        );
+    }
+    #[test]
+    fn unknown_app_identity_does_not_hide_a_failure() {
+        let mut old = run(10, 1, "test", "failure");
+        old["app"] = Value::Null;
+        let parsed = latest_check_runs(&[old, run(11, 1, "test", "success")]);
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(roll_up_checks_state(&parsed, &[]), "failure");
+    }
 }

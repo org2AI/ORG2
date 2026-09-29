@@ -57,6 +57,8 @@ pub struct FindPRResponse {
     pub number: u64,
     pub url: String,
     pub state: String,
+    pub title: String,
+    pub draft: bool,
 }
 
 #[command]
@@ -90,43 +92,74 @@ pub async fn github_create_pr(
     Ok(pr)
 }
 
+fn parse_found_pull_request(data: &Value) -> Option<FindPRResponse> {
+    let item = data.as_array()?.first()?;
+    Some(FindPRResponse {
+        number: item["number"].as_u64()?,
+        url: item["html_url"].as_str()?.to_string(),
+        state: if item["merged_at"].as_str().is_some() {
+            "merged".to_string()
+        } else {
+            item["state"].as_str()?.to_string()
+        },
+        title: item["title"].as_str().unwrap_or_default().to_string(),
+        draft: item["draft"].as_bool().unwrap_or(false),
+    })
+}
+
+// Prefer a live PR when a branch has been reused. The opt-in fallback is
+// bounded to one additional request and never changes open-only consumers.
+async fn find_branch_pull_request<F, Fut>(
+    repo: &str,
+    branch: &str,
+    include_closed: bool,
+    mut get: F,
+) -> Result<Option<FindPRResponse>, String>
+where
+    F: FnMut(String) -> Fut,
+    Fut: std::future::Future<Output = Result<Value, String>>,
+{
+    let owner = repo
+        .split_once('/')
+        .filter(|(owner, name)| !owner.is_empty() && !name.is_empty())
+        .map(|(owner, _)| owner)
+        .ok_or_else(|| format!("Invalid repo name: {repo}"))?;
+    for state in ["open", "closed"] {
+        if state == "closed" && !include_closed {
+            break;
+        }
+        let query = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("state", state)
+            .append_pair("head", &format!("{owner}:{branch}"))
+            .append_pair("sort", "updated")
+            .append_pair("direction", "desc")
+            .append_pair("per_page", "1")
+            .finish();
+        let data = get(format!("/repos/{repo}/pulls?{query}")).await?;
+        if let Some(pr) = parse_found_pull_request(&data) {
+            return Ok(Some(pr));
+        }
+    }
+    Ok(None)
+}
+
 #[command]
 pub async fn github_find_pull_request(
     repo_full_name: String,
     head_branch: String,
+    include_closed: Option<bool>,
 ) -> Result<Option<FindPRResponse>, String> {
-    log::info!("[GitHub][Cmd] find_pull_request repo={repo_full_name} head={head_branch}");
     let client = make_client()?;
-    let owner = repo_full_name
-        .split('/')
-        .next()
-        .ok_or_else(|| format!("Invalid repo name: {repo_full_name}"))?;
-
-    let parse_pr = |data: &Value| -> Option<FindPRResponse> {
-        data.as_array()
-            .and_then(|items| items.first())
-            .map(|item| FindPRResponse {
-                number: item["number"].as_u64().unwrap_or(0),
-                url: item["html_url"].as_str().unwrap_or("").to_string(),
-                state: item["state"].as_str().unwrap_or("open").to_string(),
-            })
-    };
-
-    let data = client
-        .get(&format!(
-            "/repos/{repo_full_name}/pulls?state=open&head={owner}:{head_branch}&per_page=1"
-        ))
-        .await?;
-    let pr = parse_pr(&data);
-    if let Some(pr) = &pr {
-        log::info!(
-            "[GitHub][Cmd] find_pull_request found open PR #{}",
-            pr.number
-        );
-    } else {
-        log::info!("[GitHub][Cmd] find_pull_request not found");
-    }
-    Ok(pr)
+    find_branch_pull_request(
+        &repo_full_name,
+        &head_branch,
+        include_closed.unwrap_or(false),
+        |path| {
+            let client = &client;
+            async move { client.get(&path).await }
+        },
+    )
+    .await
 }
 
 /// Response item for a single PR in `github_list_prs`.

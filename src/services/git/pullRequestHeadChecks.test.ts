@@ -5,6 +5,7 @@ import type { GitHubChecksSummary } from "@src/api/tauri/github";
 import {
   PULL_REQUEST_HEAD_CHECKS_REUSE_MS,
   clearPullRequestHeadChecks,
+  getPullRequestMetadata,
   invalidatePullRequestHeadChecks,
   loadPullRequestHeadChecks,
   primePullRequestHeadChecks,
@@ -221,5 +222,231 @@ describe("changes to the pull request", () => {
     primePullRequestHeadChecks(REPO, PR, snapshot, epoch);
     await loadPullRequestHeadChecks(REPO, PR, { maxAgeMs: 60_000 });
     expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("early pull request metadata", () => {
+  it("delivers the title before slow checks and to a late joining reader", async () => {
+    const gate = deferred<GitHubChecksSummary>();
+    const detail = { title: "Visible immediately", head: { sha: "head" } };
+    apiMocks.getPRLocal.mockResolvedValue(detail);
+    apiMocks.getChecksLocal.mockReturnValue(gate.promise);
+    const firstDetail = vi.fn();
+    const first = loadPullRequestHeadChecks(REPO, PR, {
+      onDetail: firstDetail,
+    });
+    await Promise.resolve();
+    expect(firstDetail).toHaveBeenCalledWith(detail);
+    const lateDetail = vi.fn();
+    const joined = loadPullRequestHeadChecks(REPO, PR, {
+      onDetail: lateDetail,
+    });
+    expect(joined).toBe(first);
+    await Promise.resolve();
+    expect(lateDetail).toHaveBeenCalledWith(detail);
+    expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(1);
+    expect(apiMocks.getChecksLocal).toHaveBeenCalledTimes(1);
+    gate.resolve(checks("success"));
+    await first;
+  });
+
+  it("delivers cached metadata without another API request", async () => {
+    const snapshot = await loadPullRequestHeadChecks(REPO, PR);
+    const onDetail = vi.fn();
+    await loadPullRequestHeadChecks(REPO, PR, { maxAgeMs: 60_000, onDetail });
+    expect(onDetail).toHaveBeenCalledWith(snapshot.detail);
+    expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(1);
+  });
+
+  it("isolates a throwing consumer while other readers and checks succeed", async () => {
+    const onDetail = vi.fn(() => {
+      throw new Error("consumer failed");
+    });
+    const first = loadPullRequestHeadChecks(REPO, PR, { onDetail });
+    const other = vi.fn();
+    const second = loadPullRequestHeadChecks(REPO, PR, { onDetail: other });
+    expect(second).toBe(first);
+    await expect(first).resolves.toMatchObject({ headSha: "head" });
+    expect(onDetail).toHaveBeenCalledOnce();
+    expect(other).toHaveBeenCalledOnce();
+  });
+
+  it("does not notify on metadata rejection and still rejects the original request", async () => {
+    apiMocks.getPRLocal.mockRejectedValueOnce(new Error("offline"));
+    const onDetail = vi.fn();
+    await expect(
+      loadPullRequestHeadChecks(REPO, PR, { onDetail })
+    ).rejects.toThrow("offline");
+    expect(onDetail).not.toHaveBeenCalled();
+    expect(apiMocks.getChecksLocal).not.toHaveBeenCalled();
+  });
+
+  it("keeps delivered metadata when the later checks request fails", async () => {
+    apiMocks.getChecksLocal.mockRejectedValueOnce(
+      new Error("checks unavailable")
+    );
+    const onDetail = vi.fn();
+    await expect(
+      loadPullRequestHeadChecks(REPO, PR, { onDetail })
+    ).rejects.toThrow("checks unavailable");
+    expect(onDetail).toHaveBeenCalledOnce();
+  });
+});
+
+describe("warm metadata across checks refreshes", () => {
+  it("seeds a remounted reader after the checks TTL, then replaces it with fresh metadata", async () => {
+    apiMocks.getPRLocal.mockResolvedValueOnce({
+      title: "Known title",
+      head: { sha: "head" },
+    });
+    await loadPullRequestHeadChecks(REPO, PR);
+    vi.advanceTimersByTime(PULL_REQUEST_HEAD_CHECKS_REUSE_MS + 1);
+    const gate = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(gate.promise);
+    const onDetail = vi.fn();
+    const refresh = loadPullRequestHeadChecks(REPO, PR, {
+      maxAgeMs: PULL_REQUEST_HEAD_CHECKS_REUSE_MS,
+      onDetail,
+    });
+    await Promise.resolve();
+    expect(onDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "Known title" })
+    );
+    expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(2);
+    gate.resolve({ title: "Renamed title", head: { sha: "next" } });
+    await refresh;
+    expect(onDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "Renamed title" })
+    );
+    expect(apiMocks.getChecksLocal).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains successful metadata when checks fail, with case-insensitive repository identity", async () => {
+    apiMocks.getPRLocal.mockResolvedValueOnce({
+      title: "Keep title",
+      head: { sha: "head" },
+    });
+    apiMocks.getChecksLocal.mockRejectedValueOnce(new Error("checks offline"));
+    await expect(loadPullRequestHeadChecks("Org/Repo", PR)).rejects.toThrow(
+      "checks offline"
+    );
+    const gate = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(gate.promise);
+    const onDetail = vi.fn();
+    const refresh = loadPullRequestHeadChecks("org/repo", PR, { onDetail });
+    expect(loadPullRequestHeadChecks("ORG/REPO", PR)).toBe(refresh);
+    await Promise.resolve();
+    expect(onDetail).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Keep title" })
+    );
+    gate.resolve({ title: "Latest title" });
+    await refresh;
+  });
+
+  it("rejects metadata cache writes dispatched before invalidation", async () => {
+    const old = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(old.promise);
+    const stale = loadPullRequestHeadChecks(REPO, PR);
+    invalidatePullRequestHeadChecks(REPO.toUpperCase(), PR);
+    old.resolve({ title: "Obsolete" });
+    await stale;
+    const gate = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(gate.promise);
+    const onDetail = vi.fn();
+    const refresh = loadPullRequestHeadChecks(REPO, PR, { onDetail });
+    await Promise.resolve();
+    expect(onDetail).not.toHaveBeenCalled();
+    gate.resolve({ title: "Current" });
+    await refresh;
+  });
+
+  it("keeps newer metadata when a bypassed request finishes out of order", async () => {
+    const old = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(old.promise);
+    const stale = loadPullRequestHeadChecks(REPO, PR);
+    apiMocks.getPRLocal.mockResolvedValueOnce({ title: "New" });
+    await loadPullRequestHeadChecks(REPO, PR, { bypassInFlight: true });
+    old.resolve({ title: "Old" });
+    await stale;
+    const gate = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(gate.promise);
+    const onDetail = vi.fn();
+    const refresh = loadPullRequestHeadChecks(REPO, PR, { onDetail });
+    await Promise.resolve();
+    expect(onDetail).toHaveBeenCalledWith({ title: "New" });
+    gate.resolve({ title: "Fresh" });
+    await refresh;
+  });
+
+  it("bounds warm metadata to 32 entries and clears it with the shared cache", async () => {
+    for (let number = 1; number <= 33; number++)
+      await loadPullRequestHeadChecks(REPO, number);
+    const gate = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(gate.promise);
+    const onDetail = vi.fn();
+    const refresh = loadPullRequestHeadChecks(REPO, 1, { onDetail });
+    await Promise.resolve();
+    expect(onDetail).not.toHaveBeenCalled();
+    clearPullRequestHeadChecks();
+    gate.resolve({ title: "Before clear" });
+    await refresh;
+    const next = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(next.promise);
+    const afterClear = loadPullRequestHeadChecks(REPO, 1, { onDetail });
+    onDetail.mockClear();
+    await Promise.resolve();
+    expect(onDetail).not.toHaveBeenCalled();
+    next.resolve({ title: "After clear" });
+    await afterClear;
+  });
+});
+
+describe("display seeds during detail reconciliation", () => {
+  it("keeps a synchronous known title across repeated invalidations but forces fresh reads", async () => {
+    apiMocks.getPRLocal.mockResolvedValueOnce({
+      title: "Known title",
+      head: { sha: "head" },
+    });
+    await loadPullRequestHeadChecks(REPO, PR);
+    for (let pass = 0; pass < 2; pass++) {
+      invalidatePullRequestHeadChecks(REPO.toUpperCase(), PR);
+      expect(getPullRequestMetadata(REPO, PR)).toMatchObject({
+        title: "Known title",
+      });
+      const gate = deferred<Record<string, unknown>>();
+      apiMocks.getPRLocal.mockReturnValueOnce(gate.promise);
+      const onDetail = vi.fn();
+      const pending = loadPullRequestHeadChecks(REPO, PR, {
+        maxAgeMs: 60_000,
+        onDetail,
+      });
+      await Promise.resolve();
+      expect(onDetail).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Known title" })
+      );
+      expect(apiMocks.getPRLocal).toHaveBeenCalledTimes(pass + 2);
+      gate.resolve({ title: "Known title", head: { sha: "head" } });
+      await pending;
+    }
+    expect(apiMocks.getChecksLocal).toHaveBeenCalledTimes(3);
+    clearPullRequestHeadChecks();
+    expect(getPullRequestMetadata(REPO, PR)).toBeUndefined();
+  });
+
+  it("retains only previously accepted metadata when an invalidated request finishes late", async () => {
+    apiMocks.getPRLocal.mockResolvedValueOnce({ title: "Accepted" });
+    await loadPullRequestHeadChecks(REPO, PR);
+    const old = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockReturnValueOnce(old.promise);
+    const pending = loadPullRequestHeadChecks(REPO, PR);
+    invalidatePullRequestHeadChecks(REPO, PR);
+    old.resolve({ title: "Obsolete response" });
+    await pending;
+    expect(getPullRequestMetadata(REPO, PR)).toEqual({ title: "Accepted" });
+    apiMocks.getPRLocal.mockResolvedValueOnce({ title: "Renamed" });
+    await loadPullRequestHeadChecks(REPO, PR);
+    expect(getPullRequestMetadata(REPO.toUpperCase(), PR)).toEqual({
+      title: "Renamed",
+    });
   });
 });

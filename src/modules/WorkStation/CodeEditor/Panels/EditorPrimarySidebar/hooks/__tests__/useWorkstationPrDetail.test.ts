@@ -121,15 +121,21 @@ type Store = ReturnType<typeof createStore>;
 
 interface HarnessProps {
   pr?: PrIdentity;
+  remoteOnly?: boolean;
 }
 
-const Harness: React.FC<HarnessProps> = ({ pr = PR }) => {
+const Harness: React.FC<HarnessProps> = ({ pr = PR, remoteOnly = false }) => {
   useWorkstationPrDetail({
-    repoPath: REPO_PATH,
-    repoId: REPO_ID,
+    repoPath: remoteOnly ? "" : REPO_PATH,
+    repoId: remoteOnly ? undefined : REPO_ID,
     pr,
   });
-  const scopeKey = workstationPrScopeKey(REPO_ID, REPO_PATH, pr.number);
+  const scopeKey = workstationPrScopeKey(
+    remoteOnly ? undefined : REPO_ID,
+    remoteOnly ? "" : REPO_PATH,
+    pr.number,
+    pr.url
+  );
   const state = useAtomValue(workstationSelectedPrAtomFamily(scopeKey));
   return React.createElement(
     "div",
@@ -220,6 +226,98 @@ describe("useWorkstationPrDetail cache mutations", () => {
 
   afterAll(() => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("loads remote-only detail from its URL and never resolves local Git", async () => {
+    const remote = {
+      ...PR,
+      number: 919901,
+      url: "https://github.com/remote/project/pull/919901",
+    };
+    const key = workstationPrScopeKey(undefined, "", remote.number, remote.url);
+    apiMocks.listPRFilesLocal.mockResolvedValue([
+      { filename: "remote.ts", status: "modified" },
+    ]);
+    await act(async () =>
+      root?.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(Harness, { pr: remote, remoteOnly: true })
+        )
+      )
+    );
+    await waitForStore(
+      store,
+      () => store.get(workstationSelectedPrAtomFamily(key)).detail !== null
+    );
+    expect(apiMocks.getGitRemotes).not.toHaveBeenCalled();
+    expect(apiMocks.getPRLocal).toHaveBeenCalledWith(
+      "remote/project",
+      remote.number
+    );
+    expect(apiMocks.listPRFilesLocal).toHaveBeenCalledWith(
+      "remote/project",
+      remote.number
+    );
+    expect(
+      store.get(workstationSelectedPrAtomFamily(key)).files[0].filename
+    ).toBe("remote.ts");
+  });
+
+  it("switches same-number remote URLs without reading the previous repository", async () => {
+    const number = 919902;
+    const first = {
+      ...PR,
+      number,
+      url: `https://github.com/remote/first/pull/${number}`,
+    };
+    const second = {
+      ...first,
+      url: `https://github.com/remote/second/pull/${number}`,
+    };
+    const gate = deferred<Record<string, unknown>>();
+    apiMocks.getPRLocal.mockImplementation((repo: string) =>
+      repo === "remote/first"
+        ? gate.promise
+        : Promise.resolve({ title: "Second", head: { sha: null } })
+    );
+    await act(async () =>
+      root?.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(Harness, { pr: first, remoteOnly: true })
+        )
+      )
+    );
+    await act(async () =>
+      root?.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(Harness, { pr: second, remoteOnly: true })
+        )
+      )
+    );
+    const key = workstationPrScopeKey(undefined, "", number, second.url);
+    await waitForStore(
+      store,
+      () =>
+        store.get(workstationSelectedPrAtomFamily(key)).detail?.title ===
+        "Second"
+    );
+    await act(async () =>
+      gate.resolve({ title: "Late first", head: { sha: null } })
+    );
+    expect(store.get(workstationSelectedPrAtomFamily(key)).detail?.title).toBe(
+      "Second"
+    );
+    expect(apiMocks.getGitRemotes).not.toHaveBeenCalled();
+    expect(apiMocks.getPRLocal.mock.calls.map((call) => call[0])).toEqual([
+      "remote/first",
+      "remote/second",
+    ]);
   });
 
   it("keeps a posted comment after the PR panel unmounts and reopens", async () => {

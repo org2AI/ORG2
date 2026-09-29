@@ -46,6 +46,7 @@ const SessionContentView = React.lazy(
 export const PROJECT_TRIO_KEEP_ALIVE = RETENTION_POOLS["project-trio"];
 
 export function ProjectManagerContentRouter({
+  isActive = true,
   repoPath,
   tabs,
   activeTab,
@@ -63,6 +64,7 @@ export function ProjectManagerContentRouter({
   );
 
   const activeContent = renderActiveContent({
+    isActive,
     repoPath,
     activeTab,
     hasNoTabs,
@@ -91,7 +93,7 @@ export function ProjectManagerContentRouter({
             className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
             style={{ display: isActiveTab ? undefined : "none" }}
           >
-            <UnifiedTabContent tab={tab} isActive={isActiveTab} />
+            <UnifiedTabContent tab={tab} isActive={isActive && isActiveTab} />
           </div>
         );
       })}
@@ -100,6 +102,7 @@ export function ProjectManagerContentRouter({
 }
 
 interface RenderActiveContentOptions {
+  isActive: boolean;
   repoPath: string;
   activeTab: ProjectManagerContentRouterProps["activeTab"];
   hasNoTabs: boolean;
@@ -107,6 +110,7 @@ interface RenderActiveContentOptions {
 }
 
 function renderActiveContent({
+  isActive,
   repoPath,
   activeTab,
   hasNoTabs,
@@ -172,7 +176,7 @@ function renderActiveContent({
     case "project-org":
     case "project-settings":
     case "workItem-detail":
-      return <UnifiedTabContent tab={activeTab} isActive />;
+      return <UnifiedTabContent tab={activeTab} isActive={isActive} />;
 
     default:
       return <NoTabsPlaceholder icon="project" actions={projectQuickActions} />;

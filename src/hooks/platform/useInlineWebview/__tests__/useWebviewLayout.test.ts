@@ -166,3 +166,29 @@ it("re-sends an unchanged frame when a parked view is shown again", async () => 
     { label: LABEL, x: 40, y: 80, a: 840, b: 680, width: 800, height: 600 },
   ]);
 });
+
+it("coalesces floating geometry events without transition retry timers", async () => {
+  vi.useFakeTimers();
+  try {
+    await render(true);
+    await act(async () => {
+      for (let i = 0; i < 20; i++) {
+        window.dispatchEvent(
+          new Event("orgii-webview-floating-layout-changed")
+        );
+      }
+      await vi.advanceTimersByTimeAsync(20);
+    });
+    expect(positionCalls()).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(positionCalls()).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
+    await render(false);
+    invokeMock.mockClear();
+    window.dispatchEvent(new Event("orgii-webview-floating-layout-changed"));
+    await vi.advanceTimersByTimeAsync(300);
+    expect(positionCalls()).toHaveLength(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});

@@ -37,6 +37,10 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import DetailPanelHeader from "@src/components/DetailPanelHeader";
 import FloatingWindow from "@src/components/FloatingWindow";
+import {
+  FloatingLauncher,
+  FloatingLauncherStack,
+} from "@src/components/FloatingWindow/FloatingLauncher";
 import { SESSION_CONFIG } from "@src/config/sessionCreatorConfig";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
@@ -60,6 +64,7 @@ import {
   chatVisibleAtom,
   restoreChatWidthAtom,
 } from "@src/store/ui/chatPanel/widthAtoms";
+import { useOverlayLayer } from "@src/store/ui/overlayLayerAtom";
 import {
   closeSideChatAtom,
   openSideChatAtom,
@@ -89,8 +94,6 @@ const log = createLogger("ChatPanelSideChat");
 // overlays (z-[60]).
 const SIDE_CHAT_OVERLAY_CLASS =
   "pointer-events-none absolute inset-0 z-70 flex items-end justify-end p-3";
-const SIDE_CHAT_LAUNCHER_CLASS =
-  "pointer-events-none absolute bottom-4 right-4 z-70";
 
 // Initial fluid geometry: bottom-right corner, px-capped (kanban preview
 // pattern: fill small panes, stop growing past the cap on large ones). The
@@ -111,6 +114,9 @@ const SIDE_CHAT_MAX_WIDTH = 640;
 const SIDE_CHAT_MAX_HEIGHT = 720;
 
 interface ChatPanelSideChatProps {
+  /** The layout composes this action with other corner launchers, even when
+   * Sidechat itself contributes no launcher (open, header-hosted or hidden). */
+  renderFloatingLauncher?: (launcher: React.ReactNode) => React.ReactNode;
   /**
    * Same injected creator the chat pane start page renders — passed through
    * so new-session mode shares the pane's launch surface (and its ADE
@@ -130,41 +136,39 @@ export function SideChatLauncher({
   label,
   onOpen,
 }: SideChatLauncherProps): React.ReactNode {
+  const icon = (
+    <HugeiconsIcon
+      icon={BubbleChatIcon}
+      data-icon="message-circle"
+      size={HEADER_ICON_SIZE.md}
+      strokeWidth={1.9}
+    />
+  );
+  if (placement === "floating") {
+    return (
+      <FloatingLauncher
+        label={label}
+        icon={icon}
+        onClick={onOpen}
+        aria-haspopup="dialog"
+        data-testid="side-chat-floating-button"
+      />
+    );
+  }
   return (
-    <div
-      className={
-        placement === "floating"
-          ? SIDE_CHAT_LAUNCHER_CLASS
-          : "flex items-center"
-      }
-    >
+    <div className="flex items-center">
       <Button
         variant="primary"
-        size={placement === "floating" ? "large" : "small"}
+        size="small"
         shape="circle"
         iconOnly
-        icon={
-          <HugeiconsIcon
-            icon={BubbleChatIcon}
-            data-icon="message-circle"
-            size={HEADER_ICON_SIZE.md}
-            strokeWidth={1.9}
-          />
-        }
+        icon={icon}
         onClick={onOpen}
         title={label}
         aria-label={label}
         aria-haspopup="dialog"
-        data-testid={
-          placement === "floating"
-            ? "side-chat-floating-button"
-            : "side-chat-header-button"
-        }
-        className={
-          placement === "floating"
-            ? "pointer-events-auto shadow-lg"
-            : "pointer-events-auto"
-        }
+        data-testid="side-chat-header-button"
+        className="pointer-events-auto"
       />
     </div>
   );
@@ -172,6 +176,7 @@ export function SideChatLauncher({
 
 const ChatPanelSideChat: React.FC<ChatPanelSideChatProps> = ({
   SessionCreatorSlot,
+  renderFloatingLauncher,
 }) => {
   const { t } = useTranslation("sessions");
   const visible = useAtomValue(sideChatVisibleAtom);
@@ -179,10 +184,20 @@ const ChatPanelSideChat: React.FC<ChatPanelSideChatProps> = ({
   const headerHost = useAtomValue(sideChatHeaderHostAtom);
   const openSideChat = useSetAtom(openSideChatAtom);
   const handleOpen = useCallback(() => openSideChat(null), [openSideChat]);
-  if (!visible) {
-    // Launchpad and session surfaces already own a composer — no launcher.
-    return shouldShowSideChatLauncher(activeTabType) ? (
-      headerHost ? (
+  const showLauncher = !visible && shouldShowSideChatLauncher(activeTabType);
+  const floatingLauncher =
+    showLauncher && !headerHost ? (
+      <SideChatLauncher label={t("chat.sideChat.title")} onOpen={handleOpen} />
+    ) : null;
+  return (
+    <>
+      {renderFloatingLauncher ? (
+        renderFloatingLauncher(floatingLauncher)
+      ) : (
+        <FloatingLauncherStack>{floatingLauncher}</FloatingLauncherStack>
+      )}
+      {showLauncher &&
+        headerHost &&
         createPortal(
           <SideChatLauncher
             placement="header"
@@ -190,21 +205,17 @@ const ChatPanelSideChat: React.FC<ChatPanelSideChatProps> = ({
             onOpen={handleOpen}
           />,
           headerHost
-        )
-      ) : (
-        <SideChatLauncher
-          label={t("chat.sideChat.title")}
-          onOpen={handleOpen}
-        />
-      )
-    ) : null;
-  }
-  return <SideChatWindow SessionCreatorSlot={SessionCreatorSlot} />;
+        )}
+      {visible && <SideChatWindow SessionCreatorSlot={SessionCreatorSlot} />}
+    </>
+  );
 };
 
 const SideChatWindow: React.FC<ChatPanelSideChatProps> = ({
   SessionCreatorSlot,
 }) => {
+  // This DOM surface can cover a native browser in either station layout.
+  useOverlayLayer(true);
   const { t } = useTranslation("sessions");
   const { t: tCommon } = useTranslation("common");
   const [sessionId, setSessionId] = useAtom(sideChatSessionIdAtom);

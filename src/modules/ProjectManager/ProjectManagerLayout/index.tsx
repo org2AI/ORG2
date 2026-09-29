@@ -37,7 +37,7 @@ import { useProjectTabActions } from "./hooks/useProjectTabActions";
 import type { ProjectManagerLayoutProps } from "./types";
 
 export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
-  ({ repoPath, repoName }) => {
+  ({ repoPath, repoName, isActive = true }) => {
     const navigate = useNavigate();
 
     const {
@@ -258,6 +258,7 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
 
     const mainContent = (
       <ProjectManagerContentRouter
+        isActive={isActive}
         repoPath={repoPath}
         tabs={tabs}
         activeTab={activeTab}

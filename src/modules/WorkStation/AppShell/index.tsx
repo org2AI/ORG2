@@ -31,11 +31,11 @@ import { shouldShowWorkStationStatusBar } from "./statusBarVisibility";
 import { shouldEnableWorkspacePortScan } from "./workspacePortScanVisibility";
 
 interface AppShellProps {
-  /** Whether the chat panel is taking over the WorkStation surface */
-  chatPanelFocused?: boolean;
+  /** Includes floating presentation and temporary layout occlusion. */
+  workstationVisible?: boolean;
 }
 
-const AppShell = React.memo(({ chatPanelFocused = false }: AppShellProps) => {
+const AppShell = React.memo(({ workstationVisible = true }: AppShellProps) => {
   const captionEnabled = useAtomValue(simulatorCaptionBarEnabledAtom);
   const captionMessage = useCurrentTurnLastAgentMessage();
   const workstationActiveSessionId = useAtomValue(
@@ -91,7 +91,7 @@ const AppShell = React.memo(({ chatPanelFocused = false }: AppShellProps) => {
   const portsEnabled = shouldEnableWorkspacePortScan({
     isCodeMode,
     isBrowserMode,
-    chatPanelFocused,
+    workstationVisible,
     hasActiveTab: activeWorkStationTab != null,
     isLaunchpad: activeWorkStationTab?.type === "start",
     isAgentStation,
@@ -143,7 +143,7 @@ const AppShell = React.memo(({ chatPanelFocused = false }: AppShellProps) => {
               repoName={repoName}
               pathExists={pathExists}
               lastSeenPath={lastSeenPath}
-              chatPanelFocused={chatPanelFocused}
+              workstationVisible={workstationVisible}
               isAgentStation={isAgentStation}
               hasVisitedCode={hasVisitedCode}
               hasVisitedBrowser={hasVisitedBrowser}

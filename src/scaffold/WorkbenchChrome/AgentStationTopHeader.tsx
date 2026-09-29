@@ -36,6 +36,7 @@ import {
   simulatorCaptionBarEnabledAtom,
   simulatorEffectiveDockAppAtom,
 } from "@src/store/ui/simulatorAtom";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import { StationHeaderControls } from "./StationHeaderControls";
@@ -50,6 +51,8 @@ const AgentStationTopHeaderComponent = ({
   captionVisible,
 }: AgentStationTopHeaderProps) => {
   const { t } = useTranslation("sessions");
+  const presentation = useAtomValue(workstationPresentationAtom);
+  const floating = presentation !== "docked";
   const shouldOffsetLeftChrome = useShouldOffsetWorkStationTopBar();
   const collapsedSidebarChromeOffset = useCollapsedSidebarChromeOffset();
   const rightEdge = useWorkbenchRightEdgeReservation();
@@ -110,24 +113,25 @@ const AgentStationTopHeaderComponent = ({
     <div className="flex shrink-0 flex-col">
       <div
         className={`relative flex h-11 min-h-11 shrink-0 items-center pt-2 ${insetTransitionClassName}`}
-        data-tauri-drag-region
+        data-tauri-drag-region={floating ? undefined : true}
         style={
           {
-            paddingLeft: shouldOffsetLeftChrome
-              ? collapsedSidebarChromeOffset
-              : undefined,
+            paddingLeft:
+              !floating && shouldOffsetLeftChrome
+                ? collapsedSidebarChromeOffset
+                : undefined,
             // The trailing group keeps its own `pr-2`; only the remainder of
             // the pinned-chrome reservation goes here.
             paddingRight:
-              rightEdge.owner === "workstation"
+              !floating && rightEdge.owner === "workstation"
                 ? rightEdge.reservedRight -
                   TAB_BAR_CONTROLS_ROW_TRAILING_PADDING_PX
                 : undefined,
-            WebkitAppRegion: "drag",
+            WebkitAppRegion: floating ? "no-drag" : "drag",
           } as React.CSSProperties
         }
       >
-        {shouldOffsetLeftChrome ? (
+        {!floating && shouldOffsetLeftChrome ? (
           <NoDragRegion className="flex h-full items-center">
             <CollapsedSidebarButton />
           </NoDragRegion>

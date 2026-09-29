@@ -34,6 +34,11 @@ import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
+import {
+  collapseWorkstationAtom,
+  dockWorkstationAtom,
+  floatWorkstationAtom,
+} from "@src/store/workstation/presentationAtoms";
 import { workstationLayoutAtom } from "@src/store/workstation/tabs";
 import { createFileTab } from "@src/store/workstation/tabs/factories";
 import {
@@ -133,6 +138,23 @@ describe("PinnedWorkbenchChrome", () => {
     }
     act(() => element.click());
   }
+
+  it("yields pinned docked controls to the floating workstation and restores them on docking", () => {
+    render();
+    expect(query("pinned-workbench-chrome")).not.toBeNull();
+    act(() => store.set(floatWorkstationAtom));
+    expect(query("pinned-workbench-chrome")).toBeNull();
+    expect(
+      query("right-edge-reservation")?.getAttribute("data-reserved-right")
+    ).toBe("0");
+    act(() => store.set(collapseWorkstationAtom));
+    expect(query("pinned-workbench-chrome")).toBeNull();
+    expect(
+      query("right-edge-reservation")?.getAttribute("data-reserved-right")
+    ).toBe("0");
+    act(() => store.set(dockWorkstationAtom));
+    expect(query("pinned-workbench-chrome")).not.toBeNull();
+  });
 
   it("renders nothing off macOS or on the Settings route", () => {
     hasMacWindowChromeMock.mockReturnValue(false);

@@ -21,6 +21,7 @@ import { ProjectManagerLayout } from "./ProjectManagerLayout";
 // ============================================
 
 export interface ProjectManagerProps {
+  isActive?: boolean;
   /** Repository path used for project filtering and workspace actions */
   repoPath: string;
   /** Repository name for display */
@@ -32,10 +33,14 @@ export interface ProjectManagerProps {
 // ============================================
 
 export const ProjectManager: React.FC<ProjectManagerProps> = memo(
-  ({ repoPath, repoName }) => {
+  ({ repoPath, repoName, isActive = true }) => {
     return (
       <ActionSystemProvider repoPath={repoPath} repoId={repoPath}>
-        <ProjectManagerLayout repoPath={repoPath} repoName={repoName} />
+        <ProjectManagerLayout
+          repoPath={repoPath}
+          repoName={repoName}
+          isActive={isActive}
+        />
       </ActionSystemProvider>
     );
   }

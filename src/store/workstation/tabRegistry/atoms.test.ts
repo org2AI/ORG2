@@ -7,6 +7,11 @@ import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { createBrowserSessionTab } from "@src/store/workstation/browser/tabs";
 import {
+  collapseWorkstationAtom,
+  floatWorkstationAtom,
+  workstationPresentationAtom,
+} from "@src/store/workstation/presentationAtoms";
+import {
   type WorkStationTab,
   createStartTab,
   recentWorkstationTabsAtom,
@@ -348,5 +353,36 @@ describe("live shared-resource close semantics", () => {
       tabs: [browserA],
       activeTabId: browserA.id,
     });
+  });
+});
+
+describe("floating Workstation close controls", () => {
+  it.each(["my-station", "agent-station"] as const)(
+    "collapses %s without changing docked preference",
+    (mode) => {
+      const store = createStore();
+      const launchpad = createStartTab();
+      store.set(stationModeAtom, mode);
+      store.set(chatPanelMaximizedAtom, false);
+      store.set(workstationLayoutAtom, {
+        mainPane: { tabs: [launchpad], activeTabId: launchpad.id },
+      });
+      store.set(floatWorkstationAtom);
+      expect(store.set(closeActiveWorkStationTabAtom)).toBe(true);
+      expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+      expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+    }
+  );
+
+  it("does not close hidden tabs when the float is collapsed", () => {
+    const store = createStore();
+    const active = tab("project");
+    store.set(stationModeAtom, "my-station");
+    store.set(workstationLayoutAtom, {
+      mainPane: { tabs: [active], activeTabId: active.id },
+    });
+    store.set(collapseWorkstationAtom);
+    expect(store.set(closeActiveWorkStationTabAtom)).toBe(false);
+    expect(store.get(workstationLayoutAtom).mainPane.tabs).toEqual([active]);
   });
 });

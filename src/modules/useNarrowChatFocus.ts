@@ -47,6 +47,7 @@ import {
   chatVisibleAtom,
   chatWidthAtom,
 } from "@src/store/ui/chatPanel/widthAtoms";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 
 /**
  * Below this *workbench* width the chat panel takes over the entire
@@ -110,6 +111,7 @@ export function resolveWorkbenchEvaluationWidth({
 }
 
 export function useNarrowChatFocus(): void {
+  const docked = useAtomValue(workstationPresentationAtom) === "docked";
   const chatPanelMaximized = useAtomValue(chatPanelMaximizedAtom);
   const chatPanelDragging = useAtomValue(chatPanelDraggingAtom);
   const chatWidth = useAtomValue(chatWidthAtom);
@@ -153,6 +155,16 @@ export function useNarrowChatFocus(): void {
   const workbenchObservedRef = useRef(false);
 
   useEffect(() => {
+    if (!docked) {
+      // Floating geometry must not rewrite the remembered split preference.
+      // Start a fresh responsive evaluation against real bounds on docking.
+      wasNarrowRef.current = null;
+      autoTriggeredRef.current = false;
+      workbenchWidthRef.current = 0;
+      mainContentWidthRef.current = 0;
+      return;
+    }
+    let disposed = false;
     let resizeObserver: ResizeObserver | null = null;
     let lookupObserver: MutationObserver | null = null;
 
@@ -168,6 +180,7 @@ export function useNarrowChatFocus(): void {
     };
 
     const evaluate = () => {
+      if (disposed) return;
       const width = computeWorkbenchWidth();
       if (width <= 0) return;
 
@@ -216,6 +229,7 @@ export function useNarrowChatFocus(): void {
     };
 
     const tryAttach = () => {
+      if (disposed) return false;
       const workbench = document.querySelector(WORKBENCH_SELECTOR);
       const main = document.querySelector(MAIN_CONTENT_SELECTOR);
       if (!workbench || !main) return false;
@@ -237,13 +251,14 @@ export function useNarrowChatFocus(): void {
     }
 
     return () => {
+      disposed = true;
       lookupObserver?.disconnect();
       resizeObserver?.disconnect();
       resizeObserverRef.current = null;
       workbenchElementRef.current = null;
       workbenchObservedRef.current = false;
     };
-  }, [setChatPanelMaximized]);
+  }, [docked, setChatPanelMaximized]);
 
   // The workbench's animated width is intentionally ignored outside direct
   // manipulation. Observe it only while dragging so focus/unfocus animations
@@ -271,6 +286,7 @@ export function useNarrowChatFocus(): void {
   // without necessarily firing a ResizeObserver tick. Re-run the
   // same logic here so the breakpoint stays in sync.
   useEffect(() => {
+    if (!docked) return;
     if (workbenchWidthRef.current <= 0 && mainContentWidthRef.current <= 0) {
       return;
     }
@@ -304,6 +320,7 @@ export function useNarrowChatFocus(): void {
       setChatPanelMaximized(false);
     }
   }, [
+    docked,
     chatPanelDragging,
     chatWidth,
     chatVisible,

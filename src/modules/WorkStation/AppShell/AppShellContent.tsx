@@ -46,7 +46,7 @@ interface AppShellContentProps {
   repoName: string;
   pathExists: boolean | null;
   lastSeenPath: string;
-  chatPanelFocused: boolean;
+  workstationVisible: boolean;
   isAgentStation: boolean;
   hasVisitedCode: boolean;
   hasVisitedBrowser: boolean;
@@ -73,7 +73,7 @@ export function AppShellContent({
   repoName,
   pathExists,
   lastSeenPath,
-  chatPanelFocused,
+  workstationVisible,
   isAgentStation,
   hasVisitedCode,
   hasVisitedBrowser,
@@ -114,7 +114,7 @@ export function AppShellContent({
   // simulator's twelve-cell worst case cannot survive being hidden.
   const mountAgentStationHost = shouldMountAgentStationHost({
     isAgentStation,
-    isChatPanelMaximized: chatPanelFocused,
+    workstationVisible,
   });
   const mountCodeHost = shouldMountWorkstationHost({
     hasRealTabs,
@@ -166,7 +166,9 @@ export function AppShellContent({
       <CodeEditor
         repoPath={repoPath}
         repoName={repoName}
-        isActive={isCodeMode}
+        isActive={
+          workstationVisible && !isAgentStation && !showStartPage && isCodeMode
+        }
       />
     );
   };
@@ -177,7 +179,7 @@ export function AppShellContent({
         <div
           className="h-full w-full"
           style={{
-            display: isAgentStation && !chatPanelFocused ? "block" : "none",
+            display: isAgentStation && workstationVisible ? "block" : "none",
           }}
         >
           <DetailPaneErrorBoundary label={t("errors.failedToLoadComponent")}>
@@ -231,7 +233,12 @@ export function AppShellContent({
                 <Browser
                   repoPath={repoPath}
                   repoName={repoName}
-                  isActive={!showStartPage && isBrowserMode}
+                  isActive={
+                    workstationVisible &&
+                    !isAgentStation &&
+                    !showStartPage &&
+                    isBrowserMode
+                  }
                 />
               </Suspense>
             </DetailPaneErrorBoundary>
@@ -247,7 +254,16 @@ export function AppShellContent({
           >
             <DetailPaneErrorBoundary label={t("errors.failedToLoadComponent")}>
               <Suspense fallback={<AppShellLoadingPlaceholder />}>
-                <ProjectManagerCore repoPath={repoPath} repoName={repoName} />
+                <ProjectManagerCore
+                  repoPath={repoPath}
+                  repoName={repoName}
+                  isActive={
+                    workstationVisible &&
+                    !isAgentStation &&
+                    !showStartPage &&
+                    isProjectMode
+                  }
+                />
               </Suspense>
             </DetailPaneErrorBoundary>
           </div>

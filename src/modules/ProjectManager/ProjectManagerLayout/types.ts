@@ -5,6 +5,7 @@ import type { WorkStationTab } from "@src/store/workstation/tabs/types";
 import type { EmbeddedWorkItemDetailState } from "../WorkItems";
 
 export interface ProjectManagerLayoutProps {
+  isActive?: boolean;
   repoPath: string;
   repoName: string;
 }
@@ -47,6 +48,7 @@ type OpenChatSessionHandler = (
 ) => void;
 
 export interface ProjectManagerContentRouterProps {
+  isActive?: boolean;
   repoPath: string;
   tabs: WorkStationTab[];
   activeTab: WorkStationTab | null;

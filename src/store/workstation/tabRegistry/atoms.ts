@@ -14,6 +14,11 @@ import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 
 import {
+  collapseWorkstationAtom,
+  resolveWorkstationPresentation,
+  workstationPresentationAtom,
+} from "../presentationAtoms";
+import {
   type PanelState,
   type WorkStationLayoutState,
   closeOtherTabs as closeOtherTabsMutation,
@@ -116,7 +121,11 @@ export const closeTabAtom = atom(null, (get, set, request: TabCloseRequest) => {
   );
   set(recordRecentWorkstationTabAtom, { workspace, tab });
   if (closesSoleLaunchpad) {
-    set(chatPanelMaximizedAtom, true);
+    if (get(workstationPresentationAtom) === "floating") {
+      set(collapseWorkstationAtom);
+    } else {
+      set(chatPanelMaximizedAtom, true);
+    }
   }
 });
 closeTabAtom.debugLabel = "closeTabAtom";
@@ -137,9 +146,22 @@ closeTabAtom.debugLabel = "closeTabAtom";
  * slot, and the chord must fall through to that tab rather than be swallowed.
  */
 export const closeActiveWorkStationTabAtom = atom(null, (get, set) => {
+  const presentation = get(workstationPresentationAtom);
+  if (presentation === "collapsed") return false;
   if (get(stationModeAtom) === STATION_MODE.AGENT_STATION) {
-    if (get(effectiveChatPanelMaximizedAtom)) return false;
-    set(chatPanelMaximizedAtom, true);
+    if (
+      !resolveWorkstationPresentation({
+        presentation,
+        chatMaximized: get(effectiveChatPanelMaximizedAtom),
+        settingsVisible: false,
+      }).workstationVisible
+    )
+      return false;
+    if (get(workstationPresentationAtom) === "floating") {
+      set(collapseWorkstationAtom);
+    } else {
+      set(chatPanelMaximizedAtom, true);
+    }
     return true;
   }
   const layout = get(workstationLayoutAtom);

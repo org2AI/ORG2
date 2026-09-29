@@ -8,6 +8,7 @@ import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
 import { stationChatVisibilityAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 import type { StationMode } from "@src/types/ui/workstation";
 import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
@@ -16,6 +17,7 @@ import {
   StationPaneControls,
   useStationPaneActions,
 } from "./StationPaneControls";
+import { WorkstationFloatButton } from "./WorkstationFloatingControls";
 
 /** Window/pane policy shared by both station headers; never reads tab state. */
 export function StationHeaderControls({
@@ -29,6 +31,7 @@ export function StationHeaderControls({
   const visibility = useAtomValue(stationChatVisibilityAtom);
   const width = useAtomValue(chatWidthAtom);
   const position = useAtomValue(chatPanelPositionAtom);
+  const presentation = useAtomValue(workstationPresentationAtom);
   const { handleToggleChatPanel, handleToggleChatPanelMaximized } =
     useStationPaneActions();
   if (isStationWindow()) return null;
@@ -51,11 +54,12 @@ export function StationHeaderControls({
   }
   return (
     <>
+      <WorkstationFloatButton />
       <StationOpenInNewWindowButton
         stationMode={stationMode}
         testId={`${stationMode}-open-in-new-window`}
       />
-      {!pinned && (
+      {!pinned && presentation === "docked" && (
         <StationPaneControls
           chatVisible={visibility[stationMode] && width > 0}
           chatPanelPosition={position}

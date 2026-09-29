@@ -22,6 +22,7 @@ import {
 } from "@src/scaffold/GlobalSpotlight/FindCard/findCoordinator";
 import { effectiveChatPanelMaximizedAtom } from "@src/store/chatPanel/chatPanelLayoutAtoms";
 import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 
 import {
   ChatPaneFocusButton,
@@ -31,6 +32,7 @@ import {
 
 const PinnedWorkbenchChromeComponent: React.FC = () => {
   const visible = usePinnedWorkbenchChromeVisible();
+  const presentation = useAtomValue(workstationPresentationAtom);
   const findOpen = useSyncExternalStore(subscribeFind, getFindOpen);
   const isChatPanelVisible = useCurrentStationChatVisible();
   const chatPanelPosition = useAtomValue(chatPanelPositionAtom);
@@ -40,7 +42,7 @@ const PinnedWorkbenchChromeComponent: React.FC = () => {
 
   // This window-level layer sits above pane-local overlays. Yield while Find
   // is open, without changing the header's reserved width or pane ownership.
-  if (!visible || findOpen) return null;
+  if (!visible || findOpen || presentation !== "docked") return null;
 
   // The maximized chat owns its show-workstation action. Other states use
   // the same pane-control selection as My Station and Agent Station.

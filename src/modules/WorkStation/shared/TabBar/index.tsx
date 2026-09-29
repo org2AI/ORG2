@@ -113,6 +113,8 @@ interface TabBarProps {
   /** Tab-row surface class. */
   surfaceClassName: string;
   dataTourTarget?: string;
+  /** Floating workstations own their drag handle and do not reserve OS chrome. */
+  allowWindowDrag?: boolean;
 }
 
 type SortableTabListProps = {
@@ -196,6 +198,7 @@ export const TabBar: React.FC<TabBarProps> = memo(
     trailingSlot,
     surfaceClassName,
     dataTourTarget,
+    allowWindowDrag = true,
   }) => {
     const { t } = useTranslation();
     const actionSystem = useActionSystemOptional();
@@ -355,21 +358,22 @@ export const TabBar: React.FC<TabBarProps> = memo(
         data-tour-target={dataTourTarget}
         data-is-dragging={draggingTabId ? "true" : undefined}
         className={`work-station-tab-bar relative box-border shrink-0 overflow-clip pt-2 ${insetTransitionClassName} ${surfaceClassName}`}
-        data-tauri-drag-region
+        data-tauri-drag-region={allowWindowDrag ? true : undefined}
         style={
           {
             height: `${TAB_BAR_HEIGHT + 8}px`,
-            paddingLeft: shouldOffsetLeftChrome
-              ? collapsedSidebarChromeOffset
-              : undefined,
+            paddingLeft:
+              allowWindowDrag && shouldOffsetLeftChrome
+                ? collapsedSidebarChromeOffset
+                : undefined,
             // The controls row keeps its own `pr-2`; only the remainder of
             // the pinned-chrome reservation goes here.
             paddingRight:
-              rightEdge.owner === "workstation"
+              allowWindowDrag && rightEdge.owner === "workstation"
                 ? rightEdge.reservedRight -
                   TAB_BAR_CONTROLS_ROW_TRAILING_PADDING_PX
                 : undefined,
-            WebkitAppRegion: "drag",
+            WebkitAppRegion: allowWindowDrag ? "drag" : "no-drag",
           } as React.CSSProperties
         }
       >
@@ -378,12 +382,18 @@ export const TabBar: React.FC<TabBarProps> = memo(
             Only the tab strip consumes the flexible column. */}
         <div className="grid h-9 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center">
           <div className="flex h-full min-w-0 items-center">
-            {shouldOffsetLeftChrome ? <CollapsedSidebarButton /> : null}
+            {allowWindowDrag && shouldOffsetLeftChrome ? (
+              <CollapsedSidebarButton />
+            ) : null}
             {leadingSlot ? (
               <div
                 className="flex h-full shrink-0 items-stretch"
-                data-tauri-drag-region
-                style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+                data-tauri-drag-region={allowWindowDrag ? true : undefined}
+                style={
+                  {
+                    WebkitAppRegion: allowWindowDrag ? "drag" : "no-drag",
+                  } as React.CSSProperties
+                }
               >
                 {leadingSlot}
               </div>
@@ -448,8 +458,12 @@ export const TabBar: React.FC<TabBarProps> = memo(
 
               <div
                 className="h-8 min-w-px flex-1"
-                data-tauri-drag-region
-                style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+                data-tauri-drag-region={allowWindowDrag ? true : undefined}
+                style={
+                  {
+                    WebkitAppRegion: allowWindowDrag ? "drag" : "no-drag",
+                  } as React.CSSProperties
+                }
                 aria-hidden
               />
             </div>

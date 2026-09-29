@@ -100,7 +100,7 @@ describe("shouldMountAgentStationHost", () => {
     expect(
       shouldMountAgentStationHost({
         isAgentStation: true,
-        isChatPanelMaximized: false,
+        workstationVisible: true,
       })
     ).toBe(true);
   });
@@ -113,18 +113,18 @@ describe("shouldMountAgentStationHost", () => {
     expect(
       shouldMountAgentStationHost({
         isAgentStation: false,
-        isChatPanelMaximized: false,
+        workstationVisible: true,
       })
     ).toBe(false);
   });
 
-  it("releases the simulator behind a maximized chat panel", () => {
+  it("releases the simulator when the workstation is collapsed or occluded", () => {
     // A maximized chat panel hides the simulator as completely as leaving
     // the surface does, so "mounted" must not diverge from "displayed".
     expect(
       shouldMountAgentStationHost({
         isAgentStation: true,
-        isChatPanelMaximized: true,
+        workstationVisible: false,
       })
     ).toBe(false);
   });

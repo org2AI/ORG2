@@ -14,6 +14,13 @@ import {
 import { isMainAppWindow } from "@src/util/platform/tauri/windowIdentity";
 
 import {
+  collapseWorkstationAtom,
+  dockWorkstationAtom,
+  expandWorkstationAtom,
+  floatWorkstationAtom,
+  workstationPresentationAtom,
+} from "./presentationAtoms";
+import {
   openStationInNewWindowAtom,
   restoreStationAfterWindowClosedAtom,
   stationWindowChatTakeoverAtom,
@@ -153,5 +160,155 @@ describe("restoreStationAfterWindowClosedAtom", () => {
 
     expect(store.get(chatPanelMaximizedAtom)).toBe(false);
     expect(store.get(stationWindowChatTakeoverAtom)).toBeNull();
+  });
+});
+
+describe("floating Workstation native-window ownership", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetInstrumentedStore();
+    vi.mocked(isMainAppWindow).mockReturnValue(true);
+    vi.mocked(openStationWindow)
+      .mockReset()
+      .mockResolvedValue("app-window-station-my-station");
+    vi.mocked(emitStationWindowSession)
+      .mockReset()
+      .mockResolvedValue(undefined);
+  });
+
+  it("suspends after success and restores floating without changing persisted layout", async () => {
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "my-station");
+    store.set(floatWorkstationAtom);
+    const opening = store.set(openStationInNewWindowAtom, {
+      stationMode: "my-station",
+    });
+    expect(store.get(workstationPresentationAtom)).toBe("floating");
+    await opening;
+    expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+    expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+    store.set(restoreStationAfterWindowClosedAtom, "agent-station");
+    expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+    store.set(restoreStationAfterWindowClosedAtom, "my-station");
+    expect(store.get(workstationPresentationAtom)).toBe("floating");
+  });
+
+  it("restores a close received while session retargeting is still pending", async () => {
+    let completeRetarget!: () => void;
+    const retargetStarted = new Promise<void>((started) => {
+      vi.mocked(emitStationWindowSession).mockImplementationOnce(() => {
+        started();
+        return new Promise<void>((resolve) => {
+          completeRetarget = resolve;
+        });
+      });
+    });
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "my-station");
+    store.set(floatWorkstationAtom);
+    const opening = store.set(openStationInNewWindowAtom, {
+      stationMode: "my-station",
+    });
+    await retargetStarted;
+    expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+    store.set(restoreStationAfterWindowClosedAtom, "my-station");
+    completeRetarget();
+    await opening;
+    expect(store.get(workstationPresentationAtom)).toBe("floating");
+  });
+
+  it("preserves floating when open fails and supports retry", async () => {
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "my-station");
+    store.set(floatWorkstationAtom);
+    vi.mocked(openStationWindow).mockRejectedValueOnce(new Error("failed"));
+    await expect(
+      store.set(openStationInNewWindowAtom, { stationMode: "my-station" })
+    ).rejects.toThrow("failed");
+    expect(store.get(workstationPresentationAtom)).toBe("floating");
+    await store.set(openStationInNewWindowAtom, { stationMode: "my-station" });
+    expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+  });
+
+  it("does not restore an old docked takeover after newer floating intent", async () => {
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "my-station");
+    store.set(chatPanelMaximizedAtom, false);
+    await store.set(openStationInNewWindowAtom, { stationMode: "my-station" });
+    expect(store.get(chatPanelMaximizedAtom)).toBe(true);
+    store.set(floatWorkstationAtom);
+    store.set(restoreStationAfterWindowClosedAtom, "my-station");
+    expect(store.get(workstationPresentationAtom)).toBe("floating");
+    expect(store.get(chatPanelMaximizedAtom)).toBe(true);
+  });
+
+  it("does not restore a suspended float onto a different selected station", async () => {
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "my-station");
+    store.set(floatWorkstationAtom);
+    await store.set(openStationInNewWindowAtom, { stationMode: "my-station" });
+    store.set(stationModeAtom, "agent-station");
+    store.set(restoreStationAfterWindowClosedAtom, "my-station");
+    expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+    store.set(stationModeAtom, "my-station");
+    store.set(restoreStationAfterWindowClosedAtom, "my-station");
+    expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+  });
+
+  it("does not reopen a float the user had already collapsed", async () => {
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "my-station");
+    store.set(collapseWorkstationAtom);
+    await store.set(openStationInNewWindowAtom, { stationMode: "my-station" });
+    store.set(restoreStationAfterWindowClosedAtom, "my-station");
+    expect(store.get(workstationPresentationAtom)).toBe("collapsed");
+  });
+
+  it.each([
+    [dockWorkstationAtom, "docked"],
+    [collapseWorkstationAtom, "collapsed"],
+    [expandWorkstationAtom, "floating"],
+  ] as const)(
+    "does not undo later presentation intent (%#)",
+    async (action, expected) => {
+      const store = createInstrumentedStore();
+      store.set(stationModeAtom, "my-station");
+      store.set(floatWorkstationAtom);
+      await store.set(openStationInNewWindowAtom, {
+        stationMode: "my-station",
+      });
+      store.set(action);
+      store.set(restoreStationAfterWindowClosedAtom, "my-station");
+      expect(store.get(workstationPresentationAtom)).toBe(expected);
+    }
+  );
+
+  it("ignores a pending open completion after newer presentation intent", async () => {
+    let completeOpen!: (label: string) => void;
+    vi.mocked(openStationWindow).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeOpen = resolve;
+        })
+    );
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "my-station");
+    store.set(floatWorkstationAtom);
+    const opening = store.set(openStationInNewWindowAtom, {
+      stationMode: "my-station",
+    });
+    store.set(dockWorkstationAtom);
+    completeOpen("app-window-station-my-station");
+    await opening;
+    expect(store.get(workstationPresentationAtom)).toBe("docked");
+    expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+  });
+
+  it("leaves the current float visible when another station is detached", async () => {
+    const store = createInstrumentedStore();
+    store.set(stationModeAtom, "agent-station");
+    store.set(floatWorkstationAtom);
+    await store.set(openStationInNewWindowAtom, { stationMode: "my-station" });
+    expect(store.get(workstationPresentationAtom)).toBe("floating");
   });
 });

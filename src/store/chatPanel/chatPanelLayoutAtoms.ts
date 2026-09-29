@@ -5,6 +5,11 @@ import {
   toggleChatPanelMaximizedAtom,
 } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
+import {
+  dockWorkstationAtom,
+  resolveWorkstationPresentation,
+  workstationPresentationAtom,
+} from "@src/store/workstation/presentationAtoms";
 import { workstationLayoutAtom } from "@src/store/workstation/tabs";
 import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
@@ -25,18 +30,27 @@ activeChatPanelTabStationAvailableAtom.debugLabel =
   "activeChatPanelTabStationAvailable";
 
 /** Effective layout only; writes continue to target the saved preference. */
-export const effectiveChatPanelMaximizedAtom = atom((get) =>
-  resolveChatPanelMaximizedForLayout(
-    get(chatPanelMaximizedAtom),
-    get(activeChatPanelTabAtom)
-  )
+export const effectiveChatPanelMaximizedAtom = atom(
+  (get) =>
+    resolveWorkstationPresentation({
+      presentation: get(workstationPresentationAtom),
+      chatMaximized: resolveChatPanelMaximizedForLayout(
+        get(chatPanelMaximizedAtom),
+        get(activeChatPanelTabAtom)
+      ),
+      settingsVisible: false,
+    }).chatExpanded
 );
 effectiveChatPanelMaximizedAtom.debugLabel = "effectiveChatPanelMaximized";
 
 /** User toggle guarded by the active tab's Station-access policy. */
 export const toggleActiveChatPanelMaximizedAtom = atom(null, (get, set) => {
   if (!get(activeChatPanelTabStationAvailableAtom)) return false;
-  set(toggleChatPanelMaximizedAtom);
+  if (get(workstationPresentationAtom) !== "docked") {
+    set(dockWorkstationAtom);
+  } else {
+    set(toggleChatPanelMaximizedAtom);
+  }
   return true;
 });
 toggleActiveChatPanelMaximizedAtom.debugLabel =
@@ -81,7 +95,11 @@ export const closeTabChordFallbackAtom = atom<CloseTabChordFallback | null>(
       (tab) => tab.type === "start-page"
     );
     if (!chatHoldsOnlyLaunchpad) return null;
-    if (get(chatPanelMaximizedAtom)) {
+    const presentation = get(workstationPresentationAtom);
+    if (
+      presentation === "collapsed" ||
+      (presentation === "docked" && get(chatPanelMaximizedAtom))
+    ) {
       return CLOSE_TAB_CHORD_FALLBACK.CLOSE_WINDOW;
     }
     return stationHoldsNothingToClose

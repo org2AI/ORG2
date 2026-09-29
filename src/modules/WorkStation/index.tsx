@@ -13,16 +13,19 @@ import React from "react";
 import AppShell from "./AppShell";
 
 interface WorkStationPageProps {
-  /** Whether the chat panel is taking over the WorkStation surface */
+  /** Actual visibility, independent of whether the primary chat fills its area. */
+  workstationVisible?: boolean;
+  /** Legacy docked-window visibility fallback. */
   chatPanelFocused?: boolean;
 }
 
 const WorkStationPage: React.FC<WorkStationPageProps> = ({
   chatPanelFocused = false,
+  workstationVisible = !chatPanelFocused,
 }) => {
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-      <AppShell chatPanelFocused={chatPanelFocused} />
+      <AppShell workstationVisible={workstationVisible} />
     </div>
   );
 };

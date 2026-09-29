@@ -29,6 +29,23 @@ describe("Anthropic model info", () => {
     });
   });
 
+  it("recognizes Sonnet 5.5 and its effort variants", () => {
+    for (const model of [
+      "claude-sonnet-5-5",
+      "claude-sonnet-5-5-thinking-high",
+      "anthropic/claude-sonnet-5-5-max",
+    ]) {
+      expect(getModelInfo(model)).toMatchObject({
+        providerKey: "anthropic",
+        contextWindow: 1000,
+        maxOutput: 128,
+        vision: true,
+        reasoning: true,
+        pricingTier: "moderate",
+      });
+    }
+  });
+
   it("uses published limits for current and legacy Claude models", () => {
     for (const model of [
       "claude-opus-5",

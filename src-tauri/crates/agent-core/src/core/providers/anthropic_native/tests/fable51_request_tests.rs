@@ -132,36 +132,36 @@ fn saved_aliases_and_baseline_never_disable_fable_51_thinking() {
 fn forced_choices_become_auto_with_current_turn_instructions() {
     let client = client(AnthropicAuthMode::ApiKey, HashMap::new());
     let messages = vec![json!({"role": "user", "content": "Extract the answer"})];
-    for choice in [
-        json!({"type": "tool", "name": "emit_result"}),
-        json!({"type": "any"}),
+    for model in [
+        "claude-fable-5-1-high",
+        "claude-opus-5-5-high",
+        "claude-sonnet-5-5-high",
     ] {
-        let tools = tools_with_choice(choice.clone());
-        let original_tools = tools.clone();
-        for stream in [false, true] {
-            let (body, _) = serialized_request(
-                &client,
-                "claude-fable-5-1-high",
-                &messages,
-                Some(&tools),
-                stream,
-            );
-            assert_eq!(body["tool_choice"], json!({"type": "auto"}));
-            assert_eq!(body["tools"].as_array().unwrap().len(), 1);
-            assert_eq!(body["tools"][0]["name"], "emit_result");
-            assert_eq!(
-                body["messages"][0]["content"][0]["text"],
-                "Extract the answer"
-            );
-            assert_eq!(body["messages"].as_array().unwrap().len(), 2);
-            assert_eq!(body["messages"][1]["role"], "system");
-            let instruction = body["messages"][1]["content"].as_str().unwrap();
-            assert!(instruction.contains("must begin with"));
-            if choice["type"] == "tool" {
-                assert!(instruction.contains("emit_result"));
+        for choice in [
+            json!({"type": "tool", "name": "emit_result"}),
+            json!({"type": "any"}),
+        ] {
+            let tools = tools_with_choice(choice.clone());
+            let original_tools = tools.clone();
+            for stream in [false, true] {
+                let (body, _) = serialized_request(&client, model, &messages, Some(&tools), stream);
+                assert_eq!(body["tool_choice"], json!({"type": "auto"}));
+                assert_eq!(body["tools"].as_array().unwrap().len(), 1);
+                assert_eq!(body["tools"][0]["name"], "emit_result");
+                assert_eq!(
+                    body["messages"][0]["content"][0]["text"],
+                    "Extract the answer"
+                );
+                assert_eq!(body["messages"].as_array().unwrap().len(), 2);
+                assert_eq!(body["messages"][1]["role"], "system");
+                let instruction = body["messages"][1]["content"].as_str().unwrap();
+                assert!(instruction.contains("must begin with"));
+                if choice["type"] == "tool" {
+                    assert!(instruction.contains("emit_result"));
+                }
             }
+            assert_eq!(tools, original_tools);
         }
-        assert_eq!(tools, original_tools);
     }
     assert_eq!(
         messages,

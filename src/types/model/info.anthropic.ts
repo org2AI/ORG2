@@ -185,6 +185,20 @@ export const ANTHROPIC_MODEL_INFO_ENTRIES: ModelInfoEntry[] = [
       pricingTier: "budget",
     },
   },
+  // https://platform.claude.com/docs/en/models/sonnet-5-5/overview
+  {
+    pattern: "claude-sonnet-5-5",
+    info: {
+      provider: "Anthropic",
+      providerKey: "anthropic",
+      contextWindow: 1000,
+      maxOutput: 128,
+      vision: true,
+      reasoning: true,
+      strengthKeys: ["coding", "balanced", "agentic", "speed"],
+      pricingTier: "moderate",
+    },
+  },
   // https://platform.claude.com/docs/en/models/sonnet-5/overview
   {
     pattern: "claude-sonnet-5",

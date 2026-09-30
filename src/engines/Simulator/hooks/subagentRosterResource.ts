@@ -1,10 +1,13 @@
 import type { SubagentSession } from "@src/contracts/simulator/subagent";
+import { createLogger } from "@src/hooks/logger";
 
 import {
   type ChildSessionRecord,
   isSubagentTaskAssigned,
   mapChildSessionRecord,
 } from "./subagentSessionProjection";
+
+const log = createLogger("subagentRoster");
 
 export interface SubagentRosterSnapshot {
   sessions: SubagentSession[];
@@ -50,7 +53,7 @@ export function createSubagentRosterResource(
     nextRefreshAt = Date.now() + delay;
     timer = setTimeout(() => {
       timer = undefined;
-      void refresh();
+      refreshInBackground();
     }, delay);
   };
   const refresh = (): Promise<void> => {
@@ -103,6 +106,11 @@ export function createSubagentRosterResource(
     pending = request;
     return request;
   };
+  const refreshInBackground = () => {
+    refresh().catch((error: unknown) => {
+      log.warn("Subagent roster notification failed", error);
+    });
+  };
   const invalidate = () => {
     dirty = true;
     // Do not keep postponing a refresh during continuous streaming.
@@ -112,7 +120,7 @@ export function createSubagentRosterResource(
   const visibilityChanged = () => {
     clearTimeout(timer);
     timer = undefined;
-    if (!visibility.hidden) void refresh();
+    if (!visibility.hidden) refreshInBackground();
   };
   return {
     getSnapshot: () => state,
@@ -136,7 +144,7 @@ export function createSubagentRosterResource(
         const mountedGeneration = generation;
         queueMicrotask(() => {
           if (listeners.size && mountedGeneration === generation && !pending)
-            void refresh();
+            refreshInBackground();
         });
       }
       return () => {

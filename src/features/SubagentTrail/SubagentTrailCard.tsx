@@ -85,13 +85,13 @@ export function SubagentTrailCard({
                 label={`${t("common:actions.stop")} ${title}`}
                 title={t("common:actions.stop")}
                 loading={stopping}
-                onClick={async () => {
+                onClick={() => {
                   setStopError(false);
-                  try {
-                    await stop({ parentSessionId, handle: session.sessionId });
-                  } catch {
-                    setStopError(true);
-                  }
+                  stop({ parentSessionId, handle: session.sessionId }).catch(
+                    () => {
+                      setStopError(true);
+                    }
+                  );
                 }}
               />
             </ToolbarTooltip>

@@ -138,20 +138,19 @@ export const sessionSnapshotAtomFamily = atomFamily((sessionId: string) => {
       }
     );
 
-    void (async () => {
-      try {
-        await ensureSessionHistoryInStore(sessionId);
+    ensureSessionHistoryInStore(sessionId)
+      .then(() => {
         if (disposed) return;
         const snapshot = eventStoreProxy.getLatestSessionSnapshot(sessionId);
         if (snapshot) setSelf({ snapshot, loadStarted: true });
-      } catch (err: unknown) {
+      })
+      .catch((err: unknown) => {
         if (disposed) return;
         log.warn(
           `[sessionScopedChatEvents] hydrate(${sessionId}) failed:`,
           err
         );
-      }
-    })();
+      });
 
     return () => {
       disposed = true;

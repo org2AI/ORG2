@@ -2660,5 +2660,30 @@
     "downloadPreview": "内容を表示するには、このファイルをダウンロードしてください",
     "download": "ダウンロード",
     "loading": "共有ファイルを読み込み中…"
+  },
+  "subagentTrail": {
+    "summary": "実行中 {{running}} · 終了 {{finished}}",
+    "stopError": "タスクを停止できませんでした。再試行してください。",
+    "loadError": "タスクを更新できませんでした",
+    "recordUnavailable": "このタスクの記録は利用できません",
+    "noTasks": "サブエージェントはまだありません",
+    "finished": "終了 · {{count}}",
+    "showMore": "さらに表示",
+    "status": {
+      "pending": "待機中",
+      "idle": "アイドル",
+      "running": "実行中",
+      "waiting_for_user": "返信待ち",
+      "waiting_for_funds": "残高待ち",
+      "paused": "一時停止",
+      "completed": "完了",
+      "failed": "失敗",
+      "cancelled": "キャンセル済み",
+      "abandoned": "中断",
+      "timeout": "タイムアウト",
+      "archived": "アーカイブ済み",
+      "killed": "終了",
+      "unknown": "不明"
+    }
   }
 }

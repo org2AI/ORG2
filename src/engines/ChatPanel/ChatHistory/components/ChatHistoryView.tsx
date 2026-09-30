@@ -65,6 +65,7 @@ interface ChatHistoryViewProps {
   agentOrgOverviewPanel?: React.ReactNode;
   bottomInset: number;
   chromeTopInset: number;
+  transcriptTopPaddingPx?: number;
   displayMode: ChatHistoryDisplayMode;
   emptyState: UseChatEmptyStateReturn;
   groupChatEnabled: boolean;
@@ -100,6 +101,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
   agentOrgOverviewPanel,
   bottomInset,
   chromeTopInset,
+  transcriptTopPaddingPx: ownedTranscriptTopPaddingPx,
   displayMode,
   emptyState,
   groupChatEnabled,
@@ -292,10 +294,12 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
     turnPaginationEnabled ||
     Boolean(agentOrgCurrentMemberName) ||
     Boolean(agentOrgOverviewPanel);
-  const transcriptTopPaddingPx = resolveTranscriptTopPaddingPx(
-    chromeTopInset,
-    turnPaginationEnabled || groupChatViewActive
-  );
+  const transcriptTopPaddingPx =
+    ownedTranscriptTopPaddingPx ??
+    resolveTranscriptTopPaddingPx(
+      chromeTopInset,
+      turnPaginationEnabled || groupChatViewActive
+    );
   const handlePreviousTurnPageNavigation = useCallback(() => {
     detachForNavigation();
     handlePreviousTurnPage();

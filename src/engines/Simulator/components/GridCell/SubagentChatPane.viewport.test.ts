@@ -2,6 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CHAT_PANEL_TRANSCRIPT_TOP_GAP_PX } from "@src/engines/ChatPanel/header/chatPanelHeaderLayout";
+
 import { SubagentChatPane } from "./SubagentChatPane";
 
 const { chatHistoryPropsMock } = vi.hoisted(() => ({
@@ -53,5 +55,6 @@ describe("SubagentChatPane viewport ownership", () => {
 
     const props = chatHistoryPropsMock.mock.calls[0]?.[0];
     expect(props).not.toHaveProperty("tailFollowMode", "always");
+    expect(props.transcriptTopPaddingPx).toBe(CHAT_PANEL_TRANSCRIPT_TOP_GAP_PX);
   });
 });

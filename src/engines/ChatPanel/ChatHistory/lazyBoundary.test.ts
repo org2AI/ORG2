@@ -9,6 +9,10 @@ import React, {
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import {
+  CHAT_PANEL_TRANSCRIPT_TOP_GAP_PX,
+  CHAT_PANEL_TRANSCRIPT_TOP_PADDING_PX,
+} from "../header/chatPanelHeaderLayout";
 import type { ChatHistoryProps } from "./ChatHistory.types";
 
 const SessionContext = createContext("none");
@@ -27,6 +31,47 @@ afterEach(() => {
 });
 
 describe("chat history loading boundary", () => {
+  it("uses the embedded reader gap while loading without changing main-chat spacing", async () => {
+    vi.resetModules();
+    const gate = deferred();
+    vi.doMock("./ChatHistory", async () => {
+      await gate.promise;
+      return { default: () => null };
+    });
+    const { default: ChatHistory } = await import("./index");
+    const host = document.createElement("div");
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          createElement(
+            "div",
+            null,
+            createElement(ChatHistory, {}),
+            createElement(ChatHistory, {
+              transcriptTopPaddingPx: CHAT_PANEL_TRANSCRIPT_TOP_GAP_PX,
+            })
+          )
+        )
+      );
+      const loading = host.querySelectorAll(
+        '[data-testid="chat-loading-block"]'
+      );
+      expect((loading[0].parentElement as HTMLElement).style.paddingTop).toBe(
+        `${CHAT_PANEL_TRANSCRIPT_TOP_PADDING_PX}px`
+      );
+      expect((loading[1].parentElement as HTMLElement).style.paddingTop).toBe(
+        `${CHAT_PANEL_TRANSCRIPT_TOP_GAP_PX}px`
+      );
+    } finally {
+      await act(async () => {
+        root.unmount();
+        gate.resolve();
+        await vi.dynamicImportSettled();
+      });
+    }
+  });
+
   it("loads on mount, uses the latest reader context and preserves mounted readers", async () => {
     vi.resetModules();
     const gate = deferred();

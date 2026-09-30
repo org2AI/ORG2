@@ -33,7 +33,6 @@ import {
   type QueuedMessage,
   messageQueueAtom,
 } from "@src/store/ui/messageQueueAtom";
-import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
 import { isInteractiveTool } from "../core/interactiveTools";
 import {
@@ -47,7 +46,7 @@ import {
   isStreamingSnapshot,
 } from "../core/store/EventStoreProxy";
 import type { SessionEvent } from "../core/types";
-import { ensureCursorIdeEventsInStore } from "../sync/adapters/cursorIdeAdapter";
+import { ensureSessionHistoryInStore } from "../sync/ensureSessionHistoryInStore";
 import {
   appendLiveAssistantEvent,
   appendQueuedUserEvents,
@@ -111,7 +110,7 @@ function scheduleSessionFamilyRemoval(sessionId: string): void {
  *
  * Subscribes to `eventStoreProxy.subscribeSession(sessionId, ...)` on mount,
  * primes itself with `getLatestSessionSnapshot`, and triggers a one-shot
- * `loadFromCache` so a fresh subagent that has not been fetched yet hydrates
+ * source-aware history load so a fresh subagent hydrates
  * without requiring the consumer to call `useSessionEvents` separately.
  */
 export const sessionSnapshotAtomFamily = atomFamily((sessionId: string) => {
@@ -141,11 +140,10 @@ export const sessionSnapshotAtomFamily = atomFamily((sessionId: string) => {
 
     void (async () => {
       try {
-        if (isCursorIdeSession(sessionId)) {
-          await ensureCursorIdeEventsInStore(sessionId);
-          if (disposed) return;
-        }
-        await eventStoreProxy.loadFromCache(sessionId);
+        await ensureSessionHistoryInStore(sessionId);
+        if (disposed) return;
+        const snapshot = eventStoreProxy.getLatestSessionSnapshot(sessionId);
+        if (snapshot) setSelf({ snapshot, loadStarted: true });
       } catch (err: unknown) {
         if (disposed) return;
         log.warn(

@@ -2660,5 +2660,30 @@
     "downloadPreview": "Lade diese Datei herunter, um ihren Inhalt anzuzeigen",
     "download": "Herunterladen",
     "loading": "Geteilte Datei wird geladen…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} aktiv · {{finished}} beendet",
+    "stopError": "Aufgabe konnte nicht gestoppt werden. Erneut versuchen.",
+    "loadError": "Aufgaben konnten nicht aktualisiert werden",
+    "recordUnavailable": "Dieser Aufgabenverlauf ist nicht mehr verfügbar",
+    "noTasks": "Noch keine Unteragenten",
+    "finished": "Beendet · {{count}}",
+    "showMore": "Mehr anzeigen",
+    "status": {
+      "pending": "Ausstehend",
+      "idle": "Inaktiv",
+      "running": "Läuft",
+      "waiting_for_user": "Wartet auf Antwort",
+      "waiting_for_funds": "Wartet auf Guthaben",
+      "paused": "Pausiert",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen",
+      "abandoned": "Aufgegeben",
+      "timeout": "Zeitüberschreitung",
+      "archived": "Archiviert",
+      "killed": "Beendet",
+      "unknown": "Unbekannt"
+    }
   }
 }

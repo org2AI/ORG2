@@ -3,7 +3,6 @@
  * header trigger (portaled into the chat header) that drops the same section
  * list down as a menu.
  */
-import type React from "react";
 import { createPortal } from "react-dom";
 
 import Button from "@src/components/Button";
@@ -15,7 +14,6 @@ import { WorkstationSections } from "./WorkstationSections";
 import type { FocusedChatRailSection } from "./types";
 
 export interface WorkstationCompactMenuProps {
-  additionalInsideRefs: ReadonlyArray<React.RefObject<HTMLElement | null>>;
   collapseGroupLabel: string;
   collapsedGroupKeys: ReadonlySet<string>;
   expandGroupLabel: string;
@@ -29,7 +27,6 @@ export interface WorkstationCompactMenuProps {
 }
 
 export function WorkstationCompactMenu({
-  additionalInsideRefs,
   collapseGroupLabel,
   collapsedGroupKeys,
   expandGroupLabel,
@@ -47,9 +44,6 @@ export function WorkstationCompactMenu({
         position="bottom-end"
         popupVisible={menuOpen}
         onVisibleChange={onVisibleChange}
-        // The subagents submenu is portaled to document.body; treat it as
-        // part of this menu so interacting with it keeps the menu open.
-        additionalInsideRefs={additionalInsideRefs}
         className={`${DROPDOWN_CLASSES.menuPanelWithHeaderBase} w-72`}
         droplist={
           <div

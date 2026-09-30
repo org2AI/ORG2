@@ -2660,5 +2660,30 @@
     "downloadPreview": "Descarga este archivo para ver su contenido",
     "download": "Descargar",
     "loading": "Cargando archivo compartido…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} activos · {{finished}} finalizados",
+    "stopError": "No se pudo detener esta tarea. Inténtalo de nuevo.",
+    "loadError": "No se pudieron actualizar las tareas",
+    "recordUnavailable": "El registro de esta tarea ya no está disponible",
+    "noTasks": "Aún no hay subagentes",
+    "finished": "Finalizados · {{count}}",
+    "showMore": "Mostrar más",
+    "status": {
+      "pending": "Pendiente",
+      "idle": "Inactivo",
+      "running": "En ejecución",
+      "waiting_for_user": "Esperando respuesta",
+      "waiting_for_funds": "Esperando fondos",
+      "paused": "En pausa",
+      "completed": "Completado",
+      "failed": "Error",
+      "cancelled": "Cancelado",
+      "abandoned": "Abandonado",
+      "timeout": "Tiempo agotado",
+      "archived": "Archivado",
+      "killed": "Terminado",
+      "unknown": "Desconocido"
+    }
   }
 }

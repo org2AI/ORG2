@@ -17,7 +17,6 @@ import { WorkstationCollapsedDiffStats } from "./WorkstationCollapsedDiffStats";
 import { WorkstationCollapsedRailItems } from "./WorkstationCollapsedRailItems";
 import { WorkstationCompactMenu } from "./WorkstationCompactMenu";
 import { WorkstationSections } from "./WorkstationSections";
-import { WorkstationSubagentsSubmenu } from "./WorkstationSubagentsSubmenu";
 import { WorkstationTrailHeaderActions } from "./WorkstationTrailHeaderActions";
 import { WorkstationTrailTerminal } from "./WorkstationTrailTerminal";
 import { getStoredRailCollapsed, persistRailCollapsed } from "./railStorage";
@@ -84,17 +83,13 @@ export function FocusedChatWorkstationRail({
     workspaceItems,
   });
 
-  const {
-    closeSubagentsSubmenu,
-    handleMenuVisibleChange: handleSubagentsMenuVisibleChange,
-    openSubagentSession,
-    subagentItems,
-    subagentsSubmenuAnchor,
-    subagentsSubmenuInsideRefs,
-    subagentsSubmenuMaxHeight,
-    subagentsSubmenuPanelRef,
-    subagentsSubmenuWidth,
-  } = useWorkstationRailSubagents({ setMenuOpen, subagentIcon, subagents, t });
+  const { subagentItems } = useWorkstationRailSubagents({
+    setMenuOpen,
+    subagentIcon,
+    subagents,
+    parentSessionId: sessionContext?.sessionId,
+    t,
+  });
 
   const { closeImagePreview, imagePreview, sourceItems } =
     useWorkstationRailSources({
@@ -135,7 +130,6 @@ export function FocusedChatWorkstationRail({
 
   const compactMenu = compactMenuHost ? (
     <WorkstationCompactMenu
-      additionalInsideRefs={subagentsSubmenuInsideRefs}
       collapseGroupLabel={t("common:actions.collapse")}
       collapsedGroupKeys={collapsedGroupKeys}
       expandGroupLabel={t("common:actions.expand")}
@@ -144,7 +138,7 @@ export function FocusedChatWorkstationRail({
       menuOpen={menuOpen}
       onRequestClose={() => setMenuOpen(false)}
       onToggleGroup={toggleGroup}
-      onVisibleChange={handleSubagentsMenuVisibleChange}
+      onVisibleChange={setMenuOpen}
       sections={compactSections}
     />
   ) : null;
@@ -245,18 +239,6 @@ export function FocusedChatWorkstationRail({
           ) : null}
         </div>
       </div>
-      {subagentsSubmenuAnchor ? (
-        <WorkstationSubagentsSubmenu
-          anchor={subagentsSubmenuAnchor}
-          icon={subagentIcon}
-          maxHeight={subagentsSubmenuMaxHeight}
-          onClose={closeSubagentsSubmenu}
-          onOpenSubagent={openSubagentSession}
-          panelRef={subagentsSubmenuPanelRef}
-          subagents={subagents}
-          width={subagentsSubmenuWidth}
-        />
-      ) : null}
       {imagePreview ? (
         <SessionSourceImagePreview
           images={imagePreview.images}

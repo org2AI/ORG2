@@ -2659,5 +2659,30 @@
     "downloadPreview": "Download this file to view its contents",
     "download": "Download",
     "loading": "Loading shared file…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} active · {{finished}} finished",
+    "stopError": "Could not stop this task. Try again.",
+    "loadError": "Could not refresh tasks",
+    "recordUnavailable": "This task record is no longer available",
+    "noTasks": "No subagents yet",
+    "finished": "Finished · {{count}}",
+    "showMore": "Show more",
+    "status": {
+      "pending": "Pending",
+      "idle": "Idle",
+      "running": "Running",
+      "waiting_for_user": "Waiting for your reply",
+      "waiting_for_funds": "Waiting for funds",
+      "paused": "Paused",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "abandoned": "Abandoned",
+      "timeout": "Timed out",
+      "archived": "Archived",
+      "killed": "Terminated",
+      "unknown": "Status awaiting sync"
+    }
   }
 }

@@ -92,6 +92,8 @@ const InfoTooltip: React.FC<{ content: string }> = ({ content }) => (
 const ActionCard: React.FC<ActionCardProps> = ({
   title,
   description,
+  trailingAction,
+  truncateTitle = false,
   onClick,
   variant = "default",
   layout = "inline",
@@ -216,7 +218,12 @@ const ActionCard: React.FC<ActionCardProps> = ({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <p className={titleClass}>{title}</p>
+            <p
+              className={cn(titleClass, truncateTitle && "truncate")}
+              title={truncateTitle ? title : undefined}
+            >
+              {title}
+            </p>
             {badgeElement}
           </div>
           {description && (
@@ -276,7 +283,16 @@ const ActionCard: React.FC<ActionCardProps> = ({
       </div>
 
       <div className="mt-4 min-w-0">
-        <p className={cn(titleClass, "text-sm leading-5")}>{title}</p>
+        <p
+          className={cn(
+            titleClass,
+            "text-sm leading-5",
+            truncateTitle && "truncate"
+          )}
+          title={truncateTitle ? title : undefined}
+        >
+          {title}
+        </p>
         {description && (
           <p className={cn(variantConfig.descriptionClass, "mt-1.5 leading-5")}>
             {description}
@@ -307,12 +323,13 @@ const ActionCard: React.FC<ActionCardProps> = ({
     );
   }
 
-  return (
+  const card = (
     <Button
       layout="custom"
       className={cn(
         "w-full focus-visible:ring-2 focus-visible:ring-primary-6 focus-visible:ring-offset-2 focus-visible:outline-none",
-        containerClass
+        containerClass,
+        !!trailingAction && "pr-10"
       )}
       onClick={handleCardClick}
       disabled={disabled}
@@ -322,6 +339,18 @@ const ActionCard: React.FC<ActionCardProps> = ({
     >
       {content}
     </Button>
+  );
+
+  if (!trailingAction) return card;
+  // Reserve one icon-action slot without nesting interactive controls. The
+  // existing card still owns its entire surface, typography and hover state.
+  return (
+    <div className="relative min-w-0">
+      {card}
+      <div className="absolute top-1/2 right-2 -translate-y-1/2">
+        {trailingAction}
+      </div>
+    </div>
   );
 };
 

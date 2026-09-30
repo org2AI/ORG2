@@ -165,6 +165,12 @@ pub fn load_codex_app_initial_window_from_path(
         return Ok(window);
     }
 
+    if let Some(window) =
+        super::subagent_task_window::load_subagent_task_window(session_id, path, recent_turn_count)?
+    {
+        return Ok(window);
+    }
+
     // Metadata-only or partially written rollouts may not contain any user
     // messages. Preserve the compatibility parser for those files; normal
     // rollouts take the tail-window path above and never scan old turn bodies.

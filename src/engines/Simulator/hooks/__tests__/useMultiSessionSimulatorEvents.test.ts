@@ -153,3 +153,40 @@ it("keeps stream updates that arrive while a baseline request is in flight", asy
     delete env.IS_REACT_ACT_ENVIRONMENT;
   }
 });
+
+it("hydrates a cached empty child instead of declaring it ready without loading", async () => {
+  const env = globalThis as typeof globalThis & {
+    IS_REACT_ACT_ENVIRONMENT?: boolean;
+  };
+  env.IS_REACT_ACT_ENVIRONMENT = true;
+  proxy.getLatestSessionSnapshot.mockReturnValue({
+    eventCount: 0,
+    sortedSimulatorEvents: [],
+  });
+  proxy.loadFromCache.mockResolvedValue(1);
+  const event = { id: "restored", displayText: "Child completed" };
+  proxy.getSnapshot.mockResolvedValue({
+    eventCount: 1,
+    sortedSimulatorEvents: [event],
+  });
+  let result: ReturnType<typeof useMultiSessionSimulatorEvents> | undefined;
+  function Harness() {
+    const value = useMultiSessionSimulatorEvents([
+      { sessionId: "empty-child" } as SubagentSession,
+    ]);
+    useEffect(() => {
+      result = value;
+    }, [value]);
+    return null;
+  }
+  const root = createRoot(document.createElement("div"));
+  try {
+    await act(async () => root.render(createElement(Harness)));
+    expect(proxy.loadFromCache).toHaveBeenCalledWith("empty-child");
+    expect(result!.eventsMap.get("empty-child")).toEqual([event]);
+    expect(result!.loadState("empty-child").status).toBe("ready");
+  } finally {
+    act(() => root.unmount());
+    delete env.IS_REACT_ACT_ENVIRONMENT;
+  }
+});

@@ -66,6 +66,7 @@ import type { ChatPanelPosition } from "@src/store/ui/workStationLayout/chatPosi
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 
 import { GlobalModals } from "./GlobalModals";
+import { SessionTrailOverlay } from "./SessionTrailOverlay";
 import { useChatSplitAreaWidth } from "./useChatSplitAreaWidth";
 
 const SettingsSlot = React.lazy(
@@ -354,6 +355,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
               </div>
               {!isChatOnLeft && resizeIndicatorHost}
               {!isChatOnLeft && chatSlot}
+              {!isSettingsSlot && <SessionTrailOverlay />}
               {/* Global floating side chat: hosted over the whole pane
                   surface (chat slot + workbench), so it stays usable when
                   the chat pane is hidden and a station fills the view. */}

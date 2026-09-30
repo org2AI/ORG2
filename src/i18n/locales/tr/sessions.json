@@ -2660,5 +2660,30 @@
     "downloadPreview": "İçeriğini görmek için bu dosyayı indirin",
     "download": "İndir",
     "loading": "Paylaşılan dosya yükleniyor…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} etkin · {{finished}} bitmiş",
+    "stopError": "Bu görev durdurulamadı. Tekrar deneyin.",
+    "loadError": "Görevler yenilenemedi",
+    "recordUnavailable": "Bu görev kaydı artık kullanılamıyor",
+    "noTasks": "Henüz alt ajan yok",
+    "finished": "Bitmiş · {{count}}",
+    "showMore": "Daha fazla göster",
+    "status": {
+      "pending": "Bekliyor",
+      "idle": "Boşta",
+      "running": "Çalışıyor",
+      "waiting_for_user": "Yanıt bekliyor",
+      "waiting_for_funds": "Bakiye bekliyor",
+      "paused": "Duraklatıldı",
+      "completed": "Tamamlandı",
+      "failed": "Başarısız",
+      "cancelled": "İptal edildi",
+      "abandoned": "Terk edildi",
+      "timeout": "Zaman aşımı",
+      "archived": "Arşivlendi",
+      "killed": "Sonlandırıldı",
+      "unknown": "Bilinmiyor"
+    }
   }
 }

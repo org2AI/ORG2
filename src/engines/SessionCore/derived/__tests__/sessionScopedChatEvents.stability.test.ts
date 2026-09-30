@@ -5,10 +5,11 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 
 const subscribers = new Map<string, (snapshot: unknown) => void>();
+const hydration = vi.hoisted(() => ({ latest: vi.fn(), load: vi.fn() }));
 
 vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
-    getLatestSessionSnapshot: () => null,
+    getLatestSessionSnapshot: hydration.latest,
     subscribeSession: (
       sessionId: string,
       listener: (snapshot: unknown) => void
@@ -16,7 +17,7 @@ vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
       subscribers.set(sessionId, listener);
       return () => subscribers.delete(sessionId);
     },
-    loadFromCache: () => Promise.resolve(),
+    loadFromCache: hydration.load,
   },
   isStreamingSnapshot: (snapshot: unknown) =>
     Boolean(
@@ -69,10 +70,35 @@ describe("chatEventsForSessionAtomFamily streaming stability", () => {
 
   beforeEach(() => {
     store = createStore();
+    hydration.latest.mockReset().mockReturnValue(null);
+    hydration.load.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     subscribers.clear();
+  });
+
+  it("publishes hydrated history even when no store broadcast reaches the pane", async () => {
+    const sessionId = "scoped-history-no-broadcast";
+    const event = chatEvent("loaded-message", "Completed child result", {
+      sessionId,
+      isDelta: false,
+      displayStatus: "completed",
+    });
+    hydration.load.mockImplementation(async () => {
+      hydration.latest.mockReturnValue(streamingSnapshot(1, [event]));
+    });
+    const chatAtom = chatEventsForSessionAtomFamily(sessionId);
+    const unsub = store.sub(chatAtom, () => {});
+    try {
+      await vi.waitFor(() => {
+        expect(store.get(chatAtom).some((item) => item.id === event.id)).toBe(
+          true
+        );
+      });
+    } finally {
+      unsub();
+    }
   });
 
   it("keeps the same array reference when only last-delta displayText grows", async () => {

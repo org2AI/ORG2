@@ -51,6 +51,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   turnPaginationEnabled = true,
   pinnedHeaderPortalHost = null,
   chromeTopInset = 0,
+  transcriptTopPaddingPx,
   bottomInset = 0,
   forceCollapseAllTurns = false,
   disableTailCollapse = false,
@@ -251,6 +252,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
           paginationTrailingSlot={paginationTrailingSlot}
           pinnedHeaderPortalHost={pinnedHeaderPortalHost}
           chromeTopInset={chromeTopInset}
+          transcriptTopPaddingPx={transcriptTopPaddingPx}
           planningIndicatorScope={planningIndicatorScope}
           projection={projection}
           search={search}

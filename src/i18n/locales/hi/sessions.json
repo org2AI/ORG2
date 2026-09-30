@@ -2659,5 +2659,30 @@
     "downloadPreview": "इसकी सामग्री देखने के लिए यह फ़ाइल डाउनलोड करें",
     "download": "डाउनलोड करें",
     "loading": "साझा फ़ाइल लोड हो रही है…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} सक्रिय · {{finished}} समाप्त",
+    "stopError": "यह कार्य रोक नहीं सके। फिर से प्रयास करें।",
+    "loadError": "कार्य रीफ़्रेश नहीं कर सके",
+    "recordUnavailable": "इस कार्य का रिकॉर्ड अब उपलब्ध नहीं है",
+    "noTasks": "अभी कोई उप-एजेंट नहीं है",
+    "finished": "समाप्त · {{count}}",
+    "showMore": "और दिखाएँ",
+    "status": {
+      "pending": "लंबित",
+      "idle": "निष्क्रिय",
+      "running": "चल रहा है",
+      "waiting_for_user": "उत्तर की प्रतीक्षा",
+      "waiting_for_funds": "राशि की प्रतीक्षा",
+      "paused": "रोका गया",
+      "completed": "पूर्ण",
+      "failed": "विफल",
+      "cancelled": "रद्द",
+      "abandoned": "छोड़ा गया",
+      "timeout": "समय समाप्त",
+      "archived": "संग्रहीत",
+      "killed": "समाप्त",
+      "unknown": "अज्ञात"
+    }
   }
 }

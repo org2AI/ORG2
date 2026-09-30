@@ -2,9 +2,30 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { ProcessStopButton } from "@src/components/ProcessStopButton";
+
 import ActionCard from ".";
 
 describe("ActionCard accessibility contract", () => {
+  it("keeps an independent stop action outside the navigable card with full title available", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ActionCard, {
+        title: "Inspect repository structure",
+        description: React.createElement("span", null, "Running · 47s"),
+        truncateTitle: true,
+        variant: "subtle",
+        onClick: vi.fn(),
+        trailingAction: React.createElement(ProcessStopButton, {
+          label: "Stop task",
+          onClick: vi.fn(),
+        }),
+      })
+    );
+    expect(html.match(/<button/g)).toHaveLength(2);
+    expect(html.indexOf("</button>")).toBeLessThan(html.lastIndexOf("<button"));
+    expect(html).toContain('title="Inspect repository structure"');
+    expect(html).toContain("Running · 47s");
+  });
   it("renders a selectable card as a native pressed button", () => {
     const html = renderToStaticMarkup(
       React.createElement(ActionCard, {

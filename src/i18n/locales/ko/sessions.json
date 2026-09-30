@@ -2660,5 +2660,30 @@
     "downloadPreview": "내용을 보려면 이 파일을 다운로드하세요",
     "download": "다운로드",
     "loading": "공유 파일 로드 중…"
+  },
+  "subagentTrail": {
+    "summary": "진행 중 {{running}} · 종료 {{finished}}",
+    "stopError": "작업을 중지하지 못했습니다. 다시 시도하세요.",
+    "loadError": "작업을 새로 고치지 못했습니다",
+    "recordUnavailable": "이 작업 기록은 더 이상 사용할 수 없습니다",
+    "noTasks": "아직 하위 에이전트가 없습니다",
+    "finished": "종료 · {{count}}",
+    "showMore": "더 보기",
+    "status": {
+      "pending": "대기 중",
+      "idle": "유휴",
+      "running": "실행 중",
+      "waiting_for_user": "답변 대기 중",
+      "waiting_for_funds": "잔액 대기 중",
+      "paused": "일시 중지",
+      "completed": "완료",
+      "failed": "실패",
+      "cancelled": "취소됨",
+      "abandoned": "중단됨",
+      "timeout": "시간 초과",
+      "archived": "보관됨",
+      "killed": "종료됨",
+      "unknown": "알 수 없음"
+    }
   }
 }

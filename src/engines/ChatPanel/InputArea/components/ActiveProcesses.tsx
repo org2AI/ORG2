@@ -37,12 +37,11 @@ import {
   type ShellProcessState,
   shellProcessMapAtom,
 } from "@src/store/session/shellProcessAtom";
+import { stopSubagentJobAtom } from "@src/store/session/stopSubagentJobAtom";
 import {
   type SubagentJobState,
-  removeSubagentJobAtom,
   subagentJobMapAtom,
 } from "@src/store/session/subagentJobAtom";
-import { invokeTauri } from "@src/util/platform/tauri/init";
 import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import ComposerStackHeader from "./ComposerStackHeader";
@@ -184,7 +183,7 @@ const ActiveProcesses: React.FC<ActiveProcessesProps> = memo(
     const sessionId = sessionIdProp ?? activeSessionId;
     const processMap = useAtomValue(shellProcessMapAtom);
     const subagentJobMap = useAtomValue(subagentJobMapAtom);
-    const dispatchRemoveSubagentJob = useSetAtom(removeSubagentJobAtom);
+    const stopSubagent = useSetAtom(stopSubagentJobAtom);
 
     const activeProcesses = useMemo(() => {
       if (initialProcesses) return initialProcesses;
@@ -242,20 +241,14 @@ const ActiveProcesses: React.FC<ActiveProcessesProps> = memo(
 
     const handleStopSubagent = useCallback(
       async (handle: string) => {
+        if (!sessionId) return;
         try {
-          await invokeTauri("agent_kill_subagent_job", { handle });
-        } catch (err: unknown) {
-          // Registry already GC'd the job (it can never broadcast a terminal
-          // event), so the row would otherwise linger unkillable. The kill the
-          // user clicked must still take it off the pin bar.
-          if (String(err).includes("not found")) {
-            dispatchRemoveSubagentJob({ handle });
-          } else {
-            logger.warn("subagent kill failed:", err);
-          }
+          await stopSubagent({ parentSessionId: sessionId, handle });
+        } catch (error: unknown) {
+          logger.warn("subagent kill failed:", error);
         }
       },
-      [dispatchRemoveSubagentJob]
+      [sessionId, stopSubagent]
     );
 
     if (count === 0 || hidden) return null;

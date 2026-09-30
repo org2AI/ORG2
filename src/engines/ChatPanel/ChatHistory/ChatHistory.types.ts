@@ -68,6 +68,8 @@ export interface ChatHistoryProps {
   pinnedHeaderPortalHost?: HTMLElement | null;
   /** Floating chrome height transcript offsets must clear (0 = in-flow chrome). */
   chromeTopInset?: number;
+  /** Embedded readers own their header layout and may reserve only a content gap. */
+  transcriptTopPaddingPx?: number;
   /** Height in px of the overlapping input area, used to keep the last message reachable. */
   bottomInset?: number;
   /**

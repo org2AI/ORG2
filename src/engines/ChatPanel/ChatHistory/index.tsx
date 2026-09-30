@@ -17,10 +17,9 @@ export default function LazyChatHistory(props: ChatHistoryProps) {
         <div
           className="flex min-h-0 flex-1 justify-center p-4"
           style={{
-            paddingTop: resolveTranscriptTopPaddingPx(
-              props.chromeTopInset ?? 0,
-              false
-            ),
+            paddingTop:
+              props.transcriptTopPaddingPx ??
+              resolveTranscriptTopPaddingPx(props.chromeTopInset ?? 0, false),
           }}
         >
           <ChatLoadingBlock />

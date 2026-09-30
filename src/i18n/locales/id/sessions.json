@@ -2659,5 +2659,30 @@
     "downloadPreview": "Unduh file ini untuk melihat isinya",
     "download": "Unduh",
     "loading": "Memuat file bersama…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} aktif · {{finished}} selesai",
+    "stopError": "Tidak dapat menghentikan tugas ini. Coba lagi.",
+    "loadError": "Tidak dapat menyegarkan tugas",
+    "recordUnavailable": "Catatan tugas ini tidak lagi tersedia",
+    "noTasks": "Belum ada subagen",
+    "finished": "Selesai · {{count}}",
+    "showMore": "Tampilkan lainnya",
+    "status": {
+      "pending": "Tertunda",
+      "idle": "Siaga",
+      "running": "Berjalan",
+      "waiting_for_user": "Menunggu balasan",
+      "waiting_for_funds": "Menunggu dana",
+      "paused": "Dijeda",
+      "completed": "Selesai",
+      "failed": "Gagal",
+      "cancelled": "Dibatalkan",
+      "abandoned": "Ditinggalkan",
+      "timeout": "Waktu habis",
+      "archived": "Diarsipkan",
+      "killed": "Dihentikan",
+      "unknown": "Tidak diketahui"
+    }
   }
 }

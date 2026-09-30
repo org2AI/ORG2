@@ -16,6 +16,10 @@ import type { SessionEvent } from "@src/engines/SessionCore";
 import { replayModeAtom } from "@src/engines/SessionCore";
 import { focusedSubagentCellAtom } from "@src/store/ui/simulatorAtom";
 
+import {
+  subagentIdFromEvent,
+  subagentTaskTitleFromEvent,
+} from "./subagentParentEventProjection";
 import { useSubagentEventCounts } from "./useSubagentEventCounts";
 import type { SubagentSession } from "./useSubagentSessions";
 import {
@@ -29,35 +33,6 @@ interface UseSimulatorSubagentsOptions {
   currentEvent: SessionEvent | null;
   allEvents: SessionEvent[];
   enabled?: boolean;
-}
-
-function nonEmptyString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : null;
-}
-
-function subagentIdFromEvent(event: SessionEvent): string | null {
-  const isSubagentTool =
-    event.actionType === "tool_call" &&
-    (event.functionName === "subagent" || event.uiCanonical === "subagent");
-  if (!isSubagentTool) {
-    return null;
-  }
-  return (
-    nonEmptyString(event.args?.subagentSessionId) ??
-    nonEmptyString(event.result?.subagentSessionId)
-  );
-}
-
-function taskTitleFromEvent(event: SessionEvent, sessionId: string): string {
-  return (
-    nonEmptyString(event.args?.prompt) ??
-    nonEmptyString(event.args?.description) ??
-    nonEmptyString(event.result?.summary) ??
-    nonEmptyString(event.result?.content) ??
-    sessionId
-  );
 }
 
 function fallbackSubagentSessionsFromEvents(
@@ -77,7 +52,7 @@ function fallbackSubagentSessionsFromEvents(
       key: sessionId,
       sessionId,
       name: "OpenCode",
-      description: taskTitleFromEvent(event, sessionId),
+      description: subagentTaskTitleFromEvent(event) ?? sessionId,
       sessionType: "subagent",
       status: isFailed ? "failed" : isCompleted ? "completed" : "running",
       isBackground: true,

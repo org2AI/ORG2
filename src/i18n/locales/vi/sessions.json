@@ -2660,5 +2660,30 @@
     "downloadPreview": "Tải tệp này xuống để xem nội dung",
     "download": "Tải xuống",
     "loading": "Đang tải tệp được chia sẻ…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} đang chạy · {{finished}} đã kết thúc",
+    "stopError": "Không thể dừng tác vụ này. Hãy thử lại.",
+    "loadError": "Không thể làm mới tác vụ",
+    "recordUnavailable": "Bản ghi tác vụ này không còn khả dụng",
+    "noTasks": "Chưa có tác tử con",
+    "finished": "Đã kết thúc · {{count}}",
+    "showMore": "Hiện thêm",
+    "status": {
+      "pending": "Đang chờ",
+      "idle": "Nhàn rỗi",
+      "running": "Đang chạy",
+      "waiting_for_user": "Đang chờ phản hồi",
+      "waiting_for_funds": "Đang chờ số dư",
+      "paused": "Đã tạm dừng",
+      "completed": "Hoàn tất",
+      "failed": "Thất bại",
+      "cancelled": "Đã hủy",
+      "abandoned": "Đã bỏ dở",
+      "timeout": "Hết thời gian",
+      "archived": "Đã lưu trữ",
+      "killed": "Đã dừng",
+      "unknown": "Không xác định"
+    }
   }
 }

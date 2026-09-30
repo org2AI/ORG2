@@ -2660,5 +2660,30 @@
     "downloadPreview": "Téléchargez ce fichier pour voir son contenu",
     "download": "Télécharger",
     "loading": "Chargement du fichier partagé…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} en cours · {{finished}} terminés",
+    "stopError": "Impossible d’arrêter cette tâche. Réessayez.",
+    "loadError": "Impossible d’actualiser les tâches",
+    "recordUnavailable": "Cet historique de tâche n’est plus disponible",
+    "noTasks": "Aucun sous-agent pour le moment",
+    "finished": "Terminés · {{count}}",
+    "showMore": "Afficher plus",
+    "status": {
+      "pending": "En attente",
+      "idle": "Inactif",
+      "running": "En cours",
+      "waiting_for_user": "En attente de réponse",
+      "waiting_for_funds": "En attente de fonds",
+      "paused": "En pause",
+      "completed": "Terminé",
+      "failed": "Échec",
+      "cancelled": "Annulé",
+      "abandoned": "Abandonné",
+      "timeout": "Délai dépassé",
+      "archived": "Archivé",
+      "killed": "Arrêté",
+      "unknown": "Inconnu"
+    }
   }
 }

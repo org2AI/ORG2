@@ -24,6 +24,7 @@ import type {
   Snapshot,
   StreamingSnapshot,
 } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import { ensureSessionHistoryInStore } from "@src/engines/SessionCore/sync/ensureSessionHistoryInStore";
 import { createLogger } from "@src/hooks/logger";
 
 import type { SubagentSession } from "./useSubagentSessions";
@@ -185,7 +186,11 @@ export function useMultiSessionSimulatorEvents(
       );
       publish();
     };
-    const load = async (id: string, fromCache: boolean) => {
+    const load = async (
+      id: string,
+      fromCache: boolean,
+      forceReload = false
+    ) => {
       if (disposed || !visible || pending.has(id)) return;
       pending.add(id);
       failed.delete(id);
@@ -193,7 +198,7 @@ export function useMultiSessionSimulatorEvents(
       fullReceivedDuringLoad.delete(id);
       setStatus(id, "loading");
       try {
-        if (fromCache) await eventStoreProxy.loadFromCache(id);
+        if (fromCache) await ensureSessionHistoryInStore(id, { forceReload });
         if (disposed) return;
         const snapshot = await eventStoreProxy.getSnapshot(id);
         if (disposed) return;
@@ -219,6 +224,15 @@ export function useMultiSessionSimulatorEvents(
         fullReceivedDuringLoad.delete(id);
       }
     };
+    const loadInBackground = (
+      id: string,
+      fromCache: boolean,
+      forceReload = false
+    ) => {
+      load(id, fromCache, forceReload).catch((error: unknown) => {
+        log.warn("Subagent history notification failed", id, error);
+      });
+    };
     const onSnapshot = (id: string, snapshot: Snapshot) => {
       if (disposed) return;
       if (!isStreamingSnapshot(snapshot) && pending.has(id))
@@ -234,10 +248,10 @@ export function useMultiSessionSimulatorEvents(
       }
       apply(id, snapshot);
       if (baseline.has(id)) setStatus(id, "ready");
-      else if (!pending.has(id) && !failed.has(id)) void load(id, false);
+      else if (!pending.has(id) && !failed.has(id)) loadInBackground(id, false);
     };
     retryRef.current = (id) => {
-      if (membership.has(id)) void load(id, true);
+      if (membership.has(id)) loadInBackground(id, true, true);
     };
     queueMicrotask(() => {
       if (disposed) return;
@@ -254,8 +268,8 @@ export function useMultiSessionSimulatorEvents(
           )
         );
         const latest = eventStoreProxy.getLatestSessionSnapshot(id);
-        if (latest) onSnapshot(id, latest);
-        else void load(id, true);
+        if (latest && latest.eventCount > 0) onSnapshot(id, latest);
+        else loadInBackground(id, true);
       }
     });
     return () => {

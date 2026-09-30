@@ -5,7 +5,12 @@ import type { ReactNode } from "react";
 
 import type { IconSvgElement } from "@src/icons";
 
-export type ActionCardVariant = "default" | "primary" | "secondary" | "subtle";
+export type ActionCardVariant =
+  | "default"
+  | "primary"
+  | "secondary"
+  | "subtle"
+  | "activity";
 export type ActionCardLayout = "inline" | "stacked";
 
 export interface ActionCardProps {
@@ -17,7 +22,14 @@ export interface ActionCardProps {
   /**
    * Card description
    */
-  description?: string;
+  description?: ReactNode;
+
+  /** Independent icon action for whole-card navigation (omit buttonText).
+   * Rendered beside, never inside, the card button. */
+  trailingAction?: ReactNode;
+
+  /** Single-line title with the complete text available on hover. */
+  truncateTitle?: boolean;
 
   /**
    * Click handler

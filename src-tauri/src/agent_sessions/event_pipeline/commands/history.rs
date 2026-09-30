@@ -258,6 +258,55 @@ mod tests {
     use super::clip_fields;
 
     #[test]
+    fn codex_subagent_initial_window_projects_visible_activity() {
+        use crate::agent_sessions::event_pipeline::{
+            derived::compute_derived,
+            ingestion::{ingest_raw_chunks_with_prompt_resolver, types::RawActivityChunk},
+        };
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("crates/orgtrack-core/fixtures/codex-subagent-task-window.jsonl");
+        let session_id = "codexapp-subagent-window-fixture";
+        let window = orgtrack_core::sources::codex::app::load_codex_app_initial_window_from_path(
+            session_id, &path, 1,
+        )
+        .expect("load bounded child history");
+        let raw: Vec<RawActivityChunk> = window
+            .chunks
+            .into_iter()
+            .map(|chunk| serde_json::from_value(serde_json::to_value(chunk).unwrap()).unwrap())
+            .collect();
+        let result = ingest_raw_chunks_with_prompt_resolver(&raw, session_id, |_| None);
+        let snapshot = compute_derived(&result.events, 1);
+        assert!(
+            !snapshot.chat_events.is_empty(),
+            "detail must receive chat history"
+        );
+        assert!(
+            !snapshot.sorted_simulator_events.is_empty(),
+            "preview must receive activity"
+        );
+        assert!(snapshot
+            .chat_events
+            .iter()
+            .any(|event| event.action_type == "assistant"));
+        assert!(snapshot
+            .chat_events
+            .iter()
+            .any(|event| event.action_type == "tool_call"));
+        assert!(snapshot
+            .chat_events
+            .iter()
+            .all(|event| event.session_id == session_id));
+        assert!(
+            snapshot.chat_events.iter().all(|event| event.source
+                != crate::agent_sessions::event_pipeline::types::EventSource::User),
+            "subagent task history must not fabricate a user prompt"
+        );
+    }
+
+
+
+    #[test]
     fn completed_row_closes_clip_at_last_event() {
         let (is_terminal, ended_at) = clip_fields(
             "completed",

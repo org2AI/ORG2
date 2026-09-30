@@ -25,6 +25,12 @@ const IS_MACOS_HOST = resolveHostDesktop() === HOST_DESKTOP.MACOS;
 export const PANE_WIDTH_TRANSITION_CLASSES =
   "transition-[width,flex-grow,flex-basis] duration-200 ease-out motion-reduce:transition-none";
 
+/** Browser-animation counterpart of the shared pane transition above. */
+export const PANE_LAYOUT_ANIMATION_OPTIONS: KeyframeAnimationOptions = {
+  duration: 200,
+  easing: "cubic-bezier(0, 0, 0.2, 1)",
+};
+
 /**
  * For headers that reserve space under the window's pinned chrome (the
  * sidebar group on the left, the collapse toggles on the right). The

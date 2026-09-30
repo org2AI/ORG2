@@ -74,6 +74,7 @@ import {
 import ChatHistory from "@src/engines/ChatPanel/ChatHistory";
 import { ChatHistoryOverrideContext } from "@src/engines/ChatPanel/ChatHistoryOverrideContext";
 import { ChatSessionContext } from "@src/engines/ChatPanel/ChatSessionContext";
+import { CHAT_PANEL_TRANSCRIPT_TOP_GAP_PX } from "@src/engines/ChatPanel/header/chatPanelHeaderLayout";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { findIndexAtTime } from "@src/engines/Simulator/utils/findIndexAtTime";
 import { HugeiconsIcon, ListChevronsDownUpIcon } from "@src/icons";
@@ -227,6 +228,9 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
               <div className="relative min-h-0 flex-1 overflow-hidden">
                 <ChatHistory
                   surfaceBgClass="bg-chat-pane"
+                  // Pagination is already in flow; this reader has no floating
+                  // main-chat title/tab stack to reserve above its transcript.
+                  transcriptTopPaddingPx={CHAT_PANEL_TRANSCRIPT_TOP_GAP_PX}
                   turnPaginationEnabled
                   disableTailCollapse
                   hideGroupUserMessage

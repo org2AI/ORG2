@@ -11,6 +11,9 @@ import { resolveAgentIcon } from "@src/config/agentIcons";
 import { DEFAULT_BUTTON_TOOLTIP_DELAY_MS } from "@src/config/tooltip";
 import common from "@src/i18n/locales/en/common.json";
 import navigation from "@src/i18n/locales/en/navigation.json";
+import sessions from "@src/i18n/locales/en/sessions.json";
+import { createSessionTab } from "@src/store/chatPanel/chatPanelTabFactories";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { createChatPanelTerminalAtom } from "@src/store/chatPanel/chatPanelTerminalAtom";
 import { workspaceGitStatusMapAtom } from "@src/store/git";
 import {
@@ -32,6 +35,7 @@ import {
   markTerminalInitializedAtom,
   terminalSessionsAtom,
 } from "@src/store/workstation/codeEditor/terminal";
+import { sessionTrailSurfaceAtom } from "@src/store/workstation/sessionTrailSurfaceAtom";
 import { workstationLayoutAtom } from "@src/store/workstation/tabs";
 import { SDE_AGENT_ICON_ID } from "@src/util/session/sessionDispatch";
 
@@ -106,7 +110,7 @@ const i18n = i18next.createInstance();
 await i18n.init({
   lng: "en",
   fallbackLng: "en",
-  resources: { en: { common, navigation } },
+  resources: { en: { common, navigation, sessions } },
   interpolation: { escapeValue: false },
 });
 
@@ -442,92 +446,52 @@ describe.each(["wide rail", "compact menu"])(
       expect(store.get(terminalSessionsAtom)).toHaveLength(4);
     });
 
-    it("folds subagents by default and lists the rest in the load-more submenu", async () => {
+    it("keeps the summary visible when folded and opens children in the shared Trail", async () => {
+      const chat = createSessionTab({ sessionId: "parent" });
+      store.set(chatPanelTabsAtom, { tabs: [chat], activeTabId: chat.id });
       const subagents: FocusedChatRailSubagent[] = Array.from(
         { length: 6 },
         (_, index) => ({
-          sessionId: `parent:subagent:${index}`,
+          sessionId: `child-${index}`,
           name: "Explore",
           description: `Task ${index}`,
           status: index === 0 ? "running" : "completed",
         })
       );
-      await mount(subagents);
-
+      await mount(subagents, { sessionId: "parent" });
       const host = view === "wide rail" ? container : menuHost;
-      const subagentSection = () =>
-        [...host.querySelectorAll("section")].find((section) =>
-          section.textContent?.includes("Subagents")
-        );
-
-      // Default collapsed: heading only, no rows.
-      expect(subagentSection()?.textContent).not.toContain("Task 0");
-
+      const section = [...host.querySelectorAll("section")].find((item) =>
+        item.textContent?.includes("Subagents")
+      )!;
+      expect(section.textContent).toContain("1 active · 5 finished");
+      expect(section.textContent).not.toContain("Task 0");
       act(() =>
-        host
-          .querySelector<HTMLButtonElement>(
-            '[data-workstation-group-toggle="subagents"]'
-          )!
+        [...section.querySelectorAll("button")]
+          .find((button) => button.textContent?.includes("1 active"))!
           .click()
       );
-
-      const expanded = subagentSection()!;
-      for (const label of ["Task 0", "Task 1", "Task 2", "Task 3", "Task 4"]) {
-        expect(expanded.textContent).toContain(label);
-      }
-      expect(expanded.textContent).not.toContain("Task 5");
-      expect(expanded.textContent).toContain("Load more (+1)");
-      // Status is a glyph with a localized tooltip, not row text.
-      expect(expanded.textContent).not.toContain("Completed");
-      expect(
-        expanded.querySelector(
-          '[title="Completed"] [data-icon="check-circle-2"]'
-        )
-      ).not.toBeNull();
-
-      // The sixth row opens the second-level panel with the full list.
-      act(() =>
-        subagentSection()!
-          .querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!
-          .click()
-      );
-      const submenu = document.querySelector(
-        '[data-testid="workstation-trail-subagents-submenu"]'
-      );
-      expect(submenu).not.toBeNull();
-      expect(container.contains(submenu)).toBe(false);
-      for (const label of ["Task 0", "Task 5"]) {
-        expect(submenu!.textContent).toContain(label);
-      }
-      // Title only — no secondary agent-name text, no status words.
-      expect(submenu!.textContent).not.toContain("Explore");
-      expect(submenu!.textContent).not.toContain("Completed");
-
-      // Picking a subagent opens it in the side chat and closes the panel.
-      const submenuRows = [...submenu!.querySelectorAll('[role="menuitem"]')];
-      const lastRow = submenuRows[submenuRows.length - 1] as HTMLElement;
-      act(() => lastRow.click());
-      expect(store.get(sideChatVisibleAtom)).toBe(true);
-      expect(store.get(sideChatSessionIdAtom)).toBe("parent:subagent:5");
-      expect(
-        document.querySelector(
-          '[data-testid="workstation-trail-subagents-submenu"]'
-        )
-      ).toBeNull();
+      expect(store.get(sessionTrailSurfaceAtom)).toMatchObject({
+        kind: "subagents",
+        sessionId: "parent",
+      });
+      expect(store.get(sideChatVisibleAtom)).toBe(false);
+      expect(store.get(chatPanelTabsAtom).activeTabId).toBe(chat.id);
     });
 
-    it("scrolls and filters the subagent submenu once the list is long", async () => {
-      const subagents: FocusedChatRailSubagent[] = Array.from(
-        { length: 12 },
-        (_, index) => ({
-          sessionId: `parent:subagent:${index}`,
-          name: index === 11 ? "Sweep" : "Explore",
-          description: index === 11 ? "Unify icon buttons" : `Task ${index}`,
-          status: "completed",
-        })
+    it("opens a preview row directly in Trail detail without selecting a new chat", async () => {
+      const chat = createSessionTab({ sessionId: "parent" });
+      store.set(chatPanelTabsAtom, { tabs: [chat], activeTabId: chat.id });
+      await mount(
+        [
+          {
+            sessionId: "child",
+            name: "Explore",
+            description: "Inspect layout",
+            status: "completed",
+          },
+        ],
+        { sessionId: "parent" }
       );
-      await mount(subagents);
-
       const host = view === "wide rail" ? container : menuHost;
       act(() =>
         host
@@ -537,90 +501,17 @@ describe.each(["wide rail", "compact menu"])(
           .click()
       );
       act(() =>
-        [...host.querySelectorAll("section")]
-          .find((section) => section.textContent?.includes("Subagents"))!
-          .querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!
+        [...host.querySelectorAll("button")]
+          .find((button) => button.textContent?.includes("Inspect layout"))!
           .click()
       );
-
-      const submenu = document.querySelector<HTMLElement>(
-        '[data-testid="workstation-trail-subagents-submenu"]'
-      )!;
-      // The rows scroll under the panel's cap instead of being clipped by it.
-      expect(submenu.style.maxHeight).toBe("384px");
-      const rowList =
-        submenu.querySelector<HTMLElement>('[role="menuitem"]')!.parentElement!;
-      expect(rowList.className).toContain("overflow-y-auto");
-      expect(submenu.querySelectorAll('[role="menuitem"]')).toHaveLength(12);
-
-      const search = submenu.querySelector<HTMLInputElement>(
-        '[data-testid="workstation-trail-subagents-submenu-search"] input'
-      )!;
-      const type = (value: string) =>
-        act(() => {
-          Object.getOwnPropertyDescriptor(
-            HTMLInputElement.prototype,
-            "value"
-          )?.set?.call(search, value);
-          search.dispatchEvent(new Event("input", { bubbles: true }));
-        });
-
-      // The task title matches, and so does the agent name behind it.
-      type("unify");
-      expect(submenu.querySelectorAll('[role="menuitem"]')).toHaveLength(1);
-      expect(submenu.textContent).toContain("Unify icon buttons");
-      type("sweep");
-      expect(submenu.querySelectorAll('[role="menuitem"]')).toHaveLength(1);
-
-      type("nothing here");
-      expect(submenu.querySelectorAll('[role="menuitem"]')).toHaveLength(0);
-      expect(submenu.textContent).toContain("No results");
-
-      // Escape closes the panel from inside the filter field.
-      act(() =>
-        search.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
-        )
-      );
-      expect(
-        document.querySelector(
-          '[data-testid="workstation-trail-subagents-submenu"]'
-        )
-      ).toBeNull();
-    });
-
-    it("leaves the short subagent submenu without a filter field", async () => {
-      const subagents: FocusedChatRailSubagent[] = Array.from(
-        { length: 6 },
-        (_, index) => ({
-          sessionId: `parent:subagent:${index}`,
-          name: "Explore",
-          description: `Task ${index}`,
-          status: "completed",
-        })
-      );
-      await mount(subagents);
-
-      const host = view === "wide rail" ? container : menuHost;
-      act(() =>
-        host
-          .querySelector<HTMLButtonElement>(
-            '[data-workstation-group-toggle="subagents"]'
-          )!
-          .click()
-      );
-      act(() =>
-        [...host.querySelectorAll("section")]
-          .find((section) => section.textContent?.includes("Subagents"))!
-          .querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!
-          .click()
-      );
-
-      expect(
-        document.querySelector(
-          '[data-testid="workstation-trail-subagents-submenu-search"]'
-        )
-      ).toBeNull();
+      expect(store.get(sessionTrailSurfaceAtom)).toMatchObject({
+        kind: "subagents",
+        childSessionId: "child",
+        sessionId: "parent",
+      });
+      expect(store.get(sideChatSessionIdAtom)).toBeNull();
+      expect(store.get(chatPanelTabsAtom).activeTabId).toBe(chat.id);
     });
 
     it.each([0, 3])(

@@ -4,6 +4,8 @@
  * Canonical selection card styles used across Code Accounts, Models, and Wizards.
  * All selectable cards should reference SELECTION_CARD_CLASSES for consistency.
  */
+import { TYPOGRAPHY } from "@src/config/workstation/tokens";
+
 import type { ActionCardVariant } from "./types";
 
 // ============================================
@@ -71,6 +73,19 @@ export interface VariantConfig {
 }
 
 export const VARIANT_STYLES: Record<ActionCardVariant, VariantConfig> = {
+  // Activity feeds need quiet surfaces and metadata, unlike emphasized choices.
+  activity: {
+    containerClass:
+      "cursor-pointer rounded-lg border-0 bg-fill-1 px-3 py-2 text-left transition-colors",
+    containerHoverClass: "hover:bg-fill-2",
+    titleClass: `${TYPOGRAPHY.value} leading-5 text-text-1`,
+    descriptionClass: `${TYPOGRAPHY.secondary} mt-1 leading-4 text-text-3`,
+    iconClass: "text-text-2",
+    selectedContainerClass:
+      "cursor-pointer rounded-lg border-0 bg-fill-2 px-3 py-2 text-left transition-colors",
+    selectedTitleClass: `${TYPOGRAPHY.value} leading-5 text-primary-6`,
+    selectedIconClass: "text-primary-6",
+  },
   primary: {
     containerClass: `${SELECTION_CARD_CLASSES.base} border-primary-3 bg-bg-2`,
     containerHoverClass: "",

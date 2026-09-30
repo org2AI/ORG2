@@ -308,6 +308,7 @@ const SessionWorkstationRailContent: React.FC<SessionWorkstationRailProps> = ({
     progress?.sessionOwner ?? pending?.sessionOwner
   );
   const baseSessionContext: FocusedChatSessionContext = {
+    sessionId: sessionId ?? undefined,
     agentHarness: context.agentHarness
       ? {
           icon: context.agentHarness.icon,

@@ -2659,5 +2659,30 @@
     "downloadPreview": "下载文件以查看其内容",
     "download": "下载",
     "loading": "正在加载共享文件…"
+  },
+  "subagentTrail": {
+    "summary": "{{running}} 个进行中 · {{finished}} 个已结束",
+    "stopError": "未能停止此任务，请重试",
+    "loadError": "未能刷新子任务",
+    "recordUnavailable": "此任务记录已不可用",
+    "noTasks": "暂无子智能体",
+    "finished": "已结束 · {{count}}",
+    "showMore": "加载更多",
+    "status": {
+      "pending": "待启动",
+      "idle": "空闲",
+      "running": "运行中",
+      "waiting_for_user": "等待回复",
+      "waiting_for_funds": "等待额度",
+      "paused": "已暂停",
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消",
+      "abandoned": "已中止",
+      "timeout": "已超时",
+      "archived": "已归档",
+      "killed": "已终止",
+      "unknown": "状态待同步"
+    }
   }
 }

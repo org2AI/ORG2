@@ -24,4 +24,8 @@ export interface SubagentSession {
   endedAtMs: number | null;
   /** Backend-authoritative terminal flag (`SessionStatus::is_terminal`). */
   isTerminal: boolean;
+  /** Preserve the authoritative outcome; the monitor's status is intentionally coarse. */
+  rawStatus?: string;
+  model?: string;
+  totalTokens?: number;
 }

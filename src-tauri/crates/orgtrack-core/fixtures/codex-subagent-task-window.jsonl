@@ -1,0 +1,14 @@
+{"timestamp":"2026-09-29T10:00:00Z","ordinal":0,"type":"session_meta","payload":{"id":"child-thread","source":{"subagent":{"thread_spawn":{"parent_thread_id":"parent-thread"}}},"thread_source":"subagent","subagent_history_start_ordinal":5}}
+{"timestamp":"2026-09-29T09:00:00Z","ordinal":1,"type":"session_meta","payload":{"id":"parent-thread","source":"vscode"}}
+{"timestamp":"2026-09-29T09:00:01Z","ordinal":2,"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Inherited parent reply"}]}}
+{"timestamp":"2026-09-29T09:01:00Z","ordinal":3,"type":"event_msg","payload":{"type":"task_started","turn_id":"parent-turn"}}
+{"timestamp":"2026-09-29T09:01:01Z","ordinal":4,"type":"response_item","payload":{"type":"message","id":"parent-user","role":"user","content":[{"type":"input_text","text":"Inherited user mirror"}],"internal_chat_message_metadata_passthrough":{"content_item_kinds":["user.text"]}}}
+{"timestamp":"2026-09-29T10:00:00Z","ordinal":5,"type":"event_msg","payload":{"type":"thread_settings_applied","thread_id":"child-thread"}}
+{"timestamp":"2026-09-29T10:00:01Z","ordinal":6,"type":"event_msg","payload":{"type":"task_started","turn_id":"child-task","root_turn_id":"parent-turn"}}
+{"timestamp":"2026-09-29T10:00:02Z","ordinal":7,"type":"response_item","payload":{"type":"message","id":"bootstrap","role":"user","content":[{"type":"input_text","text":"Provider bootstrap instructions"}],"internal_chat_message_metadata_passthrough":{"content_item_kinds":["agents_md.instructions"]}}}
+{"timestamp":"2026-09-29T10:00:03Z","ordinal":8,"type":"inter_agent_communication_metadata","payload":{"trigger_turn":true}}
+{"timestamp":"2026-09-29T10:00:03Z","ordinal":9,"type":"response_item","payload":{"type":"agent_message","id":"assignment","author":"/root","recipient":"/root/inspect","content":[{"type":"input_text","text":"Inspect the sidebar"}],"internal_chat_message_metadata_passthrough":{"turn_id":"child-task"}}}
+{"timestamp":"2026-09-29T10:00:04Z","ordinal":10,"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"git status --short\"}","call_id":"child-call"}}
+{"timestamp":"2026-09-29T10:00:05Z","ordinal":11,"type":"response_item","payload":{"type":"function_call_output","call_id":"child-call","output":"Clean worktree"}}
+{"timestamp":"2026-09-29T10:00:06Z","ordinal":12,"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Child inspection finished"}]}}
+{"timestamp":"2026-09-29T10:00:07Z","ordinal":13,"type":"event_msg","payload":{"type":"task_complete","turn_id":"child-task"}}

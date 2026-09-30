@@ -25,7 +25,7 @@ pub(crate) fn direct_openai_model_prefers_responses(model: &str) -> bool {
     let model_lower = model.to_lowercase();
 
     // GPT-6 tool calling uses Responses, including for effort variants.
-    if ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]
+    if ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"]
         .iter()
         .any(|model| model_lower.contains(model))
     {

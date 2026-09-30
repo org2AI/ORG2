@@ -273,6 +273,11 @@ const FAMILY_RULES: &[FamilyRule] = &[
         thinking: ThinkingSupport::AlwaysOn,
     },
     FamilyRule {
+        pattern: "gpt-6.1-sol",
+        context_window: 1_050_000,
+        thinking: ThinkingSupport::AlwaysOn,
+    },
+    FamilyRule {
         pattern: "gpt-6-sol",
         context_window: 1_050_000,
         thinking: ThinkingSupport::AlwaysOn,
@@ -794,6 +799,7 @@ const FAMILY_TABLE: &[(&str, ModelFamily)] = &[
     ("claude", ModelFamily::Anthropic),
     ("glm", ModelFamily::Zhipu),
     ("gpt-6-astra", ModelFamily::OpenAi),
+    ("gpt-6.1-sol", ModelFamily::OpenAi),
     ("gpt-6-sol", ModelFamily::OpenAi),
     ("gpt-6-luna", ModelFamily::OpenAi),
     ("gpt-5", ModelFamily::OpenAi),

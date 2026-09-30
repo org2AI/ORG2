@@ -312,8 +312,9 @@ pub(super) fn codex_usage_model<'a>(
 }
 
 fn map_codex_model_variant(model: &str) -> CodexModelLaunchConfig {
-    const CODEX_VARIANT_BASES: [&str; 12] = [
+    const CODEX_VARIANT_BASES: [&str; 13] = [
         "gpt-6-astra",
+        "gpt-6.1-sol",
         "gpt-6-sol",
         "gpt-6-luna",
         "gpt-5.6-sol",
@@ -345,6 +346,7 @@ fn map_codex_model_variant(model: &str) -> CodexModelLaunchConfig {
             && matches!(
                 base_model,
                 "gpt-6-astra"
+                    | "gpt-6.1-sol"
                     | "gpt-6-sol"
                     | "gpt-6-luna"
                     | "gpt-5.6-sol"

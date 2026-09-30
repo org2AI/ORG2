@@ -8,6 +8,7 @@
 /// same catalog.
 pub const CODEX_OAUTH_MODELS: &[&str] = &[
     "gpt-6-astra",
+    "gpt-6.1-sol",
     "gpt-6-sol",
     "gpt-6-luna",
     "gpt-5.6-sol",
@@ -24,6 +25,7 @@ pub const CODEX_OAUTH_MODELS: &[&str] = &[
 
 pub const CODEX_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] = &[
     "gpt-6-astra",
+    "gpt-6.1-sol",
     "gpt-6-sol",
     "gpt-6-luna",
     "gpt-5.6-sol",

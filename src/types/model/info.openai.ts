@@ -25,6 +25,20 @@ export const OPENAI_MODEL_INFO_ENTRIES: ModelInfoEntry[] = [
       pricingTier: "premium",
     },
   },
+  // https://developers.openai.com/api/docs/models/gpt-6.1-sol
+  {
+    pattern: "gpt-6.1-sol",
+    info: {
+      provider: "OpenAI",
+      providerKey: "openai",
+      contextWindow: 1050,
+      maxOutput: 128,
+      vision: true,
+      reasoning: true,
+      strengthKeys: ["longContext", "reasoning", "coding"],
+      pricingTier: "moderate",
+    },
+  },
   // https://developers.openai.com/api/docs/models
   {
     pattern: "gpt-6-sol",

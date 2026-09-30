@@ -137,7 +137,14 @@ fn astra_has_reasoning_and_a_1050k_context_including_variants_and_aliases() {
 
 #[test]
 fn gpt_6_sol_and_luna_have_reasoning_and_a_1050k_context() {
-    for model in ["gpt-6-sol", "gpt-6-luna", "openai/gpt-6-sol-high"] {
+    for model in [
+        "gpt-6.1-sol",
+        "gpt-6.1-sol-max-fast",
+        "openai/gpt-6.1-sol-high",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "openai/gpt-6-sol-high",
+    ] {
         let caps = resolve(model, None);
         assert_eq!(caps.thinking, ThinkingSupport::AlwaysOn, "{model}");
         assert_eq!(caps.context_window, 1_050_000, "{model}");

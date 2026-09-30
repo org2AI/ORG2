@@ -165,6 +165,7 @@ fn codex_model_supports_fast_tier(model: &str) -> bool {
     matches!(
         model,
         "gpt-6-astra"
+            | "gpt-6.1-sol"
             | "gpt-6-sol"
             | "gpt-6-luna"
             | "gpt-5.6-sol"
@@ -189,6 +190,7 @@ fn codex_effort_variants_for_base_model(base_model: &str) -> Vec<ModelVariantInf
     if matches!(
         base_model,
         "gpt-6-astra"
+            | "gpt-6.1-sol"
             | "gpt-6-sol"
             | "gpt-6-luna"
             | "gpt-5.6-sol"

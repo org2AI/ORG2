@@ -19,7 +19,14 @@ describe("OpenAI model info", () => {
   });
 
   it("recognizes GPT-6 Sol and Luna with their published context and output limits", () => {
-    for (const model of ["gpt-6-sol", "gpt-6-luna", "openai/gpt-6-sol-high"]) {
+    for (const model of [
+      "gpt-6.1-sol",
+      "gpt-6.1-sol-max-fast",
+      "openai/gpt-6.1-sol-high",
+      "gpt-6-sol",
+      "gpt-6-luna",
+      "openai/gpt-6-sol-high",
+    ]) {
       expect(getModelInfo(model)).toMatchObject({
         providerKey: "openai",
         contextWindow: 1050,

@@ -115,6 +115,7 @@ impl CodexNativeClient {
         matches!(
             model,
             "gpt-6-astra"
+                | "gpt-6.1-sol"
                 | "gpt-6-sol"
                 | "gpt-6-luna"
                 | "gpt-5.6-sol"
@@ -391,12 +392,13 @@ mod tests {
     fn build_responses_request_preserves_effort_and_ultra_mode_on_the_wire() {
         let messages = [json!({"role": "system", "content": "Keep workspace edits scoped."})];
         for base in [
+            "gpt-6.1-sol",
             "gpt-6-astra",
             "gpt-5.6-sol",
             "gpt-5.6-terra",
             "gpt-5.6-luna",
         ] {
-            let efforts: &[&str] = if base == "gpt-5.6-luna" {
+            let efforts: &[&str] = if matches!(base, "gpt-5.6-luna" | "gpt-6.1-sol") {
                 &["low", "medium", "high", "xhigh", "max"]
             } else {
                 &["low", "medium", "high", "xhigh", "max", "ultra"]

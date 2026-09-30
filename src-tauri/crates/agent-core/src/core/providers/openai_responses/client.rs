@@ -163,6 +163,10 @@ mod tests {
                 "gpt-6-astra",
                 &["low", "medium", "high", "xhigh", "max"][..],
             ),
+            (
+                "gpt-6.1-sol",
+                &["low", "medium", "high", "xhigh", "max"][..],
+            ),
             ("gpt-5.4", &["xhigh"][..]),
             ("gpt-5.5", &["xhigh"][..]),
             ("gpt-5.6-sol", &["xhigh", "max"][..]),

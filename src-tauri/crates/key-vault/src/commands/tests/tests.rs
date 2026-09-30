@@ -409,41 +409,57 @@ fn codex_key_info_exposes_requested_gpt_effort_and_speed_variants() {
 }
 
 #[test]
-fn astra_fallback_catalog_and_saved_account_expose_the_same_efforts() {
+fn codex_fallback_catalog_and_saved_account_expose_the_same_efforts() {
     use crate::commands::crud::KeyInfo;
     use crate::commands::validate::{resolved_oauth_catalog, OAuthModelCatalogSource};
     use crate::key_store::{AuthMethod, ModelKey, ModelType};
 
     let catalog = resolved_oauth_catalog("codex", vec![], OAuthModelCatalogSource::Fallback)
         .expect("fallback catalog");
-    assert!(catalog.models.iter().any(|model| model == "gpt-6-astra"));
     let mut key = ModelKey::new(ModelType::Codex);
     key.auth_method = AuthMethod::Oauth;
     key.available_models = catalog.models.clone();
     let saved = KeyInfo::from(key);
 
-    for variants in [&catalog.model_variants, &saved.model_variants] {
-        let astra: Vec<_> = variants
+    for (base, efforts) in [
+        (
+            "gpt-6-astra",
+            &["low", "medium", "high", "xhigh", "max", "ultra"][..],
+        ),
+        (
+            "gpt-6.1-sol",
+            &["low", "medium", "high", "xhigh", "max"][..],
+        ),
+    ] {
+        assert!(catalog.models.iter().any(|model| model == base));
+        assert!(catalog
+            .default_enabled_models
             .iter()
-            .filter(|variant| variant.base_model == "gpt-6-astra")
-            .collect();
-        assert_eq!(astra.len(), 12);
-        for fast in [false, true] {
-            assert_eq!(
-                astra
-                    .iter()
-                    .filter(|variant| variant.fast == fast)
-                    .map(|variant| variant.reasoning.as_deref().unwrap())
-                    .collect::<Vec<_>>(),
-                vec!["low", "medium", "high", "xhigh", "max", "ultra"]
-            );
+            .any(|model| model == base));
+        for variants in [&catalog.model_variants, &saved.model_variants] {
+            let selected: Vec<_> = variants
+                .iter()
+                .filter(|variant| variant.base_model == base)
+                .collect();
+            assert_eq!(selected.len(), efforts.len() * 2, "{base}");
+            for fast in [false, true] {
+                assert_eq!(
+                    selected
+                        .iter()
+                        .filter(|variant| variant.fast == fast)
+                        .map(|variant| variant.reasoning.as_deref().unwrap())
+                        .collect::<Vec<_>>(),
+                    efforts,
+                    "{base}"
+                );
+            }
         }
-    }
-    for defaults in [&catalog.default_variants, &saved.default_variants] {
-        assert!(defaults
-            .iter()
-            .any(|variant| variant.base_model == "gpt-6-astra"
-                && variant.model == "gpt-6-astra-medium"));
+        for defaults in [&catalog.default_variants, &saved.default_variants] {
+            assert!(defaults
+                .iter()
+                .any(|variant| variant.base_model == base
+                    && variant.model == format!("{base}-medium")));
+        }
     }
 }
 
@@ -633,6 +649,7 @@ fn live_codex_catalog_preserves_capabilities_and_completes_builtin_models() {
         vec![
             "account-visible-model",
             "gpt-6-astra",
+            "gpt-6.1-sol",
             "gpt-6-sol",
             "gpt-6-luna",
             "gpt-5.6-sol",

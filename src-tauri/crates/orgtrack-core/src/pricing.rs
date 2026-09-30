@@ -386,6 +386,7 @@ mod tests {
         // for the 2026-09-23 additions, in input/output/write/read order.
         let cases = [
             ("gpt-6-astra", [10.0, 50.0, 12.5, 1.0]),
+            ("gpt-6.1-sol", [2.0, 10.0, 2.5, 0.1]),
             ("gpt-6-sol", [2.0, 10.0, 2.5, 0.2]),
             ("gpt-6-luna", [0.1, 0.5, 0.125, 0.01]),
             ("gpt-5.6-sol", [4.0, 20.0, 5.0, 0.4]),

@@ -11,6 +11,8 @@ fn direct_openai_model_prefers_responses_for_gpt_6() {
         "gpt-6-astra",
         "GPT-6-ASTRA",
         "gpt-6-astra-ultra-fast",
+        "gpt-6.1-sol",
+        "openai/gpt-6.1-sol-max-fast",
         "gpt-6-sol",
         "gpt-6-luna-high",
     ] {

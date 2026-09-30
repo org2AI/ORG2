@@ -290,7 +290,7 @@ mod tests {
                     }))
                 }
             })
-            .expect(16)
+            .expect(20)
             .mount(&server)
             .await;
 
@@ -306,6 +306,7 @@ mod tests {
         );
         let messages = [serde_json::json!({"role": "user", "content": "hello"})];
         for base in [
+            "gpt-6.1-sol",
             "gpt-6-astra",
             "gpt-5.6-sol",
             "gpt-5.6-terra",

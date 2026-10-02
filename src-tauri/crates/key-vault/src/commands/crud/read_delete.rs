@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::{key_info_from_entry, FullKeyResponse, KeyInfo};
 use crate::commands::validate::invalidate_key_quota_runtime;
-use crate::key_store::{HealthStatus, ModelType, KEY_SERVICE};
+use crate::key_store::{HealthStatus, ModelCatalogRefresh, ModelType, KEY_SERVICE};
 
 /// List all stored keys (masked)
 #[tauri::command]
@@ -100,7 +100,8 @@ pub async fn delete_key_by_id(key_id: String) -> Result<bool, String> {
     .map_err(|err| format!("Task join error: {}", err))?
 }
 
-/// Update key health status after validation
+/// Update key health status after validation, or commit an independent discovery snapshot.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn update_key_health(
     key_id: String,
@@ -110,8 +111,15 @@ pub async fn update_key_health(
     enabled_models: Option<Vec<String>>,
     quota_info: Option<serde_json::Value>,
     model_context_lengths: Option<HashMap<String, u64>>,
+    catalog_refresh: Option<ModelCatalogRefresh>,
 ) -> Result<Option<KeyInfo>, String> {
     tokio::task::spawn_blocking(move || {
+        if let Some(refresh) = catalog_refresh {
+            return KEY_SERVICE
+                .refresh_model_catalog(&key_id, refresh)
+                .and_then(key_info_from_entry)
+                .map(Some);
+        }
         let status = match health_status.as_str() {
             "valid" => HealthStatus::Valid,
             "degraded" => HealthStatus::Degraded,

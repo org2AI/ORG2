@@ -73,9 +73,8 @@ export default function ModelVariantInlineCard({
   // A card always renders one model family, so the whole family collapses to a
   // single saved selection. We pick the shortest `base_model` string from the
   // complete family as the persistence key: filtering selectable efforts must
-  // not change that key (the o4-mini bare record owns the existing o4 key),
-  // and the unsuffixed and parsed spellings of a model must resolve to one
-  // entry.
+  // not change that key. Explicit catalog grouping wins; without metadata,
+  // size suffixes such as o4-mini remain part of the effort family key.
   const canonicalBaseModel =
     variants.length > 0
       ? variants

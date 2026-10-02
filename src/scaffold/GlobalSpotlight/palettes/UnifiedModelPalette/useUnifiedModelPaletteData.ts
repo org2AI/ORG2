@@ -21,11 +21,8 @@ import {
   type UseKeyVaultReturn,
   useKeyVault,
 } from "@src/hooks/keyVault";
-import { withNativeHarnessModels } from "@src/hooks/models/nativeHarnessAccountModels";
-import {
-  getCliCompatibleAccounts,
-  useAgentCompatibility,
-} from "@src/hooks/models/useAgentCompatibility";
+import { getModelPickerAccounts } from "@src/hooks/models/accountModelCatalog";
+import { useAgentCompatibility } from "@src/hooks/models/useAgentCompatibility";
 import { buildAccountLookup } from "@src/hooks/models/useModelAccountLookup";
 import { useOrgiiPoolCategories } from "@src/hooks/models/useOrgiiPoolCategories";
 import {
@@ -122,11 +119,8 @@ export interface UnifiedModelPaletteData {
   recordRecent: (entry: RecentModelEntry) => void;
   /**
    * Persist key edits (e.g. per-account default variants from the
-   * variant pill). Exposed from the same `useKeyVault` instance that
-   * supplies `accounts` so optimistic state updates after `saveKey`
-   * actually flow back into this palette's account list — using a
-   * second `useKeyVault()` would give us a parallel local-state copy
-   * that never refreshes until the palette is reopened.
+   * variant pill). All `useKeyVault` consumers subscribe to the shared
+   * local account store, so a successful save publishes to every picker.
    */
   saveKey: UseKeyVaultReturn["saveKey"];
   /** True while the persisted Key Vault account list is loading. */
@@ -170,13 +164,16 @@ export function useUnifiedModelPaletteData({
 
   const [refreshingAllModels, setRefreshingAllModels] = useState(false);
 
-  const accounts = useMemo(() => {
-    if (dispatchCategory === "cli_agent" && cliAgentType) {
-      return getCliCompatibleAccounts(registry, cliAgentType, allAccounts);
-    }
-
-    return withNativeHarnessModels(allAccounts, dispatchCategory);
-  }, [dispatchCategory, cliAgentType, allAccounts, registry]);
+  const accounts = useMemo(
+    () =>
+      getModelPickerAccounts(
+        registry,
+        allAccounts,
+        dispatchCategory,
+        cliAgentType
+      ),
+    [dispatchCategory, cliAgentType, allAccounts, registry]
+  );
 
   const {
     sources: marketSources,

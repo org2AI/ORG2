@@ -33,89 +33,53 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { rpc } from "@src/api/tauri/rpc";
+import { sessionByIdAtom, upsertSession } from "@src/store/session";
 import {
-  type Session,
-  sessionByIdAtom,
-  upsertSession,
-} from "@src/store/session";
+  getInstrumentedStore,
+  isStoreInitialized,
+} from "@src/util/core/state/instrumentedStore";
 
-interface PatchOptions {
-  name?: string;
-  model?: string;
-  accountId?: string;
-  agentExecMode?: string;
-  /**
-   * Persistent product mode (orgtrack/v1 §5.2): build|plan|ask|project.
-   * Validated as a closed enum on the Rust side; agent sessions only.
-   */
-  productMode?: string;
-  /**
-   * Three-state per-session draft text (P3):
-   *   undefined → leave column alone
-   *   null      → clear the draft (composer was emptied / message sent)
-   *   string    → set the draft to this value
-   * Mirrors the Rust `Option<Option<String>>` deserialize on
-   * `SessionPatch::draft_text`.
-   */
-  draftText?: string | null;
-  /** Three-state reply target event id (P3). Same semantics as `draftText`. */
-  replyTargetEventId?: string | null;
-  /** Pin toggle (P5). Absent = leave alone. */
-  pinned?: boolean;
-}
+import {
+  type SessionPatchOptions,
+  createSessionPatchQueue,
+} from "./sessionPatchQueue";
+
+type PatchOptions = SessionPatchOptions;
 
 interface PatchState {
   isPatching: boolean;
   error: string | null;
 }
 
-function normalizedOptionalText(
-  value: string | null | undefined
-): string | undefined {
-  return value == null || value === "" ? undefined : value;
+const patchQueues = new WeakMap<
+  ReturnType<typeof getInstrumentedStore>,
+  ReturnType<typeof createSessionPatchQueue>
+>();
+
+function sessionPatchQueue() {
+  const store = getInstrumentedStore();
+  let queue = patchQueues.get(store);
+  if (!queue) {
+    queue = createSessionPatchQueue({
+      read: (id) =>
+        isStoreInitialized() && getInstrumentedStore() === store
+          ? store.get(sessionByIdAtom(id))
+          : undefined,
+      publish: (session) => {
+        if (isStoreInitialized() && getInstrumentedStore() === store)
+          upsertSession(session);
+      },
+      subscribe: (id, changed) => store.sub(sessionByIdAtom(id), changed),
+      persist: async (sessionId, patch) => {
+        await rpc.sessionAggregate.patch({ sessionId, patch });
+      },
+    });
+    patchQueues.set(store, queue);
+  }
+  return queue;
 }
 
-function patchWouldChangeSession(
-  before: Session,
-  options: PatchOptions
-): boolean {
-  if (options.name !== undefined && before.name !== options.name) return true;
-  if (options.model !== undefined && before.model !== options.model)
-    return true;
-  if (options.accountId !== undefined && before.accountId !== options.accountId)
-    return true;
-  if (
-    options.agentExecMode !== undefined &&
-    before.agentExecMode !== options.agentExecMode
-  )
-    return true;
-  if (
-    options.productMode !== undefined &&
-    before.productMode !== options.productMode
-  )
-    return true;
-  if (
-    options.draftText !== undefined &&
-    before.draftText !== normalizedOptionalText(options.draftText)
-  )
-    return true;
-  if (
-    options.replyTargetEventId !== undefined &&
-    before.replyTargetEventId !==
-      normalizedOptionalText(options.replyTargetEventId)
-  )
-    return true;
-  if (options.pinned !== undefined && before.pinned !== options.pinned)
-    return true;
-  return false;
-}
-
-/**
- * Low-level patch primitive: optimistic write → RPC → rollback on error.
- *
- * Returns a stable function `(sessionId, patch) => Promise<void>` plus
- * the in-flight / error state for the most recent call.
- */
+/** Shared ordered persistence; only the latest call controls hook feedback. */
 function usePatchSession(): {
   patch: (sessionId: string, patch: PatchOptions) => Promise<void>;
 } & PatchState {
@@ -123,102 +87,34 @@ function usePatchSession(): {
     isPatching: false,
     error: null,
   });
-
-  const patch = useCallback(
-    async (sessionId: string, options: PatchOptions): Promise<void> => {
-      setState({ isPatching: true, error: null });
-      // Snapshot the prior values BEFORE the optimistic write so we
-      // can restore them on error. Reading via the instrumented store
-      // avoids a stale-closure issue if the same hook instance fires
-      // back-to-back patches for the same session.
-      const { getInstrumentedStore } =
-        await import("@src/util/core/state/instrumentedStore");
-      const store = getInstrumentedStore();
-      const before = store.get(sessionByIdAtom(sessionId)) as
-        | Session
-        | undefined;
-
-      if (!before) {
-        // Session not in the local store — bail out before we send a
-        // patch the backend would just reject with "not found". This
-        // typically means the session was deleted while the user had
-        // a stale pill open.
-        const message = `useSessionPatch: session ${sessionId} not in local store`;
-        setState({ isPatching: false, error: message });
-        throw new Error(message);
-      }
-
-      if (!patchWouldChangeSession(before, options)) {
-        setState({ isPatching: false, error: null });
-        return;
-      }
-
-      const optimistic: Session = { ...before };
-      if (options.name !== undefined) optimistic.name = options.name;
-      if (options.model !== undefined) optimistic.model = options.model;
-      if (options.accountId !== undefined)
-        optimistic.accountId = options.accountId;
-      if (options.agentExecMode !== undefined)
-        optimistic.agentExecMode = options.agentExecMode;
-      if (options.productMode !== undefined)
-        optimistic.productMode = options.productMode;
-      // Three-state fields: `null` clears (write `undefined` into the
-      // optimistic session, since the Session type uses `undefined` for
-      // "no value"); a string sets; a property left absent on `options`
-      // means "don't touch it".
-      if (options.draftText !== undefined)
-        optimistic.draftText = options.draftText ?? undefined;
-      if (options.replyTargetEventId !== undefined)
-        optimistic.replyTargetEventId = options.replyTargetEventId ?? undefined;
-      if (options.pinned !== undefined) optimistic.pinned = options.pinned;
-      upsertSession(optimistic);
-
-      // Imported teammate copies (`Session.importedFrom`) exist ONLY in the
-      // TS store — there is no agent_sessions/code_sessions row for the
-      // backend to patch, so the RPC would reject with "session not found"
-      // (surfacing as a full-screen App error from e.g. the composer's
-      // debounced draft save or the model picker). The optimistic local
-      // write above IS the persistence these rows get; skip the RPC.
-      if (before.importedFrom) {
-        setState({ isPatching: false, error: null });
-        return;
-      }
-
-      try {
-        await rpc.sessionAggregate.patch({
-          sessionId,
-          patch: {
-            name: options.name,
-            model: options.model,
-            accountId: options.accountId,
-            agentExecMode: options.agentExecMode,
-            productMode: options.productMode,
-            // Forward the tri-state values verbatim. zod's
-            // `.nullable().optional()` lines up with the Rust double-
-            // Option deserialize: undefined skips, null clears, string
-            // sets.
-            draftText: options.draftText,
-            replyTargetEventId: options.replyTargetEventId,
-            pinned: options.pinned,
-          },
-        });
-        setState({ isPatching: false, error: null });
-      } catch (err) {
-        // Roll back to the snapshot taken above. We re-write the full
-        // prior session record (not just the touched fields) so a
-        // partial backend success — which the Rust handler currently
-        // can't produce, but a future split write could — wouldn't
-        // leave the UI in a hybrid state.
-        upsertSession(before);
-        const message =
-          err instanceof Error ? err.message : String(err ?? "patch failed");
-        setState({ isPatching: false, error: message });
-        throw err;
-      }
+  const generation = useRef(0);
+  useEffect(
+    () => () => {
+      generation.current += 1;
     },
     []
   );
 
+  const patch = useCallback(
+    async (sessionId: string, options: PatchOptions) => {
+      const current = ++generation.current;
+      setState({ isPatching: true, error: null });
+      try {
+        await sessionPatchQueue()(sessionId, options);
+        if (current === generation.current)
+          setState({ isPatching: false, error: null });
+      } catch (error) {
+        if (current === generation.current) {
+          setState({
+            isPatching: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        throw error;
+      }
+    },
+    []
+  );
   return { patch, ...state };
 }
 
@@ -228,7 +124,7 @@ function usePatchSession(): {
  * Returns the current values (from `sessionByIdAtom`) plus a
  * `setModel` function that performs an atomic backend patch.
  *
- * Pass `accountId: null` to leave it unchanged when only the model
+ * Omit `accountId` to leave it unchanged when only the model
  * name changes (e.g. switching between two Anthropic models on the
  * same key).
  */

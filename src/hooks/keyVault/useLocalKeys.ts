@@ -26,6 +26,7 @@ import type {
 } from "@src/api/services/keyValidation";
 import { createLogger } from "@src/hooks/logger";
 
+import { saveDefaultVariantOverrides } from "./defaultVariantSaveCoordinator";
 import { runSharedQuotaRefresh } from "./quotaRefreshCoordinator";
 import {
   areSharedLocalKeysLoaded,
@@ -200,6 +201,13 @@ export function useLocalKeys(
    */
   const saveKeyFn = useCallback(
     async (request: SaveKeyRequest): Promise<KeyInfo | null> => {
+      if (request.default_variant_overrides) {
+        try {
+          return await saveDefaultVariantOverrides(request);
+        } catch {
+          return null;
+        }
+      }
       const previousKeys = getSharedLocalKeys();
       let appliedOptimisticUpdate = false;
 

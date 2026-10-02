@@ -16,21 +16,22 @@
  * performs reactively.
  *
  * On success, writes the discovered model list back to the key store via
- * updateKeyHealth (preserving the existing healthStatus and enabledModels —
- * new models default to "addable", never auto-enabled). On hard failure
- * (refresh also rejected, list call still failing), flips healthStatus to
- * "invalid" so the row reflects that the user needs to re-add the account.
+ * refreshKeyModelCatalog (preserving the latest health and enabled choices —
+ * new models default to "addable", never auto-enabled). OAuth refresh health
+ * remains owned by the backend's credential-generation-checked write path.
  */
 import {
+  type FullKeyResponse,
   type ModelContextLengths,
   getCursorNativeModels,
   getFullKey,
   getOAuthModelCatalog,
+  refreshKeyModelCatalog,
   refreshOauthToken,
-  updateKeyHealth,
   validateKey,
 } from "@src/api/services/keyValidation";
 import { CLI_AGENT } from "@src/api/tauri/rpc/schemas/validation";
+import type { DefaultVariantInfo, ModelVariantInfo } from "@src/api/types/keys";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 
 /**
@@ -65,7 +66,8 @@ function isOAuthAccount(account: KeyVaultAccount): boolean {
 interface FetchedAccountModels {
   models: string[];
   modelContextLengths: ModelContextLengths;
-  defaultEnabledModels?: string[];
+  modelVariants?: ModelVariantInfo[];
+  defaultVariants?: DefaultVariantInfo[];
 }
 
 async function fetchOAuthCatalogForAccount(
@@ -92,21 +94,32 @@ async function fetchOAuthCatalogForAccount(
   return {
     models: catalog.models,
     modelContextLengths: catalog.modelContextLengths,
-    defaultEnabledModels: catalog.defaultEnabledModels,
+    modelVariants: catalog.modelVariants,
+    defaultVariants: catalog.defaultVariants,
   };
+}
+
+interface AccountModelDiscovery extends FetchedAccountModels {
+  snapshot: FullKeyResponse;
 }
 
 async function fetchModelsForAccount(
   account: KeyVaultAccount
-): Promise<FetchedAccountModels> {
-  const fullKey = await getFullKey(account.modelType, account.id);
-  if (!fullKey) {
+): Promise<AccountModelDiscovery> {
+  const snapshot = await getFullKey(account.modelType, account.id);
+  if (!snapshot) {
     throw new RefreshModelsError(
       `Key not found for account ${account.id}`,
       "transient"
     );
   }
+  return { ...(await discoverModelsForAccount(account, snapshot)), snapshot };
+}
 
+async function discoverModelsForAccount(
+  account: KeyVaultAccount,
+  fullKey: FullKeyResponse
+): Promise<FetchedAccountModels> {
   switch (account.modelType) {
     case CLI_AGENT.CURSOR: {
       const token = fullKey.session_token;
@@ -184,12 +197,10 @@ export interface RefreshAccountModelsResult {
   previousModels: string[];
 }
 
-export async function refreshAccountModels(
+async function performAccountModelsRefresh(
   account: KeyVaultAccount
 ): Promise<RefreshAccountModelsResult> {
-  const previousHealth = account.healthStatus ?? "valid";
-  const previousModels = account.availableModels ?? [];
-  let fetched: FetchedAccountModels;
+  let fetched: AccountModelDiscovery;
 
   try {
     fetched = await fetchModelsForAccount(account);
@@ -201,32 +212,21 @@ export async function refreshAccountModels(
       try {
         await refreshOauthToken(account.id);
       } catch (refreshErr) {
-        // Refresh itself rejected — refresh_token is dead or revoked. Mark
-        // the account invalid so the row visibly degrades; user needs to
-        // re-add the account.
-        await updateKeyHealth(
-          account.id,
-          "invalid",
-          refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
-        );
+        // OAuth refresh already records health at its guarded backend boundary.
+        // A late catalog request must not mark replacement credentials invalid.
         throw new RefreshModelsError(
           refreshErr instanceof Error ? refreshErr.message : String(refreshErr),
-          "auth_expired"
+          isUnauthorizedError(refreshErr) ? "auth_expired" : "transient"
         );
       }
       try {
         fetched = await fetchModelsForAccount(account);
       } catch (retryErr) {
-        await updateKeyHealth(
-          account.id,
-          "invalid",
-          retryErr instanceof Error ? retryErr.message : String(retryErr)
-        );
         throw retryErr instanceof RefreshModelsError
           ? retryErr
           : new RefreshModelsError(
               retryErr instanceof Error ? retryErr.message : String(retryErr),
-              "auth_expired"
+              isUnauthorizedError(retryErr) ? "auth_expired" : "transient"
             );
       }
     } else {
@@ -246,34 +246,38 @@ export async function refreshAccountModels(
     );
   }
 
-  const refreshedEnabledModels = (() => {
-    if (!isOAuthAccount(account)) {
-      return undefined;
-    }
-    if (
-      account.modelType !== CLI_AGENT.CLAUDE_CODE &&
-      account.modelType !== CLI_AGENT.CODEX
-    ) {
-      return undefined;
-    }
-    const enabled = new Set(account.enabledModels ?? []);
-    for (const modelId of fetched.defaultEnabledModels ?? []) {
-      if (fetched.models.includes(modelId)) enabled.add(modelId);
-    }
-    return [...enabled];
-  })();
+  const saved = await refreshKeyModelCatalog(account.id, {
+    expectedCredentialGeneration: fetched.snapshot.credential_generation,
+    expectedCatalogGeneration: fetched.snapshot.model_catalog_generation,
+    availableModels: fetched.models,
+    modelVariants: fetched.modelVariants ?? null,
+    defaultVariants: fetched.defaultVariants ?? null,
+    modelContextLengths: fetched.modelContextLengths,
+  });
+  if (!saved) {
+    throw new RefreshModelsError("Account no longer exists", "transient");
+  }
+  return {
+    models: saved.available_models,
+    previousModels: fetched.snapshot.available_models,
+  };
+}
 
-  await updateKeyHealth(
-    account.id,
-    previousHealth,
-    undefined,
-    fetched.models,
-    refreshedEnabledModels,
-    undefined,
-    fetched.modelContextLengths
-  );
+// Retained only while a user-requested refresh is active; both entry points
+// share discovery and release the promise on success or failure.
+const pendingRefreshes = new Map<string, Promise<RefreshAccountModelsResult>>();
 
-  return { models: fetched.models, previousModels };
+export function refreshAccountModels(
+  account: KeyVaultAccount
+): Promise<RefreshAccountModelsResult> {
+  const pending = pendingRefreshes.get(account.id);
+  if (pending) return pending;
+  const refresh = performAccountModelsRefresh(account).finally(() => {
+    if (pendingRefreshes.get(account.id) === refresh)
+      pendingRefreshes.delete(account.id);
+  });
+  pendingRefreshes.set(account.id, refresh);
+  return refresh;
 }
 
 export interface RefreshAllAccountModelsSummary {

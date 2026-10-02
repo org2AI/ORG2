@@ -13,6 +13,7 @@
 pub mod commands;
 pub mod control_flow;
 pub mod integrations_store;
+mod session_identity;
 mod session_runtime;
 mod unified;
 
@@ -20,5 +21,6 @@ mod unified;
 // deeper `state::integrations_store::*` path; the module is public so
 // background subsystems and the main crate can call the process-wide
 // `integrations_store()` accessor.
-pub use session_runtime::{AgentSession, SessionRuntime};
+pub use session_identity::session_identity_lock;
+pub use session_runtime::{AgentSession, SessionIdentityMutationGuard, SessionRuntime};
 pub use unified::AgentAppState;

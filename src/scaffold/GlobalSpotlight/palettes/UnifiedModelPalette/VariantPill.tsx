@@ -19,8 +19,10 @@ import ModelPropertiesDropdown from "@src/components/ModelPropertiesDropdown";
 import { BrainIcon, HugeiconsIcon, Pen01Icon } from "@src/icons";
 import { separateEffortPillAtom } from "@src/store/session/separateEffortPillAtom";
 import {
+  type ResolvedModelVariantFields,
   formatReasoningLevel,
-  parseModelVariant,
+  resolveModelVariantFields,
+  toModelReasoningLevel,
 } from "@src/util/modelVariants";
 import { buildVariantEditOptions } from "@src/util/variantEditOptions";
 
@@ -35,6 +37,7 @@ interface VariantPillProps {
    * When omitted, the pill is non-editable (legacy callers).
    */
   groupModelIds?: readonly string[];
+  variantMetadata?: readonly ResolvedModelVariantFields[];
   /**
    * Called when the user changes the variant. Receives
    * the resolved model id. Caller persists it via the relevant
@@ -46,16 +49,20 @@ interface VariantPillProps {
 export const VariantPill: React.FC<VariantPillProps> = ({
   modelId,
   groupModelIds,
+  variantMetadata,
   onApply,
 }) => {
   const variantOptions = React.useMemo(
-    () => buildVariantEditOptions(groupModelIds ?? [modelId]),
-    [groupModelIds, modelId]
+    () => buildVariantEditOptions(groupModelIds ?? [modelId], variantMetadata),
+    [groupModelIds, modelId, variantMetadata]
   );
   const effectiveModelId =
     variantOptions.resolveVariantId(variantOptions.parseSelection(modelId)) ??
     modelId;
-  const variant = parseModelVariant(effectiveModelId);
+  const variant = resolveModelVariantFields(
+    effectiveModelId,
+    variantMetadata?.find((entry) => entry.model === effectiveModelId)
+  );
 
   const pillClasses =
     "relative z-10 inline-flex h-[24px] shrink-0 items-center gap-0.5 rounded-full border border-transparent bg-transparent px-2 text-[11px] font-semibold text-text-2 transition-colors group-hover/model-row:border-border-3 group-hover/model-row:bg-bg-1 group-focus-within/model-row:border-border-3 group-focus-within/model-row:bg-bg-1";
@@ -82,7 +89,7 @@ export const VariantPill: React.FC<VariantPillProps> = ({
   const editable = onApply !== undefined && (groupModelIds?.length ?? 0) > 1;
   const parts: string[] = [];
   if (variant?.reasoning) {
-    parts.push(formatReasoningLevel(variant.reasoning));
+    parts.push(formatReasoningLevel(toModelReasoningLevel(variant.reasoning)));
   }
   if (variant?.fast) {
     parts.push("Fast");

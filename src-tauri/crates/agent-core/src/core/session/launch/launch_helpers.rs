@@ -67,7 +67,7 @@ pub(super) async fn handle_background_launch_failure(
     }
 
     match mark_session_failed(session_id.to_string()).await {
-        Ok(()) => crate::lifecycle::emit_session_status_changed(
+        Ok(_terminal_at) => crate::lifecycle::emit_session_status_changed(
             app_handle,
             session_id,
             crate::persistence::db_helpers::AgentSessionStatus::Failed,
@@ -249,18 +249,21 @@ pub(super) fn broadcast_launch_send_error(session_id: &str, message: &str) {
     broadcast_agent_error_structured(session_id, &error);
 }
 
-pub(super) async fn mark_session_failed(session_id: String) -> Result<(), String> {
+pub(super) async fn mark_session_failed(session_id: String) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
-        let Some(mut record) =
-            crate::session::persistence::get_session(&session_id).map_err(|err| err.to_string())?
-        else {
+        let terminal_at = chrono::Utc::now().to_rfc3339();
+        let changed = crate::session::persistence::update_status_at(
+            &session_id,
+            crate::session::SessionStatus::Failed,
+            &terminal_at,
+        )
+        .map_err(|err| err.to_string())?;
+        if !changed {
             return Err(format!(
                 "session {session_id} disappeared before first-turn failure could be persisted"
             ));
-        };
-        record.status = crate::session::SessionStatus::Failed.as_str().to_string();
-        record.updated_at = chrono::Utc::now().to_rfc3339();
-        crate::session::persistence::upsert_session(&record).map_err(|err| err.to_string())
+        }
+        Ok(terminal_at)
     })
     .await
     .map_err(|err| err.to_string())?

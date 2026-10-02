@@ -7,6 +7,7 @@ import type { MarketProfileSource } from "@src/features/MarketConnect/marketProf
 import { findMarketSourceForRecent } from "@src/features/MarketConnect/marketProfiles";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
+import { resolveCatalogModelVariant } from "@src/hooks/models/accountModelCatalog";
 import { isPairCompatible } from "@src/hooks/models/modelPairCompatibility";
 import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
 import type { RecentModelEntry } from "@src/store/session/recentModelEntriesAtom";
@@ -17,7 +18,6 @@ import {
   spotlightModelPinsAtom,
 } from "@src/store/ui/spotlightPinsAtom";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
-import { resolveModelVariantFields } from "@src/util/modelVariants";
 
 import { isModelPinned, toggleModelPin } from "../../pinning/modelPins";
 import type { SpotlightItem } from "../../types";
@@ -181,16 +181,11 @@ export function useUnifiedModelPaletteItems({
       const account = accounts.find((entry) => entry.id === accountId);
       if (!account) return;
 
-      const nextDefaults = (account.defaultVariants ?? []).filter(
-        (variant) => variant.base_model !== baseModel
-      );
-      nextDefaults.push({ base_model: baseModel, model: modelId });
-
-      void saveKey({
+      saveKey({
         id: account.id,
         agent_type: account.modelType,
-        default_variants: nextDefaults,
-      });
+        default_variant_overrides: [{ base_model: baseModel, model: modelId }],
+      }).catch(() => undefined);
     },
     [accounts, saveKey]
   );
@@ -198,8 +193,8 @@ export function useUnifiedModelPaletteItems({
   // Quick-pick rows group variants over every reachable model, not just the
   // ones the active source scope lists.
   const groupByModel = useMemo(
-    () => buildGroupByModel(fullModelLookup.keys()),
-    [fullModelLookup]
+    () => buildGroupByModel(fullModelLookup.keys(), accounts),
+    [fullModelLookup, accounts]
   );
 
   const activeModelId = getActiveModelId(advancedConfig);
@@ -210,7 +205,7 @@ export function useUnifiedModelPaletteItems({
     if (!activeModelId) return null;
 
     const fromRecents = compatibleRecentEntries.find((entry) =>
-      entryMatchesActiveConfig(entry, advancedConfig)
+      entryMatchesActiveConfig(entry, advancedConfig, accounts)
     );
     if (fromRecents) return fromRecents;
 
@@ -293,7 +288,8 @@ export function useUnifiedModelPaletteItems({
     (entry: RecentModelEntry, section: ModelSection, index: number) => {
       const isCurrentSelection = entryMatchesActiveConfig(
         entry,
-        advancedConfig
+        advancedConfig,
+        accounts
       );
       // The active config may hold another variant of a stored entry.
       const rowEntry =
@@ -353,7 +349,7 @@ export function useUnifiedModelPaletteItems({
       if (sortedVariants.length === 0) return "";
 
       const variantInfos = sortedVariants.map((modelId) =>
-        resolveModelVariantFields(modelId)
+        resolveCatalogModelVariant(accounts, modelId)
       );
       const baseModel = variantInfos[0]?.base_model ?? sortedVariants[0];
       const variantModelSet = new Set(sortedVariants);

@@ -11,11 +11,14 @@ import React from "react";
 import ModelIcon from "@src/components/ModelIcon";
 import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
-import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 import {
-  accountHasModel,
   accountModelIds,
-} from "@src/hooks/models/useModelAccountLookup";
+  groupCatalogModels,
+  isSelectableModelAccount,
+  resolveAccountModelVariant,
+  selectableAccountModelIds,
+} from "@src/hooks/models/accountModelCatalog";
+import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
 import {
   compareModelsByVersion,
@@ -38,9 +41,7 @@ export const MARKET_PROFILE_TEST_ID = "unified-model-market-profile-option";
 
 /** Model ids the account can actually launch (enabled, incl. variant rungs). */
 export function enabledAccountModelIds(account: KeyVaultAccount): string[] {
-  return accountModelIds(account).filter((modelId) =>
-    accountHasModel(account, modelId)
-  );
+  return selectableAccountModelIds(account);
 }
 
 /** Keys that appear in the left column of key-first mode. */
@@ -49,10 +50,13 @@ export function selectableKeyAccounts(
   isCliAgent: boolean
 ): KeyVaultAccount[] {
   return accounts.filter((account) => {
-    if (account.status !== "ready" || !account.hasKey) return false;
+    if (!isSelectableModelAccount(account)) return false;
     // A CLI-agent key with no model listing is still launchable — the
     // session falls back to the agent's own default model — so keep it.
-    return isCliAgent || enabledAccountModelIds(account).length > 0;
+    return (
+      (isCliAgent && accountModelIds(account).length === 0) ||
+      enabledAccountModelIds(account).length > 0
+    );
   });
 }
 
@@ -73,7 +77,11 @@ export function buildKeyItems({
 }: BuildKeyItemsParams): SpotlightItem[] {
   return selectableKeyAccounts(accounts, isCliAgent).map((account) => {
     const modelIds = enabledAccountModelIds(account);
-    const groupCount = groupModels(modelIds).length;
+    const groupCount = groupCatalogModels(
+      modelIds,
+      [account],
+      account.modelType
+    ).length;
     const KeyIcon = () => <ModelIcon agentType={account.modelType} size={14} />;
 
     const labelContent = (
@@ -234,7 +242,11 @@ export function buildKeyModelItems({
     ? enabledAccountModelIds(account).flatMap((model) =>
         groupModels([model], account.modelType)
       )
-    : groupModels(enabledAccountModelIds(account), account.modelType);
+    : groupCatalogModels(
+        enabledAccountModelIds(account),
+        [account],
+        account.modelType
+      );
 
   for (const group of groups) {
     const sortedVariants = [...group.models].sort(compareModelsByVersion);
@@ -242,13 +254,11 @@ export function buildKeyModelItems({
     if (!representative) continue;
 
     const variantInfos = sortedVariants.map((modelId) =>
-      resolveModelVariantFields(modelId)
+      resolveAccountModelVariant(account, modelId)
     );
     const baseModel = literalModels
       ? representative
-      : (parseModelVariant(representative)?.baseModel ??
-        variantInfos[0]?.base_model ??
-        representative);
+      : (variantInfos[0]?.base_model ?? representative);
     const persisted = (account.defaultVariants ?? []).find(
       (entry) =>
         entry.base_model === baseModel && sortedVariants.includes(entry.model)
@@ -297,6 +307,7 @@ export function buildKeyModelItems({
         <VariantPill
           modelId={launchModel}
           groupModelIds={sortedVariants}
+          variantMetadata={variantInfos}
           onApply={(nextModelId) =>
             persistDefaultVariantForAccount(account.id, baseModel, nextModelId)
           }
@@ -309,7 +320,7 @@ export function buildKeyModelItems({
       withModelRowAttributes({
         id: literalModels
           ? `key-model:${account.id}:${representative}`
-          : `key-model:${account.id}:${group.label}:${group.sortVersion}`,
+          : `key-model:${account.id}:${group.label}:${group.sortVersion}:${baseModel}`,
         label: [displayLabel, ...sortedVariants].join(" "),
         icon: ModelItemIcon,
         type: "action" as const,

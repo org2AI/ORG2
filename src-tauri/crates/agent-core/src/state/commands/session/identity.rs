@@ -63,6 +63,51 @@ pub struct IdentityOverrides {
     pub workspace_root: Option<String>,
 }
 
+/// Cold-init defaults are seeds, not overrides of a session's chosen pair.
+/// The caller holds `session_identity_lock` through runtime installation and
+/// any identity writeback. A missing account on an existing pair is intentional
+/// (for example a Market credential) and must not inherit a default account.
+pub(crate) async fn resolve_initialization_model_pair(
+    state: &AgentAppState,
+    session_id: &str,
+    default_model: Option<&str>,
+    default_account_id: Option<&str>,
+) -> Result<(Option<String>, Option<String>), String> {
+    if let Some(session) = state.get_session(session_id).await {
+        if let Some(runtime) = session.get_runtime().await {
+            if !runtime.model.is_empty() {
+                return Ok((Some(runtime.model.clone()), runtime.account_id.clone()));
+            }
+        }
+    }
+    let sid = session_id.to_string();
+    let persisted = tokio::task::spawn_blocking(move || session_persistence::get_session(&sid))
+        .await
+        .map_err(|error| format!("Initialization identity lookup failed: {error}"))?
+        .map_err(|error| format!("Initialization identity DB lookup failed: {error}"))?;
+    Ok(initialization_model_pair(
+        persisted.map(|record| (record.model, record.account_id)),
+        default_model,
+        default_account_id,
+    ))
+}
+
+fn initialization_model_pair(
+    stored: Option<(Option<String>, Option<String>)>,
+    default_model: Option<&str>,
+    default_account_id: Option<&str>,
+) -> (Option<String>, Option<String>) {
+    if let Some((Some(model), account)) = stored {
+        if !model.is_empty() {
+            return (Some(model), account);
+        }
+    }
+    (
+        default_model.map(str::to_string),
+        default_account_id.map(str::to_string),
+    )
+}
+
 /// Resolve session identity with a strict priority chain (same for all
 /// three fields):
 ///   1. Caller-supplied overrides
@@ -263,6 +308,47 @@ fn workspace_paths_to_working_dir(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn initialization_preserves_selected_pair_over_stale_launch_defaults() {
+        assert_eq!(
+            initialization_model_pair(
+                Some((
+                    Some("selected-model".into()),
+                    Some("selected-account".into())
+                )),
+                Some("old-launch-model"),
+                Some("old-launch-account"),
+            ),
+            (
+                Some("selected-model".into()),
+                Some("selected-account".into())
+            )
+        );
+    }
+
+    #[test]
+    fn initialization_preserves_credential_owned_pair_without_an_account() {
+        assert_eq!(
+            initialization_model_pair(
+                Some((Some("market-model".into()), None)),
+                Some("gateway-model"),
+                Some("personal-account"),
+            ),
+            (Some("market-model".into()), None)
+        );
+    }
+
+    #[test]
+    fn initialization_keeps_new_channel_default_behavior_without_a_stored_model() {
+        for stored in [None, Some((None, Some("unused-account".into())))] {
+            assert_eq!(
+                initialization_model_pair(stored, Some("gateway-model"), Some("gateway-account")),
+                (Some("gateway-model".into()), Some("gateway-account".into()))
+            );
+        }
+        assert_eq!(initialization_model_pair(None, None, None), (None, None));
+    }
 
     #[test]
     fn worktree_session_resolves_to_worktree_path() {

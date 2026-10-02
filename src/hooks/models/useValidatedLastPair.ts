@@ -26,11 +26,8 @@ import {
 } from "@src/features/MarketConnect/marketProfiles";
 import { parseAppliedMarketSelection } from "@src/features/MarketConnect/marketSelection";
 import { useKeyVault } from "@src/hooks/keyVault";
-import { withNativeHarnessModels } from "@src/hooks/models/nativeHarnessAccountModels";
-import {
-  getCliCompatibleAccounts,
-  useAgentCompatibility,
-} from "@src/hooks/models/useAgentCompatibility";
+import { getModelPickerAccounts } from "@src/hooks/models/accountModelCatalog";
+import { useAgentCompatibility } from "@src/hooks/models/useAgentCompatibility";
 import {
   type LastModelSelection,
   creatorDefaultModelPairAtom,
@@ -58,12 +55,16 @@ export function useValidatedLastPair(): LastModelSelection | null {
 
   const { accounts: allAccounts } = useKeyVault({ autoLoad: true });
 
-  const accounts = useMemo(() => {
-    if (dispatchCategory === "cli_agent" && cliAgentType) {
-      return getCliCompatibleAccounts(registry, cliAgentType, allAccounts);
-    }
-    return withNativeHarnessModels(allAccounts, dispatchCategory);
-  }, [dispatchCategory, cliAgentType, allAccounts, registry]);
+  const accounts = useMemo(
+    () =>
+      getModelPickerAccounts(
+        registry,
+        allAccounts,
+        dispatchCategory,
+        cliAgentType
+      ),
+    [dispatchCategory, cliAgentType, allAccounts, registry]
+  );
 
   // Only fetch ORGII pool config when the stored pair actually needs it:
   // hosted_key sessions or ORGII tier model IDs (orgii:*). Own-key pairs

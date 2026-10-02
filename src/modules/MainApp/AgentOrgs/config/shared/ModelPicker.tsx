@@ -13,10 +13,10 @@ import ModelIcon from "@src/components/ModelIcon";
 import Select, { type SelectOptionGroup } from "@src/components/Select";
 import {
   buildAccountLookup,
-  getRustCompatibleAccounts,
   useAgentCompatibility,
   useModelAccountLookup,
 } from "@src/hooks/models";
+import { getModelPickerAccounts } from "@src/hooks/models/accountModelCatalog";
 import { formatModelNameFull } from "@src/util/formatModelName";
 
 interface ModelPickerProps {
@@ -43,7 +43,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({
   const { registry } = useAgentCompatibility();
 
   const accounts = useMemo(
-    () => getRustCompatibleAccounts(registry, allAccounts),
+    () => getModelPickerAccounts(registry, allAccounts, "rust_agent"),
     [registry, allAccounts]
   );
 

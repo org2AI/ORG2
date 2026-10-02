@@ -15,6 +15,8 @@ mod claude_oauth;
 mod codex_cli_auth;
 mod codex_oauth;
 mod keys;
+mod model_catalog;
+pub use model_catalog::ModelCatalogRefresh;
 mod oauth_health;
 mod persistence;
 mod token_sync;

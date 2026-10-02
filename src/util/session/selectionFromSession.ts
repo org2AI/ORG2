@@ -16,9 +16,11 @@ export function selectionFromSession(
   session: Session | undefined,
   fallback: LastModelSelection | null
 ): LastModelSelection | null {
-  if (!session) return fallback;
+  // A model/source pair is one identity. Never fill an existing session's
+  // missing account or routing fields from an unrelated creator preference.
+  if (!session?.model) return fallback;
 
-  const keySource = session.keySource ?? fallback?.keySource;
+  const keySource = session.keySource;
   // Rust persists market sessions with `listingModel` written into
   // `code_sessions.model`, so we can read either as the market `model`
   // identifier without a separate column.
@@ -26,20 +28,11 @@ export function selectionFromSession(
 
   return {
     keySource,
-    model: isHosted ? undefined : (session.model ?? fallback?.model),
-    listingModel: isHosted
-      ? (session.model ?? fallback?.listingModel)
-      : undefined,
-    selectedAccountId: session.accountId ?? fallback?.selectedAccountId,
-    cliAgentType: session.cliAgentType ?? fallback?.cliAgentType,
-    tier: session.tier ?? fallback?.tier,
-    // Display-only fields: carry forward from fallback so the UI side
-    // preserves whatever it last rendered.
-    listingModelDisplay: fallback?.listingModelDisplay,
-    listingModelType: fallback?.listingModelType,
-    listingName: fallback?.listingName,
-    selectedSourceLabel: fallback?.selectedSourceLabel,
-    selectedSourceModelType: fallback?.selectedSourceModelType,
-    provider: fallback?.provider,
+    model: isHosted ? undefined : session.model,
+    listingModel: isHosted ? session.model : undefined,
+    selectedAccountId: session.accountId,
+    cliAgentType: session.cliAgentType,
+    tier: session.tier,
+    credentialSource: session.credentialSource,
   };
 }

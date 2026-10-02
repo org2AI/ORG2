@@ -17,7 +17,14 @@
  *    default atom only. Used by the SessionCreator preview.
  */
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { memo, useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import type { CliAgentType } from "@src/api/tauri/rpc/schemas/validation";
@@ -48,6 +55,7 @@ import {
   creatorDefaultModelSelectionAtom,
   extractModelPair,
 } from "@src/store/session/creatorDefaultModelAtom";
+import { dispatchCategoryAtom } from "@src/store/session/creatorStateAtom";
 import {
   findRecentByCredentialSource,
   recentModelEntriesAtom,
@@ -97,6 +105,7 @@ const ModelPillComponent: React.FC = () => {
   // strings, etc. — fields not stored on the session row).
   const creatorDefaultLastModel = useValidatedLastPair();
   const setCreatorDefaultModel = useSetAtom(creatorDefaultModelSelectionAtom);
+  const creatorDispatchCategory = useAtomValue(dispatchCategoryAtom);
 
   const { sessionId } = useSessionId();
   const [pendingRuntimeOwner, setPendingRuntimeOwner] = useState(sessionId);
@@ -107,6 +116,13 @@ const ModelPillComponent: React.FC = () => {
     setPendingRuntimeOwner(sessionId);
     setPendingRuntimePick(null);
   }
+  const selectionOwner = useRef(0);
+  useLayoutEffect(() => {
+    selectionOwner.current += 1;
+    return () => {
+      selectionOwner.current += 1;
+    };
+  }, [sessionId]);
   const isInSession = Boolean(sessionId);
   const session = useAtomValue(sessionByIdAtom(sessionId ?? ""));
   const recentModelEntries = useAtomValue(recentModelEntriesAtom);
@@ -231,19 +247,20 @@ const ModelPillComponent: React.FC = () => {
   }, [lastModel]);
 
   const handleConfigChange = useCallback(
-    (config: AdvancedConfig) => {
+    async (config: AdvancedConfig): Promise<boolean> => {
+      const generation = ++selectionOwner.current;
       // Team-conversation composer: the pick belongs to the remembered
       // runner setup, never to the imported row (whose model field is
       // deliberately empty and whose patches a family refresh wipes).
       // Runtime has its own standard New Session picker. This picker only
       // changes the model/account source for that selected runtime.
       if (conversationBinding) {
-        if (
-          conversationBinding.applyModelPick(config, pendingRuntimeSelection)
-        ) {
-          clearPendingRuntimeSelection();
-        }
-        return;
+        const accepted = conversationBinding.applyModelPick(
+          config,
+          pendingRuntimeSelection
+        );
+        if (accepted) clearPendingRuntimeSelection();
+        return accepted;
       }
       // In-session: keySource / cliAgentType / tier are session-create
       // immutables (mis-billing risk + zombie CLI processes if mutated;
@@ -287,12 +304,11 @@ const ModelPillComponent: React.FC = () => {
           credentialSourceDiffers
         ) {
           Message.warning(t("sessions:modelPill.immutableInSession"));
-          return;
+          return false;
         }
       }
 
       const pair = extractModelPair(config);
-      setCreatorDefaultModel(pair);
 
       // For in-session model swaps, persist `(model, accountId)` to
       // the session row via session_patch. For market sessions the
@@ -315,9 +331,26 @@ const ModelPillComponent: React.FC = () => {
           if (runtimeStatus === "running" && accountChanges) {
             Message.info(t("sessions:modelPill.appliesNextTurn"));
           }
-          void setSessionModel(wireModel, wireAccount);
+          try {
+            await setSessionModel(wireModel, wireAccount);
+          } catch (error) {
+            if (generation === selectionOwner.current) {
+              Message.error(
+                error instanceof Error ? error.message : String(error)
+              );
+            }
+            return false;
+          }
+        } else {
+          return false;
         }
       }
+      if (generation !== selectionOwner.current) return false;
+      setCreatorDefaultModel(
+        pair,
+        paletteCategoryOverride ?? creatorDispatchCategory
+      );
+      return true;
     },
     [
       setCreatorDefaultModel,
@@ -328,6 +361,8 @@ const ModelPillComponent: React.FC = () => {
       conversationBinding,
       clearPendingRuntimeSelection,
       pendingRuntimeSelection,
+      paletteCategoryOverride,
+      creatorDispatchCategory,
       t,
     ]
   );
@@ -368,7 +403,9 @@ const ModelPillComponent: React.FC = () => {
             model: nextModelId,
           };
 
-      handleConfigChange(updatedConfig);
+      handleConfigChange(updatedConfig).catch((error) => {
+        Message.error(error instanceof Error ? error.message : String(error));
+      });
     },
     [advancedConfig, handleConfigChange, lastModel]
   );

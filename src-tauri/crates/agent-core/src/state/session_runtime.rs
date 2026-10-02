@@ -126,6 +126,20 @@ struct RuntimeAdmissionSlot {
     holders: usize,
 }
 
+/// Holds the admission CAS domain while a model/account edit is persisted.
+/// Dropping this guard on a failed write leaves the current runtime untouched.
+/// A successful write must clear the cached runtime before releasing the guard.
+pub struct SessionIdentityMutationGuard<'a> {
+    session: &'a AgentSession,
+    _admissions: tokio::sync::MutexGuard<'a, Vec<RuntimeAdmissionSlot>>,
+}
+
+impl SessionIdentityMutationGuard<'_> {
+    pub async fn invalidate_runtime(self) {
+        *self.session.runtime.write().await = None;
+    }
+}
+
 /// Exact in-memory identity of the Turn currently using a runtime lease.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RuntimeTurnIdentity {
@@ -495,6 +509,23 @@ impl AgentSession {
             .map(|slot| Arc::clone(&slot.runtime))
     }
 
+    /// Capture the lease alongside the admitted provider, before a picker may
+    /// replace the cache. Queued turns must not bind control to a later lease.
+    pub(crate) async fn runtime_lease_for(
+        &self,
+        runtime: &Arc<SessionRuntime>,
+    ) -> Result<String, String> {
+        self.runtime
+            .read()
+            .await
+            .as_ref()
+            .filter(|slot| Arc::ptr_eq(&slot.runtime, runtime))
+            .map(|slot| slot.lease_id.clone())
+            .ok_or_else(|| {
+                "session_runtime_admission_stale: admitted provider has no current lease".into()
+            })
+    }
+
     /// Prepare an exact runtime lease before durable DirectMember admission.
     /// Exact retries reuse their token; a different runtime or missing slot
     /// fails closed before any database row claims that the turn was accepted.
@@ -565,6 +596,25 @@ impl AgentSession {
     ) -> bool {
         let mut admissions = self.runtime_admissions.lock().await;
         release_runtime_admission_slot(&mut admissions, reservation)
+    }
+
+    /// Reject identity edits before persistence when an accepted Member turn
+    /// still pins the provider. Holding this guard prevents a new admission
+    /// from appearing between validation and runtime invalidation.
+    pub async fn begin_identity_mutation(
+        &self,
+    ) -> Result<SessionIdentityMutationGuard<'_>, String> {
+        let admissions = self.runtime_admissions.lock().await;
+        if !admissions.is_empty() {
+            return Err(
+                "agent_org_runtime_admission_conflict: a prepared Member turn pins the current runtime"
+                    .to_string(),
+            );
+        }
+        Ok(SessionIdentityMutationGuard {
+            session: self,
+            _admissions: admissions,
+        })
     }
 
     /// Clear whichever runtime is current. This remains the ordinary SDE
@@ -779,6 +829,18 @@ impl AgentSession {
             .await
             .as_ref()
             .map(|slot| slot.lease_id.clone());
+        self.begin_turn_with_runtime_lease(user_input, turn_intent_id, runtime_lease_id)
+            .await
+    }
+
+    /// Start an admitted turn with its captured runtime lease, even when the
+    /// next-turn cache was invalidated or replaced while it waited in the queue.
+    pub(crate) async fn begin_turn_with_runtime_lease(
+        &self,
+        user_input: String,
+        turn_intent_id: Option<String>,
+        runtime_lease_id: Option<String>,
+    ) -> String {
         let turn = DialogTurn::new(user_input, Arc::clone(&self.cancel_flag));
         let turn_id = turn.turn_id.clone();
         let process_control = runtime_lease_id.as_ref().zip(turn_intent_id.as_ref()).map(
@@ -1020,6 +1082,10 @@ fn release_runtime_admission_slot(
 fn runtime_lease_identity_matches(current_lease_id: Option<&str>, expected_lease_id: &str) -> bool {
     current_lease_id == Some(expected_lease_id)
 }
+
+#[cfg(test)]
+#[path = "session_identity_mutation_tests.rs"]
+mod identity_mutation_tests;
 
 #[cfg(test)]
 mod runtime_lease_tests {

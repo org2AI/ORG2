@@ -9,6 +9,7 @@ mod models;
 mod projections;
 mod read_delete;
 mod save;
+mod save_default_variants;
 
 pub use clipboard::{clipboard_write_image, clipboard_write_text};
 pub use dtos::{
@@ -25,7 +26,7 @@ pub use read_delete::{
 pub use save::save_key;
 
 pub(super) use models::oauth_model_metadata;
-pub(super) use projections::key_info_from_entry;
+pub use projections::key_info_from_entry;
 
 // Re-exported here so consumers keep the established key_vault::commands path
 // (matching model_supports_output_config_effort).

@@ -109,6 +109,22 @@ fn seed_session(session_id: &str, status: SessionStatus) {
 }
 
 #[test]
+fn terminal_status_write_preserves_a_newer_model_selection() {
+    let _sandbox = test_env::sandbox();
+    let sid = "status-after-identity-change";
+    seed_session(sid, SessionStatus::Running);
+    super::ops::update_model_and_account(sid, "new-model", Some("new-account")).unwrap();
+    let terminal_at = "2026-09-23T10:00:00Z";
+    assert!(super::ops::update_status_at(sid, SessionStatus::Failed, terminal_at).unwrap());
+    let record = super::ops::get_session(sid).unwrap().unwrap();
+    assert_eq!(record.model.as_deref(), Some("new-model"));
+    assert_eq!(record.account_id.as_deref(), Some("new-account"));
+    assert_eq!(record.status, SessionStatus::Failed.as_str());
+    assert_eq!(record.updated_at, terminal_at);
+    assert!(!super::ops::update_status_at("missing", SessionStatus::Failed, terminal_at).unwrap());
+}
+
+#[test]
 #[serial_test::serial]
 fn delete_session_refuses_active_shell_before_removing_session_row() {
     let _sandbox = test_env::sandbox();

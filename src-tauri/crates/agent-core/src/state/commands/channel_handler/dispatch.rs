@@ -289,8 +289,22 @@ async fn dispatch_to_session(
     _question_manager: &Arc<QuestionManager>,
     _permission_manager: &Arc<AgentPermissionManager>,
 ) -> Result<Option<OutboundMessage>, String> {
+    let identity_guard = crate::state::session_identity_lock(target_session_id)
+        .await
+        .lock_owned()
+        .await;
     let (gw_account, gw_model) = resolve_gateway_model_and_account(state).await;
-    let effective_account = account_id.or(gw_account.as_deref());
+    // Gateway configuration/global account remain new-session seeds. An
+    // existing per-chat selection always supplies the whole model/account pair.
+    let (session_model, session_account) =
+        crate::state::commands::session::identity::resolve_initialization_model_pair(
+            state,
+            target_session_id,
+            gw_model.as_deref(),
+            account_id.or(gw_account.as_deref()),
+        )
+        .await?;
+    let effective_account = session_account.as_deref();
 
     // SDE sessions have a session-specific `workspace_path` that MUST NOT
     // be overwritten by the generic `channels.workspace_path()`. Route
@@ -310,7 +324,7 @@ async fn dispatch_to_session(
         match persisted_workspace {
             Some(path_str) if !path_str.is_empty() => {
                 let workspace_path = std::path::PathBuf::from(&path_str);
-                let model = gw_model
+                let model = session_model
                     .as_deref()
                     .ok_or_else(|| "gateway.model not configured".to_string())?;
                 crate::session::init_workspace_session(
@@ -330,7 +344,7 @@ async fn dispatch_to_session(
                     state,
                     target_session_id,
                     effective_account,
-                    gw_model.as_deref(),
+                    session_model.as_deref(),
                 )
                 .await?
             }
@@ -340,10 +354,19 @@ async fn dispatch_to_session(
             state,
             target_session_id,
             effective_account,
-            gw_model.as_deref(),
+            session_model.as_deref(),
         )
         .await?
     };
+
+    let session_arc = state
+        .get_session(target_session_id)
+        .await
+        .ok_or_else(|| format!("Session {} not found after init", target_session_id))?;
+
+    // Both runtime installation and the SDE helper's eager identity write
+    // are complete. Do not hold this lock across gateway/LLM processing.
+    drop(identity_guard);
 
     let (origin_channel, origin_chat_id) = if is_reinject {
         let src_channel = msg
@@ -394,14 +417,10 @@ async fn dispatch_to_session(
         m
     };
 
-    let session_arc = state
-        .get_session(target_session_id)
-        .await
-        .ok_or_else(|| format!("Session {} not found after init", target_session_id))?;
-
-    let outbound = crate::session::gateway_pipeline::process_gateway_message(
+    let outbound = crate::session::gateway_pipeline::process_gateway_message_with_runtime(
         enriched,
         session_arc,
+        runtime,
         None,
         state.app_handle.clone(),
     )

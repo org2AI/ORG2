@@ -75,6 +75,8 @@ pub async fn agent_toggle_channel(
 
 /// Channel session init: resolve definition from the registered session,
 /// use `personal_workspace()` as the working directory, delegate to `init_session`.
+/// The dispatcher owns the identity lock and passes its resolved session pair;
+/// these parameters are not independent gateway overrides for an existing row.
 pub(super) async fn init_channel_session(
     state: &AgentAppState,
     session_id: &str,

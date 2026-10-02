@@ -390,12 +390,21 @@ fn settles_linked_session(status: SessionStatus) -> bool {
 
 /// Update session status.
 pub fn update_status(session_id: &str, status: SessionStatus) -> SqliteResult<bool> {
+    update_status_at(session_id, status, &Utc::now().to_rfc3339())
+}
+
+/// Status-only write with the caller's event timestamp. This must never carry
+/// a previously loaded model/account pair back into the authoritative row.
+pub(crate) fn update_status_at(
+    session_id: &str,
+    status: SessionStatus,
+    updated_at: &str,
+) -> SqliteResult<bool> {
     let changed = with_sessions_writer(|| -> SqliteResult<bool> {
         let conn = get_connection()?;
-        let now = Utc::now().to_rfc3339();
         let updated = conn.execute(
             "UPDATE agent_sessions SET status = ?2, updated_at = ?3 WHERE session_id = ?1",
-            params![session_id, status.as_str(), now],
+            params![session_id, status.as_str(), updated_at],
         )?;
         Ok(updated > 0)
     })?;

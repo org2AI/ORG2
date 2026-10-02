@@ -94,7 +94,11 @@ fn model_candidates(key: &ModelKey) -> Vec<String> {
     for variant in &key.model_variants {
         push_unique(&mut candidates, &variant.model);
     }
-    for default_variant in &key.default_variants {
+    for default_variant in key
+        .default_variants
+        .iter()
+        .chain(&key.discovered_default_variants)
+    {
         push_unique(&mut candidates, &default_variant.model);
     }
 

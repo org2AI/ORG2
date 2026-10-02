@@ -174,6 +174,7 @@ async fn import_via_detector(selection: &CredentialSuggestion) -> Result<KeyInfo
         model_aliases: None,
         model_variants: None,
         default_variants: None,
+        default_variant_overrides: None,
         quota_info: key
             .quota_info
             .as_ref()
@@ -268,6 +269,7 @@ async fn import_generic(
         model_aliases: None,
         model_variants: None,
         default_variants: None,
+        default_variant_overrides: None,
         quota_info: None,
         has_local_key: Some(true),
         is_listed: None,

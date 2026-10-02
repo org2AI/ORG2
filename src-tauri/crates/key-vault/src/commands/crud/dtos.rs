@@ -108,6 +108,8 @@ pub struct SaveKeyRequest {
     pub model_aliases: Option<Vec<ModelAliasInfo>>,
     pub model_variants: Option<Vec<ModelVariantInfo>>,
     pub default_variants: Option<Vec<DefaultVariantInfo>>,
+    /// Family-scoped user choices; exclusive of the full account edit fields.
+    pub default_variant_overrides: Option<Vec<DefaultVariantInfo>>,
     pub quota_info: Option<serde_json::Value>,
     pub has_local_key: Option<bool>,
     pub is_listed: Option<bool>,
@@ -119,6 +121,8 @@ pub struct SaveKeyRequest {
 /// Full key response (unmasked, for internal use)
 #[derive(serde::Serialize)]
 pub struct FullKeyResponse {
+    pub credential_generation: u64,
+    pub model_catalog_generation: u64,
     pub id: String,
     pub name: Option<String>,
     pub agent_type: String,

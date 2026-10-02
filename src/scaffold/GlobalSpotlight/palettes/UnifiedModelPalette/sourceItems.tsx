@@ -4,12 +4,13 @@ import { KEY_SOURCE } from "@src/api/tauri/session";
 import ModelIcon from "@src/components/ModelIcon";
 import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
-import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
-import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
 import {
-  parseModelVariant,
-  resolveModelVariantFields,
-} from "@src/util/modelVariants";
+  accountHasModel,
+  accountModelIds,
+  isSelectableModelAccount,
+  resolveAccountModelVariant,
+} from "@src/hooks/models/accountModelCatalog";
+import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
 
 import type { SpotlightItem } from "../../types";
 import { VariantPill } from "./VariantPill";
@@ -37,16 +38,15 @@ export function buildSourceOptions(
   const options: SourceOption[] = [];
   const variantSet = new Set(modelIds.filter(Boolean));
 
-  const readyAccounts = accounts.filter(
-    (account) => account.status === "ready" && account.hasKey
-  );
+  const readyAccounts = accounts.filter(isSelectableModelAccount);
   for (const account of readyAccounts) {
     const hasConcreteModelFilter = variantSet.size > 0;
-    const hasAnyVariant =
-      account.availableModels && account.availableModels.length > 0
-        ? [...variantSet].some((modelId) => accountHasModel(account, modelId))
-        : false;
-    const modelMatches = hasConcreteModelFilter ? hasAnyVariant : isCliAgent;
+    const hasAnyVariant = [...variantSet].some((modelId) =>
+      accountHasModel(account, modelId)
+    );
+    const modelMatches = hasConcreteModelFilter
+      ? hasAnyVariant
+      : isCliAgent && accountModelIds(account).length === 0;
     if (modelMatches) {
       options.push(toSourceOption(account));
     }
@@ -89,12 +89,6 @@ export function buildSourceItems({
   handleSourceSelect,
   persistDefaultVariantForAccount,
 }: BuildSourceItemsParams): SpotlightItem[] {
-  const previewVariantInfo = selectedModelId
-    ? parseModelVariant(selectedModelId)
-    : null;
-  const previewBaseModel =
-    previewVariantInfo?.baseModel ?? selectedModelId ?? undefined;
-
   const accountById = new Map(accounts.map((account) => [account.id, account]));
 
   return sourceOptions.map((source) => {
@@ -104,6 +98,9 @@ export function buildSourceItems({
 
     const sourceAccount = source.accountId
       ? accountById.get(source.accountId)
+      : undefined;
+    const previewBaseModel = selectedModelId
+      ? resolveAccountModelVariant(sourceAccount, selectedModelId).base_model
       : undefined;
 
     const accountVariantIds = source.marketSource
@@ -116,6 +113,9 @@ export function buildSourceItems({
           )
         : [];
 
+    const variantInfos = accountVariantIds.map((modelId) =>
+      resolveAccountModelVariant(sourceAccount, modelId)
+    );
     let accountEffectiveModelId: string | undefined;
     if (
       (sourceAccount || source.marketSource) &&
@@ -127,9 +127,6 @@ export function buildSourceItems({
           entry.base_model === previewBaseModel &&
           accountVariantIds.includes(entry.model)
       )?.model;
-      const variantInfos = accountVariantIds.map((modelId) =>
-        resolveModelVariantFields(modelId)
-      );
       accountEffectiveModelId =
         resolveDefaultVariant(previewBaseModel, variantInfos, persisted) ??
         accountVariantIds[0];
@@ -158,6 +155,7 @@ export function buildSourceItems({
           <VariantPill
             modelId={accountEffectiveModelId}
             groupModelIds={accountVariantIds}
+            variantMetadata={variantInfos}
             onApply={handleApply}
           />
         );

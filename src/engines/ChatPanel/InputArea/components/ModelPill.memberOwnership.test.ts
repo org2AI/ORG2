@@ -4,11 +4,14 @@ import React, { act } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { Message } from "@src/components/Message";
+import { creatorDefaultModelSelectionAtom } from "@src/store/session/creatorDefaultModelAtom";
 import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 
 import ModelPill from "./ModelPill";
 
 const fixture = vi.hoisted(() => ({
+  sessionId: "member-session",
   rootApplyModelPick: vi.fn(),
   setMemberModel: vi.fn(),
   memberSession: {
@@ -33,7 +36,7 @@ vi.mock("@src/engines/ChatPanel/ConversationExecutionBindingContext", () => ({
   useConversationExecutionBinding: () => null,
 }));
 vi.mock("@src/engines/SessionCore/hooks/session", () => ({
-  useSessionId: () => ({ sessionId: "member-session" }),
+  useSessionId: () => ({ sessionId: fixture.sessionId }),
 }));
 vi.mock("@src/hooks/models/useValidatedLastPair", () => ({
   useValidatedLastPair: () => null,
@@ -64,7 +67,7 @@ vi.mock("@src/store/ui/chatPanel/displayPrefsAtoms", async () => {
 vi.mock("@src/components/AnyIcon", () => ({ default: () => null }));
 vi.mock("@src/components/ModelIcon", () => ({ default: () => null }));
 vi.mock("@src/components/Message", () => ({
-  Message: { info: vi.fn(), warning: vi.fn() },
+  Message: { info: vi.fn(), warning: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@src/components/SelectorPill", () => ({ default: () => null }));
 vi.mock("@src/components/ModelSelectorPill", async () => {
@@ -126,6 +129,7 @@ describe("ModelPill direct Member ownership", () => {
   beforeEach(() => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     fixture.rootApplyModelPick.mockReset();
+    fixture.sessionId = "member-session";
     fixture.setMemberModel.mockReset().mockResolvedValue(undefined);
     store = createStore();
     store.set(modelSelectorAtom, { isOpen: false });
@@ -134,7 +138,11 @@ describe("ModelPill direct Member ownership", () => {
     root = createRoot(container);
     act(() =>
       root.render(
-        React.createElement(Provider, { store }, React.createElement(ModelPill))
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(ModelPill, { key: fixture.sessionId })
+        )
       )
     );
   });
@@ -173,5 +181,93 @@ describe("ModelPill direct Member ownership", () => {
       "member-account-c"
     );
     expect(fixture.rootApplyModelPick).not.toHaveBeenCalled();
+  });
+
+  it("updates the creator default only after the session accepts the pick", async () => {
+    let finish!: () => void;
+    fixture.setMemberModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="chat-model-pill-model"]'
+        )
+        ?.click()
+    );
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="member-model-c"]')
+        ?.click()
+    );
+    expect(store.get(creatorDefaultModelSelectionAtom)).toBeNull();
+    await act(async () => finish());
+    expect(store.get(creatorDefaultModelSelectionAtom)).toMatchObject({
+      model: "gpt-member-c",
+      selectedAccountId: "member-account-c",
+    });
+  });
+
+  it("keeps the previous default on failure and permits a retry", async () => {
+    fixture.setMemberModel.mockRejectedValueOnce(new Error("Patch refused"));
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="chat-model-pill-model"]'
+        )
+        ?.click()
+    );
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="member-model-c"]')
+        ?.click()
+    );
+    expect(store.get(creatorDefaultModelSelectionAtom)).toBeNull();
+    expect(Message.error).toHaveBeenCalledWith("Patch refused");
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="member-model-c"]')
+        ?.click()
+    );
+    expect(store.get(creatorDefaultModelSelectionAtom)).toMatchObject({
+      model: "gpt-member-c",
+    });
+  });
+
+  it("does not publish a late default after navigating to another session", async () => {
+    let finish!: () => void;
+    fixture.setMemberModel.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="chat-model-pill-model"]'
+        )
+        ?.click()
+    );
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="member-model-c"]')
+        ?.click()
+    );
+    fixture.sessionId = "another-session";
+    act(() =>
+      root.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(ModelPill, { key: fixture.sessionId })
+        )
+      )
+    );
+    await act(async () => finish());
+    expect(store.get(creatorDefaultModelSelectionAtom)).toBeNull();
   });
 });

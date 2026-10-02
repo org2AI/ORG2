@@ -97,6 +97,13 @@ pub async fn prepare_session_for_scheduler_maintenance(
     if session_id.starts_with(core_types::session::CLI_SESSION_PREFIX) {
         return Err("Native CLI compaction is owned by the provider runtime".to_string());
     }
+    // Cold maintenance initialization reads the same identity as a send. Keep
+    // an overlapping picker edit from clearing the cache before this helper
+    // installs a runtime assembled with the previous model/account pair.
+    let _identity_guard = crate::state::session_identity_lock(session_id)
+        .await
+        .lock_owned()
+        .await;
     let needs_init = match state.get_session(session_id).await {
         Some(session) => session.get_runtime().await.is_none(),
         None => true,

@@ -270,10 +270,23 @@ pub(super) mod fixtures {
 
     /// Representative rows: two Official profiles with empty blobs, one
     /// Claude relay, one Codex relay with a TOML config, one Gemini key.
-    pub(crate) fn sample_rows() -> Vec<(&'static str, &'static str, &'static str, &'static str, bool)> {
+    pub(crate) fn sample_rows(
+    ) -> Vec<(&'static str, &'static str, &'static str, &'static str, bool)> {
         vec![
-            ("official", "claude", "Claude Official", r#"{"env":{}}"#, true),
-            ("official", "codex", "OpenAI Official", r#"{"auth":{},"config":""}"#, true),
+            (
+                "official",
+                "claude",
+                "Claude Official",
+                r#"{"env":{}}"#,
+                true,
+            ),
+            (
+                "official",
+                "codex",
+                "OpenAI Official",
+                r#"{"auth":{},"config":""}"#,
+                true,
+            ),
             (
                 "longcat",
                 "claude",

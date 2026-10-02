@@ -2,46 +2,10 @@ import { useMemo } from "react";
 
 import { type KeyVaultAccount, useKeyVault } from "@src/hooks/keyVault";
 
+import { selectableAccountModelIds } from "./accountModelCatalog";
 import type { ModelAccountInfo } from "./types";
 
-/**
- * Returns true if `account` has `modelId` enabled.
- *
- * Two ways an id counts as enabled:
- * - it is in `enabledModels` directly, or
- * - it is a variant row from `modelVariants` (e.g. a backend-synthesized
- *   effort rung like `claude-opus-4-8-high`) whose BASE model is enabled —
- *   variant ids never appear in enabledModels themselves, so gating on
- *   enabledModels alone hides every synthesized effort ladder from the
- *   picker's variant-edit affordance.
- */
-export function accountHasModel(
-  account: Pick<
-    KeyVaultAccount,
-    "availableModels" | "enabledModels" | "enabled" | "modelVariants"
-  >,
-  modelId: string
-): boolean {
-  if (!account.enabled) return false;
-  const enabled = new Set(account.enabledModels ?? []);
-  if (enabled.has(modelId)) return true;
-  return (account.modelVariants ?? []).some(
-    (variant) => variant.model === modelId && enabled.has(variant.base_model)
-  );
-}
-
-/**
- * Every model id an account exposes: `availableModels` plus variant ids
- * from `modelVariants` (deduped). The variant ids must enter the model
- * universe or `groupByModel` family expansion can never offer them.
- */
-export function accountModelIds(account: KeyVaultAccount): string[] {
-  const ids = new Set(account.availableModels ?? []);
-  for (const variant of account.modelVariants ?? []) {
-    if (variant.model) ids.add(variant.model);
-  }
-  return [...ids];
-}
+export { accountHasModel, accountModelIds } from "./accountModelCatalog";
 
 /**
  * Pure utility: build a lookup from model ID → account info
@@ -52,9 +16,7 @@ export function buildAccountLookup(
 ): Map<string, ModelAccountInfo> {
   const lookup = new Map<string, ModelAccountInfo>();
   for (const account of accounts) {
-    if (account.status !== "ready") continue;
-    for (const modelId of accountModelIds(account)) {
-      if (!modelId || !accountHasModel(account, modelId)) continue;
+    for (const modelId of selectableAccountModelIds(account)) {
       const existing = lookup.get(modelId);
       if (existing) {
         existing.totalKeys += 1;

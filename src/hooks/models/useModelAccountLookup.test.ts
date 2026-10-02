@@ -13,6 +13,7 @@ function claudeAccount(
     modelType: "claude_code",
     status: "ready",
     enabled: true,
+    hasKey: true,
     availableModels: ["claude-opus-4-8"],
     enabledModels: ["claude-opus-4-8"],
     // Backend-synthesized effort ladder: variant ids exist ONLY here,

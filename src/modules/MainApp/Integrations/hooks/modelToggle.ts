@@ -27,7 +27,6 @@ export async function toggleModelForAccounts(
         return saveKey({
           id: acc.id,
           agent_type: acc.modelType,
-          available_models: acc.availableModels ?? [],
           enabled_models: [...currentEnabled],
         });
       })

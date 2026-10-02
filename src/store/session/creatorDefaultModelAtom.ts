@@ -43,7 +43,11 @@ import type {
   CliAgentType,
   ModelType,
 } from "@src/api/tauri/rpc/schemas/validation";
-import { KEY_SOURCE, isHostedKey } from "@src/api/tauri/session";
+import {
+  type DispatchCategory,
+  KEY_SOURCE,
+  isHostedKey,
+} from "@src/api/tauri/session";
 import { formatAgentType } from "@src/assets/providers";
 import type {
   AdvancedConfig,
@@ -282,9 +286,15 @@ export const creatorDefaultModelSelectionAtom = atom(
     const pair = get(creatorDefaultModelPairAtom);
     return pair ? deriveLastModelSelection(pair) : null;
   },
-  (get, set, entry: RecentModelEntry | null) => {
+  (
+    get,
+    set,
+    entry: RecentModelEntry | null,
+    categoryOverride?: DispatchCategory
+  ) => {
     const map = get(creatorDefaultModelMapAtom);
-    const category = get(dispatchCategoryAtom);
+    // Session selections may finish after the creator changed categories.
+    const category = categoryOverride ?? get(dispatchCategoryAtom);
 
     const newMap: LastModelPairMap = {
       ...map,

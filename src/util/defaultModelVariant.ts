@@ -2,7 +2,7 @@ import type { ModelTableVariantInfo } from "@src/types/modelTable";
 import {
   MODEL_REASONING_LEVEL,
   type ModelReasoningLevel,
-  parseModelVariant,
+  resolveModelVariantFields,
   toModelReasoningLevel,
 } from "@src/util/modelVariants";
 
@@ -128,10 +128,15 @@ export function resolveDefaultVariant(
   ) {
     return persistedModel;
   }
-  if (persistedModel && !parseModelVariant(persistedModel)?.reasoning) {
-    const previous = parseModelVariant(persistedModel);
+  const previous = persistedModel
+    ? resolveModelVariantFields(
+        persistedModel,
+        variants.find((variant) => variant.model === persistedModel)
+      )
+    : undefined;
+  if (persistedModel && !previous?.reasoning) {
     const sameOptions = selectable.filter((variant) => {
-      const parsed = parseModelVariant(variant.model);
+      const parsed = resolveModelVariantFields(variant.model, variant);
       return (
         (parsed?.thinking ?? false) === (previous?.thinking ?? false) &&
         (parsed?.fast ?? false) === (previous?.fast ?? false)

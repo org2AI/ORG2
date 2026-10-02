@@ -2,11 +2,14 @@
 
 use serde_json::{json, Value};
 use std::collections::HashSet;
+use tauri::Manager;
 
 use crate::agent_sessions::cli::persistence as cli_persistence;
-use crate::agent_sessions::session_directory::patch::{apply_session_patch, SessionPatch};
+use crate::agent_sessions::session_directory::patch::{patch_session, SessionPatch};
 use agent_core::session::persistence as session_persistence;
-use key_vault::key_store::{HealthStatus, ModelKey, ModelType, KEY_SERVICE};
+use key_vault::commands::registry::is_cli_provider_compatible;
+use key_vault::commands::{key_info_from_entry, KeyInfo};
+use key_vault::key_store::KEY_SERVICE;
 
 use super::session::mobile_session_execution;
 use super::session::MobileSessionExecution;
@@ -86,73 +89,88 @@ fn load_session_model_state(session_id: &str) -> Result<MobileSessionModelState,
     }
 }
 
-fn key_is_usable(entry: &ModelKey) -> bool {
-    if !entry.enabled {
-        return false;
-    }
-    matches!(
-        entry.health_status,
-        HealthStatus::Valid | HealthStatus::Degraded | HealthStatus::Unknown
-    )
+fn key_is_usable(entry: &KeyInfo) -> bool {
+    entry.enabled
+        && matches!(
+            entry.health_status.as_str(),
+            "valid" | "degraded" | "unknown"
+        )
 }
 
-fn has_api_key(entry: &ModelKey) -> bool {
-    match entry.model_type {
-        ModelType::CursorCli => entry.api_key.as_deref().is_some_and(|api_key| {
-            let trimmed = api_key.trim();
-            trimmed.len() >= 20 && (trimmed.starts_with("key_") || trimmed.starts_with("crsr_"))
-        }),
-        _ => entry
-            .api_key
-            .as_deref()
-            .is_some_and(|secret| !secret.trim().is_empty()),
-    }
-}
-
-fn has_session_token(entry: &ModelKey) -> bool {
-    entry
-        .session_token
-        .as_deref()
-        .is_some_and(|token| !token.trim().is_empty())
-}
-
-fn supports_rust_agents(entry: &ModelKey) -> bool {
-    let has_api_key = has_api_key(entry);
-    let has_session_token = has_session_token(entry);
-    let can_use_native_harness =
-        matches!(entry.model_type, ModelType::CursorCli) && has_session_token;
-    if can_use_native_harness {
-        return true;
-    }
-    let has_usable_key_material = has_api_key || has_session_token;
-    match entry.model_type {
-        ModelType::CursorCli | ModelType::OrgiiOrchestrator => false,
-        ModelType::ClaudeCode
-        | ModelType::Codex
-        | ModelType::Copilot
-        | ModelType::Kiro
-        | ModelType::KimiCli
-        | ModelType::OpenCode => has_usable_key_material,
-        _ => has_api_key,
-    }
-}
-
-fn models_for_key(entry: &ModelKey) -> Vec<String> {
-    if !entry.enabled_models.is_empty() {
-        return entry.enabled_models.clone();
-    }
-    if !entry.available_models.is_empty() {
-        return entry.available_models.clone();
-    }
-    Vec::new()
-}
-
-fn account_label_for(entry: &ModelKey) -> String {
+fn account_label_for(entry: &KeyInfo) -> String {
     entry
         .name
         .clone()
         .filter(|name| !name.trim().is_empty())
-        .unwrap_or_else(|| entry.model_type.as_str().to_string())
+        .unwrap_or_else(|| entry.agent_type.clone())
+}
+
+fn supports_session(
+    entry: &KeyInfo,
+    execution: MobileSessionExecution,
+    state: &MobileSessionModelState,
+) -> bool {
+    match execution {
+        MobileSessionExecution::ManagedCli => {
+            state.cli_agent_type.as_deref().is_some_and(|agent| {
+                if agent == entry.agent_type {
+                    entry.can_launch_cli
+                } else {
+                    entry.has_api_key && is_cli_provider_compatible(agent, &entry.agent_type)
+                }
+            })
+        }
+        MobileSessionExecution::NativeAgent => entry.supports_rust_agents,
+        MobileSessionExecution::ImportedHistory => false,
+    }
+}
+
+/// A bounded projection of the same account inventory/enablement used on desktop.
+/// The current value is retained for presentation, even when no longer selectable.
+fn collect_model_options(
+    keys: &[KeyInfo],
+    execution: MobileSessionExecution,
+    state: &MobileSessionModelState,
+) -> Vec<MobileModelOption> {
+    let mut options = Vec::new();
+    let mut seen = HashSet::new();
+
+    // Reserve the current selection before filling the bounded catalog so it
+    // cannot create a 257th row that the mobile wire validator would reject.
+    if let Some(current_model) = state.model.as_deref() {
+        let current_account = state.account_id.as_deref().unwrap_or("");
+        seen.insert((current_account.to_string(), current_model.to_string()));
+        options.push(MobileModelOption {
+            id: current_model.to_string(),
+            account_id: current_account.to_string(),
+            account_label: keys
+                .iter()
+                .find(|entry| entry.id == current_account)
+                .map(account_label_for)
+                .unwrap_or_else(|| "Current".to_string()),
+        });
+    }
+
+    for entry in keys
+        .iter()
+        .filter(|entry| key_is_usable(entry) && supports_session(entry, execution, state))
+    {
+        let account_label = account_label_for(entry);
+        for model_id in entry.selectable_model_ids() {
+            if options.len() >= MAX_MOBILE_MODEL_OPTIONS {
+                return options;
+            }
+            if !seen.insert((entry.id.clone(), model_id.clone())) {
+                continue;
+            }
+            options.push(MobileModelOption {
+                id: model_id,
+                account_id: entry.id.clone(),
+                account_label: account_label.clone(),
+            });
+        }
+    }
+    options
 }
 
 fn collect_model_options_for_session(
@@ -161,73 +179,23 @@ fn collect_model_options_for_session(
 ) -> Result<Vec<MobileModelOption>, RpcError> {
     let keys = KEY_SERVICE
         .list_keys_checked()
+        .and_then(|keys| {
+            keys.into_iter()
+                .map(key_info_from_entry)
+                .collect::<Result<Vec<_>, _>>()
+        })
         .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?;
-
-    let mut options = Vec::new();
-    let mut seen = HashSet::new();
-    let execution = mobile_session_execution(session_id);
-
-    for entry in keys.iter().filter(|entry| key_is_usable(entry)) {
-        let include = match execution {
-            MobileSessionExecution::ManagedCli => state
-                .cli_agent_type
-                .as_deref()
-                .and_then(ModelType::from_str)
-                .is_some_and(|agent| agent == entry.model_type),
-            MobileSessionExecution::NativeAgent => supports_rust_agents(entry),
-            MobileSessionExecution::ImportedHistory => false,
-        };
-        if !include {
-            continue;
-        }
-
-        let account_label = account_label_for(entry);
-        for model_id in models_for_key(entry) {
-            let dedupe_key = format!("{}::{}", entry.id, model_id);
-            if !seen.insert(dedupe_key) {
-                continue;
-            }
-            options.push(MobileModelOption {
-                id: model_id,
-                account_id: entry.id.clone(),
-                account_label: account_label.clone(),
-            });
-            if options.len() >= MAX_MOBILE_MODEL_OPTIONS {
-                break;
-            }
-        }
-        if options.len() >= MAX_MOBILE_MODEL_OPTIONS {
-            break;
-        }
-    }
-
-    if let Some(current_model) = state.model.as_deref() {
-        let current_account = state.account_id.as_deref().unwrap_or("");
-        let dedupe_key = format!("{current_account}::{current_model}");
-        if seen.insert(dedupe_key) {
-            let account_label = keys
-                .iter()
-                .find(|entry| entry.id == current_account)
-                .map(account_label_for)
-                .unwrap_or_else(|| "Current".to_string());
-            options.insert(
-                0,
-                MobileModelOption {
-                    id: current_model.to_string(),
-                    account_id: current_account.to_string(),
-                    account_label,
-                },
-            );
-        }
-    }
-
-    Ok(options)
+    Ok(collect_model_options(
+        &keys,
+        mobile_session_execution(session_id),
+        state,
+    ))
 }
 
 /// Return the session's current model configuration for the mobile picker.
 pub async fn session_config(params: &Value) -> Result<Value, RpcError> {
     let session_id = parse_session_id(params)?;
-    let state = load_session_model_state(&session_id)?;
+    let state = load_session_model_state_async(session_id.clone()).await?;
 
     Ok(json!({
         "sessionId": session_id,
@@ -261,7 +229,7 @@ pub async fn session_patch(params: &Value) -> Result<Value, RpcError> {
         .filter(|value| !value.is_empty())
         .map(str::to_string);
 
-    let state = load_session_model_state(&session_id)?;
+    let state = load_session_model_state_async(session_id.clone()).await?;
     if !state.model_editable {
         return Err(RpcError::new(
             RpcErrorCode::InvalidRequest,
@@ -269,14 +237,19 @@ pub async fn session_patch(params: &Value) -> Result<Value, RpcError> {
         ));
     }
 
-    apply_session_patch(
-        &session_id,
-        &SessionPatch {
+    let handle = crate::api::get_app_handle()
+        .ok_or_else(|| RpcError::new(RpcErrorCode::InvalidRequest, "desktop agent not ready"))?;
+    let app_state = handle.state::<agent_core::state::AgentAppState>();
+    patch_session(
+        app_state.inner(),
+        session_id.clone(),
+        SessionPatch {
             model: Some(model.clone()),
             account_id,
             ..Default::default()
         },
     )
+    .await
     .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err))?;
 
     Ok(json!({
@@ -288,12 +261,15 @@ pub async fn session_patch(params: &Value) -> Result<Value, RpcError> {
 /// List selectable models for a session, sourced from the desktop KeyVault.
 pub async fn models_list(params: &Value) -> Result<Value, RpcError> {
     let session_id = parse_session_id(params)?;
-    let state = load_session_model_state(&session_id)?;
-    if !state.model_editable {
-        return Ok(json!({ "models": [] }));
-    }
-
-    let options = collect_model_options_for_session(&session_id, &state)?;
+    let options = tokio::task::spawn_blocking(move || {
+        let state = load_session_model_state(&session_id)?;
+        if !state.model_editable {
+            return Ok(Vec::new());
+        }
+        collect_model_options_for_session(&session_id, &state)
+    })
+    .await
+    .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err.to_string()))??;
     let models = options
         .into_iter()
         .map(|option| {
@@ -308,31 +284,14 @@ pub async fn models_list(params: &Value) -> Result<Value, RpcError> {
     Ok(json!({ "models": models }))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_session_id_rejects_empty() {
-        let err = parse_session_id(&json!({ "sessionId": "  " })).unwrap_err();
-        assert_eq!(err.code, RpcErrorCode::InvalidParams);
-    }
-
-    #[test]
-    fn supports_rust_agents_allows_byok_api_keys() {
-        let mut entry = ModelKey::new(ModelType::AnthropicApi);
-        entry.api_key = Some("sk-ant-test-key-1234567890".to_string());
-        assert!(supports_rust_agents(&entry));
-    }
-
-    #[test]
-    fn models_for_key_prefers_enabled_models() {
-        let mut entry = ModelKey::new(ModelType::AnthropicApi);
-        entry.enabled_models = vec!["claude-sonnet-4-5".to_string()];
-        entry.available_models = vec!["claude-opus-4-5".to_string()];
-        assert_eq!(
-            models_for_key(&entry),
-            vec!["claude-sonnet-4-5".to_string()]
-        );
-    }
+async fn load_session_model_state_async(
+    session_id: String,
+) -> Result<MobileSessionModelState, RpcError> {
+    tokio::task::spawn_blocking(move || load_session_model_state(&session_id))
+        .await
+        .map_err(|err| RpcError::new(RpcErrorCode::InvalidRequest, err.to_string()))?
 }
+
+#[cfg(test)]
+#[path = "model_tests.rs"]
+mod tests;

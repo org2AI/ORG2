@@ -255,6 +255,28 @@ async fn generate_title_before_first_turn(
         return;
     }
 
+    // This task is spawned independently of the initial turn. Its captured
+    // launch defaults may be older than an already acknowledged picker edit.
+    let identity_guard = crate::state::session_identity_lock(session_id)
+        .await
+        .lock_owned()
+        .await;
+    let (model, account_id) =
+        match crate::state::commands::session::identity::resolve_initialization_model_pair(
+            state,
+            session_id,
+            model.as_deref(),
+            account_id.as_deref(),
+        )
+        .await
+        {
+            Ok(pair) => pair,
+            Err(error) => {
+                tracing::warn!(session_id = %session_id, %error, "[session_title] failed to load current model selection");
+                return;
+            }
+        };
+
     let launch_spec = match AgentLaunchSpec::from_session_sources(
         state,
         session_id,
@@ -287,6 +309,9 @@ async fn generate_title_before_first_turn(
             return;
         }
     };
+    // Only runtime installation is serialized; title generation is an
+    // independent provider request and must not block a next-turn selection.
+    drop(identity_guard);
 
     let title = crate::session::title::generate_and_persist_session_title(
         session_id,

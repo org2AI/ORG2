@@ -350,6 +350,26 @@ export async function updateKeyHealth(
   });
 }
 
+/** Atomically replace discovery metadata without replaying user preferences. */
+export async function refreshKeyModelCatalog(
+  keyId: string,
+  catalogRefresh: {
+    expectedCredentialGeneration: number;
+    expectedCatalogGeneration: number;
+    availableModels: string[];
+    modelVariants: ModelVariantInfo[] | null;
+    defaultVariants: DefaultVariantInfo[] | null;
+    modelContextLengths: ModelContextLengths;
+  }
+): Promise<KeyInfo | null> {
+  return rpc.validation.updateKeyHealth({
+    keyId,
+    // Catalog writes preserve health from the authoritative stored entry.
+    healthStatus: "unknown",
+    catalogRefresh,
+  });
+}
+
 /** Polish a chat draft through the configured local MiniCPM vLLM account. */
 export async function promptPolish(
   text: string,

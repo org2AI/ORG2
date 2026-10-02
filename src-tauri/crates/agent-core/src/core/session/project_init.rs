@@ -7,6 +7,17 @@ use crate::session::persistence as unified_persistence;
 use crate::state::{AgentAppState, SessionRuntime};
 use core_types::key_source::KeySource;
 
+fn seed_missing_workspace_identity(
+    record: &mut unified_persistence::UnifiedSessionRecord,
+    model: String,
+    account_id: Option<String>,
+) {
+    if record.model.as_deref().is_none_or(str::is_empty) {
+        record.model = Some(model);
+        record.account_id = account_id;
+    }
+}
+
 /// Initialize a workspace-scoped session's runtime using the unified init path.
 ///
 /// Agent resolve contract (design doc §11.4): coding sessions resolve against the session's
@@ -21,6 +32,10 @@ use core_types::key_source::KeySource;
 /// `message_pipeline` fallback branch (which can only synthesize a
 /// generic OS-typed row with an empty `workspace_path`) ever sees this
 /// session id.
+///
+/// The production channel dispatcher owns `session_identity_lock` across
+/// resolving the current model/account, this initialization, and the eager
+/// persistence below. Do not reacquire that non-reentrant lock here.
 pub async fn init_workspace_session(
     state: &AgentAppState,
     session_id: &str,
@@ -59,10 +74,9 @@ pub async fn init_workspace_session(
             // don't overwrite channel / chat_id / parent metadata that a
             // previous dispatch established.
             Some(mut existing) => {
-                existing.model = Some(model_owned);
-                if existing.account_id.is_none() {
-                    existing.account_id = account_owned;
-                }
+                // The caller resolved the chosen pair while holding the
+                // identity lock. Preserve an existing persisted selection.
+                seed_missing_workspace_identity(&mut existing, model_owned, account_owned);
                 let needs_workspace = existing
                     .workspace_path
                     .as_deref()
@@ -132,4 +146,60 @@ pub async fn init_workspace_session(
     }
 
     Ok(runtime)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn eager_workspace_write_preserves_selected_model_and_account() {
+        let mut record = unified_persistence::UnifiedSessionRecord {
+            model: Some("selected".into()),
+            account_id: Some("selected-account".into()),
+            ..Default::default()
+        };
+        seed_missing_workspace_identity(
+            &mut record,
+            "stale-default".into(),
+            Some("stale-account".into()),
+        );
+        assert_eq!(record.model.as_deref(), Some("selected"));
+        assert_eq!(record.account_id.as_deref(), Some("selected-account"));
+    }
+
+    #[test]
+    fn eager_workspace_write_does_not_fill_a_credential_owned_account() {
+        let mut record = unified_persistence::UnifiedSessionRecord {
+            model: Some("market-model".into()),
+            credential_source: Some("market:selection".into()),
+            ..Default::default()
+        };
+        seed_missing_workspace_identity(
+            &mut record,
+            "gateway-model".into(),
+            Some("personal-account".into()),
+        );
+        assert_eq!(record.model.as_deref(), Some("market-model"));
+        assert_eq!(record.account_id, None);
+        assert_eq!(
+            record.credential_source.as_deref(),
+            Some("market:selection")
+        );
+    }
+
+    #[test]
+    fn eager_workspace_write_seeds_identity_as_a_complete_pair() {
+        let mut record = unified_persistence::UnifiedSessionRecord {
+            account_id: Some("identity-less-old-account".into()),
+            ..Default::default()
+        };
+        seed_missing_workspace_identity(
+            &mut record,
+            "gateway-model".into(),
+            Some("gateway-account".into()),
+        );
+        assert_eq!(record.model.as_deref(), Some("gateway-model"));
+        assert_eq!(record.account_id.as_deref(), Some("gateway-account"));
+    }
 }

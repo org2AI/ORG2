@@ -23,13 +23,13 @@ pub use oauth::{
 };
 pub use opencode::{validate_opencode_key, OPENCODE_GO_BASE_URL, OPENCODE_ZEN_BASE_URL};
 pub use quota_dispatch::fetch_key_quota;
-pub use suggestions::{
-    import_credential_suggestions, list_credential_suggestions, CredentialImportItemReport,
-    CredentialImportReport, CredentialImportStatus,
-};
 pub use quota_refresh::{
     get_key_quota_refresh_status, invalidate_key_quota_runtime, key_quota_refresh_status,
     refresh_key_quota, KeyQuotaRefreshAttemptInfo, KeyQuotaRefreshStatusInfo,
+};
+pub use suggestions::{
+    import_credential_suggestions, list_credential_suggestions, CredentialImportItemReport,
+    CredentialImportReport, CredentialImportStatus,
 };
 
 // Only the `commands/tests` suite reaches this projection helper.

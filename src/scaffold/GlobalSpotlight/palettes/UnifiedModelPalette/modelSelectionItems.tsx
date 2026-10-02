@@ -3,20 +3,19 @@ import React from "react";
 import ModelIcon from "@src/components/ModelIcon";
 import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
+import {
+  accountHasModel,
+  groupCatalogModels,
+  resolveAccountModelVariant,
+} from "@src/hooks/models/accountModelCatalog";
 import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 import type { ModelAccountInfo } from "@src/hooks/models/types";
-import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
 import type { RecentModelEntry } from "@src/store/session/recentModelEntriesAtom";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
 import {
   compareModelsByVersion,
   formatModelNameFull,
 } from "@src/util/formatModelName";
-import { groupModels } from "@src/util/modelGrouping";
-import {
-  parseModelVariant,
-  resolveModelVariantFields,
-} from "@src/util/modelVariants";
 
 import type { SpotlightItem } from "../../types";
 import { VariantPill } from "./VariantPill";
@@ -71,7 +70,11 @@ export function buildModelSelectionSpotlightItem({
   const concreteModelDisplay =
     getModelAliasDisplayName(entry.modelId) ??
     formatModelNameFull(entry.modelId, entryAgentType);
-  const groupedModel = groupModels([...family], entryAgentType)[0];
+  const groupedModel = groupCatalogModels(
+    [...family],
+    recentAccount ? [recentAccount] : accounts,
+    entryAgentType
+  )[0];
   const modelDisplay =
     groupedModel && groupedModel.label !== "Other"
       ? groupedModel.label
@@ -110,9 +113,11 @@ export function buildModelSelectionSpotlightItem({
     ? family.filter((modelId) => accountHasModel(recentAccount, modelId))
     : [entry.modelId];
 
-  const variant = parseModelVariant(entry.modelId);
-  const previewBaseModel =
-    variant?.baseModel ?? resolveModelVariantFields(entry.modelId).base_model;
+  const variant = resolveAccountModelVariant(recentAccount, entry.modelId);
+  const previewBaseModel = variant.base_model;
+  const variantInfos = accountFamilyIds.map((modelId) =>
+    resolveAccountModelVariant(recentAccount, modelId)
+  );
   const persistedVariant =
     recentAccount && previewBaseModel
       ? (recentAccount.defaultVariants ?? []).find(
@@ -125,7 +130,7 @@ export function buildModelSelectionSpotlightItem({
     previewBaseModel && accountFamilyIds.length > 0
       ? (resolveDefaultVariant(
           previewBaseModel,
-          accountFamilyIds.map((modelId) => resolveModelVariantFields(modelId)),
+          variantInfos,
           persistedVariant
         ) ?? entry.modelId)
       : entry.modelId;
@@ -146,16 +151,16 @@ export function buildModelSelectionSpotlightItem({
       : undefined;
 
   const accountHasMultipleVariants = accountFamilyIds.length > 1;
-  const trailing: React.ReactNode =
-    variant && accountHasMultipleVariants ? (
-      <VariantPill
-        modelId={effectiveVariantModel}
-        groupModelIds={accountFamilyIds}
-        onApply={handleApply}
-      />
-    ) : (
-      <VariantPill modelId={variant?.baseModel ?? entry.modelId} />
-    );
+  const trailing: React.ReactNode = accountHasMultipleVariants ? (
+    <VariantPill
+      modelId={effectiveVariantModel}
+      groupModelIds={accountFamilyIds}
+      variantMetadata={variantInfos}
+      onApply={handleApply}
+    />
+  ) : (
+    <VariantPill modelId={previewBaseModel} />
+  );
 
   return withModelRowAttributes({
     id: `${idPrefix}:${entry.modelId}:${entry.accountId ?? entry.sourceType}`,
@@ -201,7 +206,7 @@ export function buildAllModelItems({
 
   const items: SpotlightItem[] = [];
   const modelIds = Array.from(accountLookup.keys());
-  const groups = groupModels(modelIds);
+  const groups = groupCatalogModels(modelIds, accounts);
 
   const getAccountCount = (modelIdsForRow: string[]) =>
     accounts.filter(
@@ -304,7 +309,7 @@ export function buildAllModelItems({
 
     items.push(
       withModelRowAttributes({
-        id: `group:${group.label}:${group.sortVersion}`,
+        id: `group:${group.label}:${group.sortVersion}:${representativeModel}`,
         label: searchableLabel,
         icon: GroupItemIcon,
         type: "action" as const,

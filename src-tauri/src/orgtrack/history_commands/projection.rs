@@ -272,6 +272,7 @@ pub(super) fn projected_rounds_to_cached_turns(
             let duration_ms =
                 projected_round_duration_ms(&round.started_at, round.ended_at.as_deref());
             CachedTurnSummary {
+                execution: None,
                 session_id: session_id.to_string(),
                 turn_id: round.turn_id.clone(),
                 turn_intent_id: None,

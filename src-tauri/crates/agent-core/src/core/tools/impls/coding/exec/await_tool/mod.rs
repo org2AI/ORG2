@@ -110,8 +110,8 @@ impl Tool for AwaitTool {
         The body includes one `--- [<handle>] last N lines ---` block per handle.\n\n\
         For `list`, returns a table of handles with kind, status, age, and label.\n\n\
         IMPORTANT: Do NOT call this tool repeatedly to poll a running job (shell or subagent). \
-        The system injects a background-jobs reminder into every turn automatically, and an idle \
-        session is resumed automatically when a background job finishes. If a job is still \
+        The system injects a background-jobs reminder into every turn automatically, and ordinary idle \
+        session may resume when a background job finishes. Agent Org services do not wake the model or block Turn completion. If a job is still \
         running after wait_for returns, proceed with other tasks — or end your turn if the \
         job's result is all that remains."
     }
@@ -128,7 +128,7 @@ impl Tool for AwaitTool {
                 "handles": {
                     "type": "array",
                     "items": { "type": "string" },
-                    "description": "Handles of the background jobs (PIDs for shells, session IDs for subagents). Required for wait_for/monitor. Pass a single-element array for one job."
+                    "description": "Handles of the background jobs (opaque shell registrations, session IDs for subagents). Required for wait_for/monitor. Pass a single-element array for one job."
                 },
                 "wait_mode": {
                     "type": "string",
@@ -207,6 +207,20 @@ impl Tool for AwaitTool {
             None => "monitor",
         };
 
+        if matches!(
+            ctx.authority,
+            crate::tools::call_context::ToolCallAuthority::PersistedAgentOrg(_)
+        ) {
+            if command == "list" {
+                return Ok(response::build_list_response(&super::registry::list_jobs(
+                    Some(&ctx.session_id),
+                )));
+            }
+            for handle in params::parse_handles(&params)? {
+                super::registry::require_job_session(&handle, &ctx.session_id)
+                    .map_err(ToolError::ExecutionFailed)?;
+            }
+        }
         match command {
             "wait_for" => self.run_wait_for(&params).await,
             "monitor" => self.run_monitor(&params).await,

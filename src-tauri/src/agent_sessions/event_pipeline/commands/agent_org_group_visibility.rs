@@ -43,6 +43,14 @@ pub(super) fn retain_ordinary_session_events(
             group_round = group_root_source_ids.contains(&event.id);
         }
         !group_round
+            || event
+                .args
+                .get("agentOrgExecution")
+                .is_some_and(serde_json::Value::is_object)
+            || event
+                .result
+                .get("agentOrgExecution")
+                .is_some_and(serde_json::Value::is_object)
     });
 }
 

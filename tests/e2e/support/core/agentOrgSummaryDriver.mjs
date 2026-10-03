@@ -28,6 +28,75 @@ import {
   sendNewWorkAfterObsoleteWake,
 } from "./agentOrgWakeDriver.mjs";
 
+async function assertRenderedSummaryExecution(intent) {
+  await browser.waitUntil(
+    async () =>
+      execJS(`
+      return Array.from(document.querySelectorAll('[data-testid="agent-org-execution-header"]'))
+        .some(header => header.getAttribute('data-turn-intent-id') === ${JSON.stringify(intent)} &&
+          (header.textContent || '').includes('Final report'));
+    `),
+    {
+      timeout: 20000,
+      interval: 100,
+      timeoutMsg: `Summary execution ${intent} has no real history header`,
+    }
+  );
+}
+
+async function assertFinalizingDraftGuard(root, marker) {
+  const inputSelector = '[data-testid="chat-input"] [contenteditable="true"]';
+  await browser.waitUntil(async () => execJS(js.exists(inputSelector)), {
+    timeout: 10_000,
+    interval: 50,
+    timeoutMsg: "Finalizing composer did not mount",
+  });
+  if ((await execJS(js.type(inputSelector, marker))) !== "typed") {
+    throw new Error("Finalizing composer did not accept a local draft");
+  }
+  const before = rows(
+    `SELECT id FROM events WHERE session_id=${literal(root)} AND args_json LIKE ${literal(`%${marker}%`)}`
+  );
+  await browser.keys("\uE007");
+  await browser.pause(150);
+  const state = await execJS(`
+    const visible = element => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    };
+    const shells = Array.from(document.querySelectorAll('[data-testid="chat-input"]')).filter(visible);
+    const shell = shells.at(-1) ?? null;
+    const editor = shell?.querySelector('[contenteditable="true"]') ?? null;
+    const send = shell?.querySelector('[data-testid="chat-send-button"]') ?? null;
+    const banner = Array.from(document.querySelectorAll('[data-testid="agent-org-finalizing-banner"]')).find(visible) ?? null;
+    return {
+      draft: editor?.textContent ?? null,
+      editable: editor?.getAttribute('contenteditable') ?? null,
+      sendDisabled: send?.disabled ?? null,
+      sendState: send?.getAttribute('data-state') ?? null,
+      bannerText: banner?.textContent ?? null,
+    };
+  `);
+  const after = rows(
+    `SELECT id FROM events WHERE session_id=${literal(root)} AND args_json LIKE ${literal(`%${marker}%`)}`
+  );
+  if (
+    !state?.draft?.includes(marker) ||
+    state.editable !== "true" ||
+    !(
+      (state.sendState === "submit" && state.sendDisabled === true) ||
+      (state.sendState === "stop" && state.sendDisabled === false)
+    ) ||
+    !state.bannerText ||
+    before.length !== after.length
+  ) {
+    throw new Error(
+      `Finalizing draft was sent, cleared, or hidden: ${JSON.stringify({ state, before, after })}`
+    );
+  }
+}
+
 export async function runSummaryStopScenario(window, { postJson }) {
   if ((process.env.E2E_PROVIDER_MODE ?? "mock") !== "mock")
     throw new Error(
@@ -96,6 +165,8 @@ export async function runSummaryStopScenario(window, { postJson }) {
   if (window === "before")
     await probeObsoleteAssignmentWake(runId, { postJson });
   await clickRenderedMemberSwitcher("coordinator", root);
+  const blockedDraft = `finalizing-draft-${window}-${RUN_ID}`;
+  await assertFinalizingDraftGuard(root, blockedDraft);
   let streamWindow;
   if (window === "stream")
     await browser.waitUntil(
@@ -112,6 +183,43 @@ export async function runSummaryStopScenario(window, { postJson }) {
         timeout: 15000,
         interval: 150,
         timeoutMsg: "Report provider did not reach its streaming window",
+      }
+    );
+  if (window === "stream")
+    await browser.waitUntil(
+      async () => {
+        const current = await invokeE2E("inspectChatState");
+        const live = current?.chatEvents?.find(
+          (event) => event.args?.syntheticLive === true
+        );
+        const rendered = await execJS(`
+          const headers = Array.from(document.querySelectorAll('[data-testid="agent-org-execution-header"]'));
+          const latest = headers.at(-1);
+          return {
+            intent: latest?.getAttribute('data-turn-intent-id'),
+            title: latest?.textContent,
+            navigation: Array.from(document.querySelectorAll('[aria-label^="Go to turn "]'))
+              .map(node => node.getAttribute('aria-label')),
+          };
+        `);
+        // The fake provider's delta window need not create an active snapshot,
+        // and compact layouts can omit the navigator. Assert the actual formal
+        // header; when live text/navigation is present it must share that owner.
+        return (
+          rendered.intent === first.turnIntentId &&
+          rendered.title?.includes("Coordinator · Final report") &&
+          (!live ||
+            live.args?.agentOrgExecution?.turnIntentId ===
+              first.turnIntentId) &&
+          (rendered.navigation.length === 0 ||
+            rendered.navigation.at(-1)?.includes("Coordinator · Final report"))
+        );
+      },
+      {
+        timeout: 5000,
+        interval: 100,
+        timeoutMsg:
+          "Streaming report did not retain its formal execution header",
       }
     );
   const stop = '[data-testid="chat-send-button"][data-state="stop"]';
@@ -145,6 +253,20 @@ export async function runSummaryStopScenario(window, { postJson }) {
       timeoutMsg: "Report Stop left the rendered composer in its running state",
     }
   );
+  const stoppedDraft = await execJS(
+    js.editorText('[data-testid="chat-input"] [contenteditable="true"]')
+  );
+  if (!String(stoppedDraft ?? "").includes(blockedDraft)) {
+    throw new Error("Report Stop did not preserve the finalizing draft");
+  }
+  if (
+    (await execJS(
+      js.type('[data-testid="chat-input"] [contenteditable="true"]', "")
+    )) !== "typed"
+  ) {
+    throw new Error("Stopped report draft could not be cleared for Retry");
+  }
+  await assertRenderedSummaryExecution(first.turnIntentId);
   const stopEventId = `agent-org-${first.receiptId}`;
   if (
     rows(
@@ -169,6 +291,15 @@ export async function runSummaryStopScenario(window, { postJson }) {
     button.click(); button.click(); return true;
   `);
   if (!retried) throw new Error("Rendered report Retry button was unavailable");
+  await browser.waitUntil(
+    async () =>
+      execJS(js.exists('[data-testid="agent-org-finalizing-banner"]')),
+    {
+      timeout: 10_000,
+      interval: 50,
+      timeoutMsg: "Report Retry did not restore the Finalizing input guard",
+    }
+  );
   const persisted = await waitForAgentOrgRunView(
     root,
     (view) =>
@@ -228,6 +359,22 @@ export async function runSummaryStopScenario(window, { postJson }) {
       view?.runStatus === "idle",
     "same report survives application restart"
   );
+  await clickRenderedMemberSwitcher("coordinator", root);
+  await assertRenderedSummaryExecution(persisted.finalSummary.turnIntentId);
+  const historyAnchors = rows(
+    `SELECT args_json FROM events WHERE session_id=${literal(root)} AND id IN (${literal(`agent-org-execution-${first.turnIntentId}`)},${literal(`agent-org-execution-${persisted.finalSummary.turnIntentId}`)})`
+  );
+  if (
+    historyAnchors.length !== 2 ||
+    historyAnchors.some(
+      (row) =>
+        JSON.parse(row.args_json).agentOrgExecution?.sourceKind !==
+        "final_summary"
+    )
+  )
+    throw new Error(
+      "Stopped and retried summary executions lost their durable source identity"
+    );
   const folder = process.env.E2E_EVIDENCE_DIR;
   if (folder) {
     mkdirSync(folder, { recursive: true });

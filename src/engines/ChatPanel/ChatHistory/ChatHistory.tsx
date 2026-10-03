@@ -78,8 +78,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     () =>
       agentOrgCurrentMemberId !== null &&
       agentOrgMembers.some(
-        (member) =>
-          member.memberId === agentOrgCurrentMemberId && !member.isCoordinator
+        (member) => member.memberId === agentOrgCurrentMemberId
       ),
     [agentOrgCurrentMemberId, agentOrgMembers]
   );

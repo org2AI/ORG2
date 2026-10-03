@@ -17,11 +17,17 @@ import { atom } from "jotai";
 // Types
 // ============================================
 
-export type ShellProcessStatus = "running" | "background" | "exited" | "killed";
+export type ShellProcessStatus =
+  | "running"
+  | "background"
+  | "exited"
+  | "killed"
+  | "unknown";
 
 export interface ShellProcessState {
   pid: number;
   callId: string;
+  handle?: string;
   command: string;
   status: ShellProcessStatus;
   exitCode?: number;
@@ -41,7 +47,10 @@ function pruneExitedProcesses(
   sessionMap: Map<number, ShellProcessState>
 ): void {
   const exited = [...sessionMap.entries()].filter(
-    ([, proc]) => proc.status === "exited" || proc.status === "killed"
+    ([, proc]) =>
+      proc.status === "exited" ||
+      proc.status === "killed" ||
+      proc.status === "unknown"
   );
   if (exited.length <= MAX_EXITED_PROCESSES) return;
   exited.sort(([, a], [, b]) => a.startedAt - b.startedAt);
@@ -71,6 +80,7 @@ export const updateShellProcessAtom = atom(
           sessionId: string;
           pid: number;
           callId: string;
+          handle?: string;
           command: string;
         }
       | {
@@ -78,14 +88,23 @@ export const updateShellProcessAtom = atom(
           sessionId: string;
           pid: number;
           callId: string;
+          handle?: string;
           exitCode?: number;
           killed: boolean;
+        }
+      | {
+          type: "unknown";
+          sessionId: string;
+          pid: number;
+          callId: string;
+          handle?: string;
         }
       | {
           type: "background";
           sessionId: string;
           pid: number;
           callId: string;
+          handle?: string;
         }
   ) => {
     const currentMap = get(shellProcessMapAtom);
@@ -107,6 +126,7 @@ export const updateShellProcessAtom = atom(
         sessionProcesses.set(action.pid, {
           pid: action.pid,
           callId: action.callId,
+          handle: action.handle,
           command: action.command,
           status: "running",
           startedAt: Date.now(),
@@ -114,16 +134,26 @@ export const updateShellProcessAtom = atom(
         break;
       }
 
+      case "unknown":
       case "exit": {
         const sessionProcesses = newMap.get(action.sessionId);
         if (sessionProcesses) {
           const process = sessionProcesses.get(action.pid);
-          if (process && process.callId === action.callId) {
+          if (
+            process &&
+            process.callId === action.callId &&
+            (!process.handle || process.handle === action.handle)
+          ) {
             const newSessionProcesses = new Map(sessionProcesses);
             newSessionProcesses.set(action.pid, {
               ...process,
-              status: action.killed ? "killed" : "exited",
-              exitCode: action.exitCode,
+              status:
+                action.type === "unknown"
+                  ? "unknown"
+                  : action.killed
+                    ? "killed"
+                    : "exited",
+              exitCode: action.type === "unknown" ? undefined : action.exitCode,
             });
             pruneExitedProcesses(newSessionProcesses);
             if (newSessionProcesses.size === 0) {
@@ -143,7 +173,8 @@ export const updateShellProcessAtom = atom(
           if (
             process &&
             process.status === "running" &&
-            process.callId === action.callId
+            process.callId === action.callId &&
+            (!process.handle || process.handle === action.handle)
           ) {
             // Clone session map and update process
             const newSessionProcesses = new Map(sessionProcesses);

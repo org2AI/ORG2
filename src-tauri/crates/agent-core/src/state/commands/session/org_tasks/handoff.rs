@@ -803,6 +803,12 @@ async fn ensure_receipt_local_execution_released(
     {
         return Err("task_execution_handoff_local_writer_still_active".to_string());
     }
+    crate::tools::impls::coding::exec::registry::cancel_and_await_task_resources(
+        &receipt.org_run_id,
+        &receipt.old_task_id,
+        std::time::Duration::from_secs(10),
+    )
+    .await?;
     let (Some(session_id), Some(turn_intent_id), Some(runtime_lease_id), Some(dialog_generation)) = (
         receipt.old_session_id.as_deref(),
         receipt.old_turn_intent_id.as_deref(),

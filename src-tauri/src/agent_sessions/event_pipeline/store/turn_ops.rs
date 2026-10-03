@@ -33,11 +33,33 @@ fn mark_turn_preview(event: &mut SessionEvent) {
     event.args = args;
 }
 
+fn execution_intent(event: &SessionEvent) -> Option<&str> {
+    event
+        .args
+        .pointer("/agentOrgExecution/turnIntentId")
+        .or_else(|| event.result.pointer("/agentOrgExecution/turnIntentId"))
+        .or_else(|| event.result.get("turnIntentId"))
+        .or_else(|| event.args.get("turnIntentId"))
+        .or_else(|| event.args.get("conversationTurnId"))
+        .or_else(|| event.args.pointer("/details/turnIntentId"))
+        .and_then(serde_json::Value::as_str)
+}
+
 impl EventStore {
     pub fn unload_turn_body(&mut self, turn_id: &str, placeholder: SessionEvent) -> usize {
         let next_turn_id = placeholder_next_turn_id(&placeholder).map(str::to_string);
         let placeholder_id = placeholder.id.clone();
-        let start_idx = self.events.iter().position(|event| event.id == turn_id);
+        let execution = execution_intent(&placeholder);
+        let owns = |event: &SessionEvent| {
+            execution.is_some_and(|intent| execution_intent(event) == Some(intent))
+        };
+        let start_idx = self.events.iter().position(|event| {
+            if execution.is_some() {
+                owns(event)
+            } else {
+                event.id == turn_id
+            }
+        });
         let Some(start_idx) = start_idx else {
             return 0;
         };
@@ -52,9 +74,19 @@ impl EventStore {
                     .find_map(|(index, event)| (event.id == next_id).then_some(index))
             })
             .unwrap_or(self.events.len());
-        let preview_event_id = self.events[start_idx + 1..end_idx]
+        let preview_event_id = self
+            .events
             .iter()
+            .enumerate()
             .rev()
+            .filter(|(index, event)| {
+                if execution.is_some() {
+                    owns(event)
+                } else {
+                    *index > start_idx && *index < end_idx
+                }
+            })
+            .map(|(_, event)| event)
             .find(|event| is_final_reply_candidate(event))
             .map(|event| event.id.clone());
 
@@ -65,7 +97,15 @@ impl EventStore {
         let mut next_events = Vec::with_capacity(self.events.len());
 
         for (index, mut event) in self.events.drain(..).enumerate() {
-            let in_turn_body_range = index > start_idx && index < end_idx;
+            let in_turn_body_range = if execution.is_some() {
+                owns(&event) && event.source != EventSource::User
+            } else {
+                index > start_idx && index < end_idx
+            };
+            if execution.is_some() && index == start_idx {
+                next_events.push(placeholder.clone());
+                inserted_placeholder = true;
+            }
             if in_turn_body_range && preview_event_id.as_deref().is_some_and(|id| event.id == id) {
                 mark_turn_preview(&mut event);
                 preview_changed_id = Some(event.id.clone());

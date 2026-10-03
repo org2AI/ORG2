@@ -155,6 +155,13 @@ export interface AgentOrgTaskAnnotationPage {
   nextCursor?: string | null;
 }
 
+export interface AgentOrgRejectedRequestDraft {
+  sessionId: string;
+  turnIntentId: string;
+  displayContent: string;
+  imageDataUrls: string[];
+}
+
 export async function requestAgentOrgTaskHandoff(input: {
   sessionId: string;
   requestId: string;
@@ -223,5 +230,15 @@ export async function getAgentOrgTaskAnnotationPage(input: {
       cursor: input.cursor ?? null,
       limit: input.limit ?? 50,
     }
+  );
+}
+
+export async function getAgentOrgRejectedRequestDraft(input: {
+  sessionId: string;
+  turnIntentId: string;
+}): Promise<AgentOrgRejectedRequestDraft> {
+  return invokeTauri<AgentOrgRejectedRequestDraft>(
+    "agent_org_rejected_request_draft",
+    input
   );
 }

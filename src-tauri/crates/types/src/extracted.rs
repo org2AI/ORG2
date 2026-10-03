@@ -115,6 +115,8 @@ pub struct ExtractedShellData {
     pub is_failure: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shell_pid: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shell_process_handle: Option<String>,
     /// "running" | "background" | "exited" | "killed"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shell_process_status: Option<String>,
@@ -373,6 +375,10 @@ pub struct ExtractedOrgTaskData {
     /// not fail and remains authoritative in `task.status`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completion_deferred: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requires_episode_resolution: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rejected_request_turn_intent_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub guidance: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

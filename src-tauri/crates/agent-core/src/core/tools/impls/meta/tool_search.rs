@@ -166,7 +166,7 @@ impl Tool for ToolSearchTool {
         let effective_policy = if ctx
             .turn_process_control
             .as_ref()
-            .is_some_and(|control| control.require_owned_job_finality)
+            .is_some_and(|control| control.is_agent_org)
         {
             self.policy
                 .as_ref()

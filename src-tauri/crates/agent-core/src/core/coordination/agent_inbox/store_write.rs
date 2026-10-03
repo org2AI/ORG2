@@ -9,6 +9,46 @@ use database::db::{get_connection, with_sessions_writer};
 use super::record::row_to_record;
 use super::{AgentInboxRecord, AgentInboxStore, InsertInboxParams};
 
+pub(super) fn active_episode_task_counts(
+    conn: &Connection,
+    run_id: &str,
+) -> Result<(i64, i64), String> {
+    conn.query_row(
+        "SELECT COUNT(*),
+                COALESCE(SUM(CASE WHEN task.status IN ('pending','in_progress')
+                                  THEN 1 ELSE 0 END),0)
+         FROM agent_org_runtime_tasks task
+         JOIN agent_org_runtime_work_episode_tasks episode_task
+           ON episode_task.org_run_id=task.org_run_id
+          AND episode_task.task_id=task.id
+         JOIN agent_org_runtime_work_episodes episode
+           ON episode.id=episode_task.work_episode_id
+          AND episode.org_run_id=episode_task.org_run_id
+         WHERE task.org_run_id=?1 AND episode.status='active'",
+        params![run_id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )
+    .map_err(|error| error.to_string())
+}
+
+pub(super) fn exact_member_turn_task_id(
+    conn: &Connection,
+    run_id: &str,
+    member_id: &str,
+    source_turn_intent_id: &str,
+) -> Result<Option<String>, String> {
+    conn.query_row(
+        "SELECT task_id FROM agent_org_runtime_turn_contexts
+         WHERE org_run_id=?1 AND participant_id=?2
+           AND turn_kind='task_execution' AND turn_intent_id=?3",
+        params![run_id, member_id, source_turn_intent_id],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|task_id| task_id.flatten())
+    .map_err(|error| error.to_string())
+}
+
 impl AgentInboxStore {
     /// Persist a message and return the inserted record. The caller is
     /// responsible for resolving display-name / broadcast targets to one or
@@ -67,20 +107,18 @@ impl AgentInboxStore {
             let tx = conn
                 .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
                 .map_err(|err| err.to_string())?;
-            let activation_generation: Option<i64> = tx
+            let run_running: bool = tx
                 .query_row(
-                    "SELECT activation_generation
-                     FROM agent_org_runtime_runs
-                     WHERE id=?1 AND status='running'",
+                    "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs
+                     WHERE id=?1 AND status='running')",
                     params![&run_id],
                     |row| row.get(0),
                 )
-                .optional()
                 .map_err(|err| err.to_string())?;
-            let Some(activation_generation) = activation_generation else {
+            if !run_running {
                 tx.commit().map_err(|err| err.to_string())?;
                 return Ok(None);
-            };
+            }
 
             // The specialized owner below supplies the exact lifecycle
             // authority, so the generic Inbox metadata inference must not
@@ -93,61 +131,24 @@ impl AgentInboxStore {
                 params![record.id, source_turn_intent_id],
             )
             .map_err(|e| e.to_string())?;
-            let (task_count, open_task_count): (i64, i64) = tx
-                .query_row(
-                    "SELECT COUNT(*),
-                            COALESCE(SUM(CASE WHEN status IN ('pending','in_progress')
-                                              THEN 1 ELSE 0 END),0)
-                     FROM agent_org_runtime_tasks
-                     WHERE org_run_id=?1 AND activation_generation=?2",
-                    params![&run_id, activation_generation],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
-                )
-                .map_err(|err| err.to_string())?;
+            let (task_count, open_task_count) = active_episode_task_counts(&tx, &run_id)?;
             let all_tasks_terminal = task_count > 0 && open_task_count == 0;
             let actionable = matches!(reason, super::MemberIdleReason::Failed)
                 || !unfinished_task_ids.is_empty()
                 || all_tasks_terminal;
 
             if actionable {
-                let task_id = if let Some(task_id) = unfinished_task_ids.first() {
-                    Some(task_id.clone())
-                } else {
-                    tx.query_row(
-                        "SELECT id
-                         FROM agent_org_runtime_tasks
-                         WHERE org_run_id=?1 AND activation_generation=?2 AND owner=?3
-                         ORDER BY updated_at DESC,id DESC LIMIT 1",
-                        params![&run_id, activation_generation, &member_id],
-                        |row| row.get::<_, String>(0),
-                    )
-                    .optional()
-                    .map_err(|err| err.to_string())?
+                let task_id = unfinished_task_ids.first().cloned();
+                let exact_source_turn_intent_id = source_turn_intent_id
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty());
+                let task_id = match (task_id, exact_source_turn_intent_id) {
+                    (some @ Some(_), _) => some,
+                    (None, Some(source_turn_intent_id)) => {
+                        exact_member_turn_task_id(&tx, &run_id, &member_id, source_turn_intent_id)?
+                    }
+                    (None, None) => None,
                 };
-                let source_turn_intent_id = tx
-                    .query_row(
-                        "SELECT context.turn_intent_id
-                         FROM agent_org_runtime_turn_contexts context
-                         JOIN session_turn_intents intent
-                           ON intent.session_id=context.session_id
-                          AND intent.turn_intent_id=context.turn_intent_id
-                         WHERE context.org_run_id=?1
-                           AND context.participant_id=?2
-                           AND context.turn_kind='task_execution'
-                           AND intent.status IN (?3,?4,?5)
-                         ORDER BY context.created_at DESC,context.turn_intent_id DESC
-                         LIMIT 1",
-                        params![
-                            &run_id,
-                            &member_id,
-                            crate::foundation::session_bridge::IN_FLIGHT_TURN_INTENT_STATUSES[0],
-                            crate::foundation::session_bridge::IN_FLIGHT_TURN_INTENT_STATUSES[1],
-                            crate::foundation::session_bridge::IN_FLIGHT_TURN_INTENT_STATUSES[2],
-                        ],
-                        |row| row.get::<_, String>(0),
-                    )
-                    .optional()
-                    .map_err(|err| err.to_string())?;
                 let source_kind = if matches!(reason, super::MemberIdleReason::Failed) {
                     "task_failure"
                 } else {
@@ -161,7 +162,7 @@ impl AgentInboxStore {
                         source_kind,
                         task_id: task_id.as_deref(),
                         owner_member_id: Some(&member_id),
-                        source_turn_intent_id: source_turn_intent_id.as_deref(),
+                        source_turn_intent_id: exact_source_turn_intent_id,
                         task_output_digest: None,
                         plan_revision_id: None,
                         suppress_self_wake: false,

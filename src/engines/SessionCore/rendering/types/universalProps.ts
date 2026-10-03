@@ -121,8 +121,14 @@ export interface UniversalEventProps {
   showActiveEventPainting?: boolean;
   /** Shell process PID attached by shell process lifecycle events. */
   shellPid?: number;
+  shellProcessHandle?: string;
   /** Shell process status attached by shell process lifecycle events. */
-  shellProcessStatus?: "running" | "background" | "exited" | "killed";
+  shellProcessStatus?:
+    | "running"
+    | "background"
+    | "exited"
+    | "killed"
+    | "unknown";
   /** Shell process exit code attached by shell process lifecycle events. */
   shellExitCode?: number;
   /** Shell process log path attached by shell process lifecycle events. */
@@ -246,7 +252,13 @@ export interface ExtractedShellData {
   isFailure?: boolean;
   // Shell process state (from ShellProcessStarted/Exited events)
   shellPid?: number;
-  shellProcessStatus?: "running" | "background" | "exited" | "killed";
+  shellProcessHandle?: string;
+  shellProcessStatus?:
+    | "running"
+    | "background"
+    | "exited"
+    | "killed"
+    | "unknown";
   shellLogPath?: string;
 }
 

@@ -86,7 +86,17 @@ fn should_push_assistant_event(
     !has_tool_calls || !consumed_streamed_message
 }
 
-fn attach_turn_id(event: &mut SessionEvent, turn_id: Option<&str>) {
+fn attach_turn_id(
+    event: &mut SessionEvent,
+    turn_id: Option<&str>,
+    execution: Option<&core_types::agent_org_history::AgentOrgExecution>,
+) {
+    if let Some(execution) = execution {
+        if !event.args.is_object() {
+            event.args = serde_json::json!({});
+        }
+        event.args["agentOrgExecution"] = serde_json::json!(execution);
+    }
     let Some(turn_id) = turn_id else {
         return;
     };
@@ -140,6 +150,7 @@ pub struct EventHandlerConfig {
     /// Exact durable Agent Org Turn bound to assistant transcript writes.
     /// Ordinary Sessions leave this unset and pay no lifecycle query.
     pub agent_org_turn_intent_id: Option<String>,
+    pub agent_org_execution: Option<core_types::agent_org_history::AgentOrgExecution>,
 }
 
 /// Durable identity needed to verify that an Agent Org worker did not end a
@@ -277,6 +288,41 @@ impl UnifiedEventHandler {
         }
     }
 
+    /// A durable display anchor for actual execution, including summary turns
+    /// stopped before their first token. This is not a user/assistant message.
+    pub(super) async fn record_execution_start(&self, session_id: &str) -> Result<(), String> {
+        let Some(execution) = self.config.agent_org_execution.as_ref() else {
+            return Ok(());
+        };
+        let Some(handle) = self.config.app_handle.as_ref() else {
+            return Ok(());
+        };
+        let mut event = event_factory::build_assistant_message_event(session_id, "");
+        event.id = format!("agent-org-execution-{}", execution.turn_intent_id);
+        event.chunk_id = Some(event.id.clone());
+        event.action_type = "agent_org_execution".to_string();
+        event.function_name = event.action_type.clone();
+        event.ui_canonical = event.action_type.clone();
+        event.source = core_types::session_event::EventSource::System;
+        event.result = serde_json::json!({});
+        event.args = serde_json::json!({"agentOrgExecution": execution});
+        event.recompute_extracted();
+        let durable_event = event.clone();
+        let session = session_id.to_string();
+        tokio::task::spawn_blocking(move || {
+            event_pipeline_bridge::persist_events(
+                "execution-history-start",
+                &session,
+                &[durable_event],
+                5,
+            )
+        })
+        .await
+        .map_err(|error| error.to_string())??;
+        event_pipeline_bridge::push_events(handle, session_id, vec![event]);
+        Ok(())
+    }
+
     /// Broadcasts that drive the ordinary Session surface must never carry a
     /// GroupRoot Turn. The Group feed observes the run-scoped projection push
     /// instead, so suppressing these events does not remove product updates.
@@ -301,7 +347,11 @@ impl UnifiedEventHandler {
         // `COALESCE(history_sequence, 0) ASC, created_at ASC`, so reversing
         // this order would render Thought *after* the answer on reload.
         if let Some(mut event) = self.streaming_buffer.complete_thinking(session_id) {
-            attach_turn_id(&mut event, self.config.turn_id.as_deref());
+            attach_turn_id(
+                &mut event,
+                self.config.turn_id.as_deref(),
+                self.config.agent_org_execution.as_ref(),
+            );
             self.track_retractable_segment(session_id, &event.id);
             self.push_to_store(session_id, event.clone());
             self.broadcast_session_surface(
@@ -315,7 +365,11 @@ impl UnifiedEventHandler {
             );
         }
         if let Some(mut event) = self.streaming_buffer.complete_message(session_id) {
-            attach_turn_id(&mut event, self.config.turn_id.as_deref());
+            attach_turn_id(
+                &mut event,
+                self.config.turn_id.as_deref(),
+                self.config.agent_org_execution.as_ref(),
+            );
             if !self.attach_final_summary_event_identity(session_id, &mut event) {
                 return;
             }
@@ -805,7 +859,11 @@ impl UnifiedEventHandler {
         let Some(ref handle) = self.config.app_handle else {
             return;
         };
-        attach_turn_id(&mut event, self.config.turn_id.as_deref());
+        attach_turn_id(
+            &mut event,
+            self.config.turn_id.as_deref(),
+            self.config.agent_org_execution.as_ref(),
+        );
         if self.config.group_projection_only {
             // The final assistant event already crosses the synchronous
             // durability barrier above. Other GroupRoot events use the same
@@ -1314,7 +1372,11 @@ impl TurnEventHandler for UnifiedEventHandler {
             if !self.attach_final_summary_event_identity(session_id, &mut event) {
                 return;
             }
-            attach_turn_id(&mut event, self.config.turn_id.as_deref());
+            attach_turn_id(
+                &mut event,
+                self.config.turn_id.as_deref(),
+                self.config.agent_org_execution.as_ref(),
+            );
             if !self.attach_agent_org_assistant_authority(session_id, &mut event) {
                 return;
             }

@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Prośba użytkownika",
+      "member_messages": "Odebrane wiadomości",
+      "task_dispatch": "Przydzielone zadanie",
+      "final_summary": "Raport końcowy"
+    },
+    "unknownSource": "Źródło niedostępne",
+    "legacyInbox": "Odebrane wiadomości · źródło niedostępne",
+    "inboxSummary": "{{recipient}}: otrzymano {{count}} wiadomości od {{senders}}",
+    "viewDetails": "Zobacz szczegóły wykonania",
+    "unavailable": "Szczegóły wykonania niedostępne"
+  },
   "landedMessageEdit": {
     "title": "Wysłać jako nową wiadomość?",
     "body": "Ta wiadomość należy do sesji wykonawczej. Edycja tutaj nie pozwala cofnąć rozmowy. Wysłać ten tekst jako nową wiadomość na końcu? Istniejące wiadomości i zmiany w plikach zostaną zachowane.",
@@ -2311,6 +2324,10 @@
       "body": "Wznów pracę z Coordinatorem. Nadal możesz użyć @Member do zadania pobocznego.",
       "resume": "Wznów"
     },
+    "finalizingBanner": {
+      "title": "Kończenie tej rundy pracy",
+      "body": "Możesz dalej edytować szkic i wysłać go po ukończeniu raportu końcowego."
+    },
     "toolUseSummary": {
       "note": "{{sender}} wykonał {{summary}}",
       "readFiles_one": "{{count}} odczyt pliku",
@@ -2419,7 +2436,17 @@
     "currentRecordUnavailable": "Bieżący stan niedostępny",
     "currentStatusLabel": "Bieżący status",
     "currentOwnerLabel": "Bieżący właściciel",
-    "replacementLabel": "Zastępstwo"
+    "replacementLabel": "Zastępstwo",
+    "rejectedRequestRecovery": {
+      "restore": "Przywróć jako szkic",
+      "warning": "Inne części mogły już zostać wykonane. Sprawdź i wyślij ponownie tylko niedokończoną pracę.",
+      "unavailable": "Nie udało się zweryfikować ani przywrócić pierwotnej prośby",
+      "previewTitle": "Dodać odrzuconą prośbę do szkicu?",
+      "existingDraft": "Bieżący szkic",
+      "recoveredRequest": "Odrzucona prośba",
+      "append": "Dodaj do szkicu",
+      "appendExplanation": "Prośba zostanie dodana przed bieżącym szkicem. Nic nie zostanie wysłane automatycznie."
+    }
   },
   "manageAgentDef": {
     "action": {

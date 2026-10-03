@@ -286,6 +286,8 @@ export interface RestoreToInputPayload {
   sessionId: string;
   displayContent: string;
   imageDataUrls?: string[];
+  /** Keep images already attached to the composer and append these images. */
+  appendImages?: boolean;
 }
 export const restoreToInputAtom = atom<RestoreToInputPayload | null>(null);
 restoreToInputAtom.debugLabel = "restoreToInput";

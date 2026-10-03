@@ -53,7 +53,10 @@ const TerminalSidebarContent: React.FC<TerminalSidebarContentProps> = memo(
     );
 
     const runningPidsBySession = useMemo(() => {
-      const map = new Map<string, Array<{ pid: number; callId: string }>>();
+      const map = new Map<
+        string,
+        Array<{ pid: number; callId: string; handle?: string }>
+      >();
       for (const [sessionId, processMap] of shellProcessMap.entries()) {
         const pids = [...processMap.values()]
           .filter(
@@ -63,6 +66,7 @@ const TerminalSidebarContent: React.FC<TerminalSidebarContentProps> = memo(
           .map((process) => ({
             pid: process.pid,
             callId: process.callId,
+            handle: process.handle,
           }));
         if (pids.length > 0) map.set(sessionId, pids);
       }
@@ -74,8 +78,8 @@ const TerminalSidebarContent: React.FC<TerminalSidebarContentProps> = memo(
         const processes = runningPidsBySession.get(sessionId) ?? [];
         try {
           await Promise.all(
-            processes.map(({ pid, callId }) =>
-              killAgentShellProcess({ pid, sessionId, callId })
+            processes.map(({ pid, callId, handle }) =>
+              killAgentShellProcess({ pid, sessionId, callId, handle })
             )
           );
         } catch (error: unknown) {

@@ -2,7 +2,12 @@ import type { EventStatus } from "@src/engines/SessionCore/rendering/types/unive
 
 export const TERMINAL_FOREGROUND_WAIT_THRESHOLD_MS = 10_000;
 
-type ShellProcessStatus = "running" | "background" | "exited" | "killed";
+type ShellProcessStatus =
+  | "running"
+  | "background"
+  | "exited"
+  | "killed"
+  | "unknown";
 
 interface ShellRuntimeStateInput {
   status: EventStatus;
@@ -43,6 +48,7 @@ export function resolveShellRuntimeDisplayState(
   const hasExitSignal = input.exitCode !== undefined || isProcessSettled;
   const isForegroundRunning =
     !isTerminalStatus &&
+    input.shellProcessStatus !== "unknown" &&
     !isProcessBackgrounded &&
     !hasExitSignal &&
     (input.shellProcessStatus === "running" ||

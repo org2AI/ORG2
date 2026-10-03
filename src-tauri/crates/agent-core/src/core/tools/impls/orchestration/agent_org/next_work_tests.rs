@@ -10,7 +10,7 @@ use crate::coordination::agent_org_turn_contexts::{self as turns, AgentOrgTurnAd
 use crate::foundation::session_bridge::{self, TurnIntentBridgeSource};
 use crate::lifecycle::TurnTerminalStatus;
 
-fn accept_user(turn: &str, group: bool) {
+fn accept_user(turn: &str, group: bool) -> Result<(), String> {
     session_bridge::register_upsert_turn_intent_with_connection(
         |conn, session, turn, client, run, source, status| {
             conn.execute(
@@ -45,7 +45,7 @@ fn accept_user(turn: &str, group: bool) {
             TurnIntentBridgeSource::UserSubmit,
         )
     };
-    turns::accept_with_connection(&conn, &request).unwrap();
+    turns::accept_with_connection(&conn, &request).map(|_| ())
 }
 
 fn dispatch(turn: &str) {
@@ -60,14 +60,12 @@ fn dispatch(turn: &str) {
     .unwrap();
 }
 
-async fn report_with_queued_users(group: bool) -> summary::FinalSummaryReceipt {
+async fn report() -> summary::FinalSummaryReceipt {
     let receipt = start_report().await;
     database::db::get_connection()
         .unwrap()
         .execute_batch("ALTER TABLE events ADD COLUMN function_name TEXT;")
         .unwrap();
-    accept_user("new-request", group);
-    accept_user("later-request", group);
     receipt
 }
 
@@ -122,8 +120,10 @@ fn generation() -> i64 {
 async fn publication_follow_up_activates_both_writers_and_keeps_later_user_authority() {
     for (group, graph, failed) in [(true, true, false), (false, false, true)] {
         let _sandbox = sandbox();
-        let receipt = report_with_queued_users(group).await;
+        let receipt = report().await;
         publish(&receipt, failed);
+        accept_user("new-request", group).expect("post-publication user request");
+        accept_user("later-request", group).expect("later post-publication user request");
         assert_eq!(
             AgentOrgRunStore::load(RUN_ID)
                 .unwrap()
@@ -179,8 +179,10 @@ async fn publication_follow_up_activates_both_writers_and_keeps_later_user_autho
 #[tokio::test]
 async fn publication_follow_up_rolls_back_generation_and_queued_authority_on_write_failure() {
     let _sandbox = sandbox();
-    let receipt = report_with_queued_users(true).await;
+    let receipt = report().await;
     publish(&receipt, false);
+    accept_user("new-request", true).expect("post-publication user request");
+    accept_user("later-request", true).expect("later post-publication user request");
     dispatch("new-request");
     let conn = database::db::get_connection().unwrap();
     conn.execute_batch(
@@ -220,14 +222,35 @@ async fn publication_follow_up_never_promotes_unfinished_or_invalid_authority() 
         "database",
     ] {
         let _sandbox = sandbox();
-        let receipt = report_with_queued_users(true).await;
-        if fault != "active-report" {
-            publish(&receipt, false);
+        let receipt = report().await;
+        if fault == "active-report" {
+            let error = accept_user("new-request", true)
+                .expect_err("active report must reject new user work");
+            assert!(
+                error.contains(summary::FINALIZING_INPUT_NOT_ACCEPTED),
+                "{error}"
+            );
+            let conn = database::db::get_connection().unwrap();
+            assert_eq!(
+                conn.query_row(
+                    "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+                     WHERE turn_intent_id='new-request'",
+                    [],
+                    |row| row.get::<_, i64>(0)
+                )
+                .unwrap(),
+                0
+            );
+            assert_eq!(generation(), 1);
+            assert_eq!(AgentOrgTaskStore::list(RUN_ID).unwrap().len(), 1);
+            continue;
         }
+        publish(&receipt, false);
+        accept_user("new-request", true).expect("post-publication user request");
+        accept_user("later-request", true).expect("later post-publication user request");
         dispatch("new-request");
         let conn = database::db::get_connection().unwrap();
         match fault {
-            "active-report" => {}
             "active-worker" => {
                 // A warm session alone is deliberately not formal work.
                 let task = AgentOrgTaskStore::list(RUN_ID).unwrap().remove(0);

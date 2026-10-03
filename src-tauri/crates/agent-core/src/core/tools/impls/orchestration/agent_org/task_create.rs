@@ -246,6 +246,60 @@ impl Tool for TaskCreateTool {
         let active_form = params.active_form;
         let replaces_task_id = params.replaces_task_id;
 
+        // Terminal task data is immutable, but its detached shell may still
+        // write files. Hold the existing task fence until replacement commits.
+        let _replacement_fence = if let Some(old_task_id) = replaces_task_id.as_deref() {
+            let fence = crate::coordination::agent_org_task_execution_fence::acquire_handoff(
+                &run_id,
+                old_task_id,
+            )
+            .await;
+            let old_run = run_id.clone();
+            let old_id = old_task_id.to_string();
+            let replacement_context = Arc::clone(&self.ctx);
+            tokio::task::spawn_blocking(move || {
+                let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+                AgentOrgTaskStore::validate_replacement_target_with_connection(
+                    &conn, &old_run, &old_id,
+                )?;
+                if crate::tools::impls::coding::exec::registry::task_resource_owner(
+                    &old_run, &old_id,
+                )
+                .is_some()
+                {
+                    let tasks = AgentOrgTaskStore::list_with_connection(&conn, &old_run)?;
+                    let owner = tasks
+                        .iter()
+                        .find(|task| task.id == old_id)
+                        .and_then(|task| task.owner.as_ref());
+                    if owner.is_some_and(|owner| {
+                        !replacement_context
+                            .unauthorized_task_target_member_ids(std::slice::from_ref(owner))
+                            .is_empty()
+                    }) {
+                        return Err(
+                            "replacement resource owner is outside the Writer's frozen authority"
+                                .to_string(),
+                        );
+                    }
+                }
+                Ok(())
+            })
+            .await
+            .map_err(|error| ToolError::ExecutionFailed(error.to_string()))?
+            .map_err(ToolError::ExecutionFailed)?;
+            crate::tools::impls::coding::exec::registry::cancel_and_await_task_resources(
+                &run_id,
+                old_task_id,
+                std::time::Duration::from_secs(10),
+            )
+            .await
+            .map_err(ToolError::ExecutionFailed)?;
+            Some(fence)
+        } else {
+            None
+        };
+
         let (receipt, committed_outbox) = tokio::task::spawn_blocking(move || {
             let mut committed_outbox: Option<TaskOutboxCommit> = None;
             let receipt = AgentOrgToolReceiptStore::execute(
@@ -358,7 +412,10 @@ impl Tool for TaskCreateTool {
                             Ok(Ok(response))
                         }
                         Err(error) => {
-                            if let Some(response) = unresolved_episode_creation_response(&error)
+                            if let Some(response) = unresolved_episode_creation_response(
+                                &error,
+                                &activation_turn_intent_id,
+                            )
                                 .or_else(|| duplicate_task_creation_response(&error))
                             {
                                 let response = serde_json::to_string(&response)

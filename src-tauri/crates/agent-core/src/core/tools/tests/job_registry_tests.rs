@@ -19,8 +19,52 @@ fn shell_control(session_id: &str, lease_id: &str) -> TurnProcessControl {
     TurnProcessControl {
         owner: shell_owner(session_id, lease_id),
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: false,
+        is_agent_org: false,
     }
+}
+
+#[tokio::test]
+async fn detached_org_shell_does_not_block_completion_but_remains_owned() {
+    let mut control = shell_control("detached-org-shell", "detached-lease");
+    control.is_agent_org = true;
+    let cancel = CancellationToken::new();
+    let completion = registry::register_owned_shell_replay(
+        99_960,
+        "serve application".into(),
+        PathBuf::from("/tmp/detached-org-shell.txt"),
+        control.owner.session_id.clone(),
+        "detached-call".into(),
+        &control,
+        cancel.clone(),
+    );
+    let handle = registry::list_jobs(Some(&control.owner.session_id))[0]
+        .handle
+        .clone();
+    let blocks_completion = !registry::list_jobs_for_owner(&control.owner).is_empty();
+    let retained_owner = !registry::owned_jobs_are_terminal(&control.owner);
+    let ordinary_reminder = registry::list_jobs_for_reminder(&control.owner.session_id);
+    let owner = control.owner.clone();
+    let cleanup = tokio::spawn(async move {
+        registry::cancel_and_await_jobs_for_owner(&owner, Duration::from_secs(1)).await
+    });
+    tokio::time::timeout(Duration::from_millis(500), cancel.cancelled())
+        .await
+        .expect("explicit owner cancellation must still reach the detached shell");
+    registry::mark_exited(&handle, JobStatus::Killed);
+    completion.finish(Ok(()));
+    cleanup.await.unwrap().unwrap();
+    assert!(
+        !blocks_completion,
+        "a detached service must not keep its model Turn open"
+    );
+    assert!(
+        retained_owner,
+        "normal completion must not discard resource ownership"
+    );
+    assert!(
+        ordinary_reminder.is_empty(),
+        "a detached service must not trigger an ordinary model wake"
+    );
 }
 
 #[test]
@@ -266,7 +310,7 @@ async fn exact_owner_barrier_rejects_an_old_runtime_lease_completion() {
         &TurnProcessControl {
             owner: old_owner.clone(),
             background_cancel: CancellationToken::new(),
-            require_owned_job_finality: false,
+            is_agent_org: false,
         },
         CancellationToken::new(),
     );
@@ -279,7 +323,7 @@ async fn exact_owner_barrier_rejects_an_old_runtime_lease_completion() {
         &TurnProcessControl {
             owner: new_owner.clone(),
             background_cancel: CancellationToken::new(),
-            require_owned_job_finality: false,
+            is_agent_org: false,
         },
         CancellationToken::new(),
     );

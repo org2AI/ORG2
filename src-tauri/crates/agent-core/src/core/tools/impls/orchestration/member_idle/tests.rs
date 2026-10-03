@@ -70,6 +70,15 @@ fn seed_run(conn: &rusqlite::Connection, run_id: &str, status: &str) {
 
 fn seed_completed_task(conn: &rusqlite::Connection, run_id: &str, member_id: &str) {
     let now = chrono::Utc::now().to_rfc3339();
+    let episode_id = format!("{run_id}-episode");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_work_episodes (
+             id,org_run_id,episode_sequence,status,opening_activation_generation,
+             opening_work_revision,opened_by_turn_intent_id,created_at
+         ) VALUES (?1,?2,1,'active',1,0,'turn-create',?3)",
+        rusqlite::params![&episode_id, run_id, &now],
+    )
+    .expect("seed active work episode");
     conn.execute(
         "INSERT INTO agent_org_runtime_tasks (
              id,org_run_id,activation_generation,subject,description,owner,status,
@@ -82,6 +91,13 @@ fn seed_completed_task(conn: &rusqlite::Connection, run_id: &str, member_id: &st
         rusqlite::params![run_id, member_id, now],
     )
     .expect("seed terminal Task");
+    conn.execute(
+        "INSERT INTO agent_org_runtime_work_episode_tasks (
+             org_run_id,work_episode_id,task_id,associated_at
+         ) VALUES (?1,?2,'task-terminal',?3)",
+        rusqlite::params![run_id, &episode_id, &now],
+    )
+    .expect("associate terminal Task with active work episode");
 }
 
 fn seed_active_task_turn(conn: &rusqlite::Connection, run_id: &str, member_id: &str) {
@@ -175,7 +191,7 @@ fn final_member_idle_creates_exact_formal_receipt_and_wakes_coordinator() {
         "coord",
         crate::session::turn::member_idle::MemberIdleSource {
             member_id: "member-worker",
-            turn_intent_id: None,
+            turn_intent_id: Some("worker-turn"),
         },
         "worker-1",
         "Worker",

@@ -107,7 +107,7 @@ impl UnifiedMessageProcessor {
                     "Agent Org Turn process owner does not match the dispatched Turn".to_string(),
                 );
             }
-            control.require_owned_job_finality = true;
+            control.is_agent_org = true;
         }
         let turn_config = TurnConfig {
             turn_intent_id: turn_intent_id.to_string(),
@@ -149,6 +149,12 @@ impl UnifiedMessageProcessor {
 
         let mut event_handler_config = self.event_handler_config.clone();
         event_handler_config.turn_id = Some(turn_id.to_string());
+        event_handler_config.agent_org_execution = self
+            .runtime
+            .agent_org_context
+            .as_ref()
+            .map(|_| crate::coordination::agent_org_history::execution(session_id, turn_intent_id))
+            .transpose()?;
         event_handler_config.require_durable_assistant_event =
             self.runtime.agent_org_context.is_some();
         event_handler_config.agent_org_turn_intent_id = self
@@ -156,12 +162,9 @@ impl UnifiedMessageProcessor {
             .agent_org_context
             .as_ref()
             .map(|_| turn_intent_id.to_string());
-        event_handler_config.group_projection_only = self.runtime.agent_org_context.is_some()
-            && crate::coordination::agent_org_turn_contexts::group_root_source_event_for_turn(
-                session_id,
-                turn_intent_id,
-            )?
-            .is_some();
+        // The private execution history now exposes formal GroupRoot work too.
+        // The public Group feed still reads only its typed conversation projection.
+        event_handler_config.group_projection_only = false;
         event_handler_config.agent_org_task_lifecycle = self
             .runtime
             .agent_org_context
@@ -176,6 +179,7 @@ impl UnifiedMessageProcessor {
                 }
             });
         let handler = UnifiedEventHandler::new(event_handler_config);
+        handler.record_execution_start(session_id).await?;
 
         // Set per-turn context for streaming/cancellable tools.
         self.runtime.tool_registry.set_session_key(session_id).await;

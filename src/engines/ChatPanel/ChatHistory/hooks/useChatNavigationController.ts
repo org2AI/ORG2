@@ -102,9 +102,10 @@ export function useChatNavigationController({
   const handleConversationMinimapNavigate = useCallback(
     (groupIndex: number) => {
       onExplicitNavigation();
+      // Commit the destination before row measurement captures a reading anchor.
       virtualListRef.current?.scrollToGroup({
         groupIndex,
-        behavior: "smooth",
+        behavior: "auto",
       });
     },
     [onExplicitNavigation, virtualListRef]

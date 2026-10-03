@@ -75,6 +75,7 @@ export function handleExecOutput(
         detail: {
           sessionId: identity.sessionId,
           callId: identity.callId,
+          handle: event.handle,
           sequence: event.sequence,
           persistedBytes: event.persistedBytes,
           chunk: event.chunk ?? "",
@@ -107,6 +108,7 @@ export function handleShellProcessStarted(
       sessionId: identity.sessionId,
       pid,
       callId: identity.callId,
+      handle: event.handle,
       command,
     });
   }
@@ -139,6 +141,7 @@ export function handleShellProcessBackgrounded(
       sessionId: identity.sessionId,
       pid,
       callId: identity.callId,
+      handle: event.handle,
     });
   }
 }
@@ -166,6 +169,7 @@ export function handleShellProcessExited(
       sessionId: identity.sessionId,
       pid,
       callId: identity.callId,
+      handle: event.handle,
       exitCode,
       killed,
     });

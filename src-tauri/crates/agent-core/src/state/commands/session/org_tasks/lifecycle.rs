@@ -94,7 +94,7 @@ pub async fn agent_org_pause_run(
     if let Some(teardown_owner_id) = commit.teardown_owner_id {
         let teardown_state = state.inner().clone();
         let teardown_episode_id = outcome.episode_id.clone();
-        let teardown_run_id = run_id;
+        let teardown_run_id = run_id.clone();
         tauri::async_runtime::spawn(async move {
             if let Err(error) = teardown_pause_episode(
                 teardown_state,
@@ -112,6 +112,7 @@ pub async fn agent_org_pause_run(
             }
         });
     }
+    super::resource_teardown::release_paused_task_resources(&run_id, DRAIN_DEADLINE).await?;
     Ok(outcome)
 }
 
@@ -130,6 +131,7 @@ pub async fn agent_org_resume_run(
         .ok_or_else(|| format!("Session {session_id} has no Agent Org context"))?;
     let run_id = context.run_id.clone();
     let resume_run_id = run_id.clone();
+    super::resource_teardown::release_paused_task_resources(&run_id, DRAIN_DEADLINE).await?;
     let outcome = tokio::task::spawn_blocking(move || {
         crate::coordination::agent_org_pause::resume_run(&resume_run_id, &request_id)
     })
@@ -874,12 +876,12 @@ pub(crate) async fn settle_user_directed_handoff_after_turn(
         runtime_lease_id: identity.runtime_lease_id.clone(),
         dialog_turn_generation: identity.dialog_turn_generation.clone(),
     };
-    if let Err(slo_error) =
-        crate::tools::impls::coding::exec::registry::cancel_and_await_jobs_for_owner(
-            &process_owner,
-            USER_DIRECTED_YIELD_SLO,
-        )
-        .await
+    if let Err(slo_error) = super::resource_teardown::release_user_directed_resources(
+        &receipt_id,
+        &process_owner,
+        USER_DIRECTED_YIELD_SLO,
+    )
+    .await
     {
         tracing::warn!(
             session_id = %session.id,
@@ -888,12 +890,12 @@ pub(crate) async fn settle_user_directed_handoff_after_turn(
             event = "agent_org_user_directed_yield_slo_exceeded",
             "UserDirectedWork handoff exceeded the five-second yield SLO"
         );
-        if let Err(hard_error) =
-            crate::tools::impls::coding::exec::registry::cancel_and_await_jobs_for_owner(
-                &process_owner,
-                USER_DIRECTED_YIELD_SLO,
-            )
-            .await
+        if let Err(hard_error) = super::resource_teardown::release_user_directed_resources(
+            &receipt_id,
+            &process_owner,
+            USER_DIRECTED_YIELD_SLO,
+        )
+        .await
         {
             let timeout_receipt = receipt_id.clone();
             let _ = tokio::task::spawn_blocking(move || {

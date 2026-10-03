@@ -33,3 +33,13 @@ pub(super) async fn terminate_child_tree(
         Err(failures.join("; "))
     }
 }
+pub(super) fn process_tree_gone(pid: u32) -> bool {
+    #[cfg(unix)]
+    {
+        pid != 0 && !super::super::registry::process_tree_exists(pid)
+    }
+    #[cfg(windows)]
+    {
+        pid != 0
+    }
+}

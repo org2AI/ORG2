@@ -1283,21 +1283,35 @@ fn validate_replacement_reference(tx: &rusqlite::Connection, task: &Task) -> Res
     let Some(replaced_id) = task.replaces_task_id.as_deref() else {
         return Ok(());
     };
-    let replaced_status: Option<String> = tx
-        .query_row(
-            "SELECT status FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2",
-            params![&task.org_run_id, replaced_id],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(|error| error.to_string())?;
-    let terminal = replaced_status
-        .as_deref()
-        .is_some_and(|status| matches!(status, "completed" | "failed" | "cancelled"));
-    if !terminal {
-        return Err("replacement must reference a terminal task in the same run".to_string());
+    AgentOrgTaskStore::validate_replacement_target_with_connection(
+        tx,
+        &task.org_run_id,
+        replaced_id,
+    )
+}
+
+impl AgentOrgTaskStore {
+    pub(crate) fn validate_replacement_target_with_connection(
+        tx: &rusqlite::Connection,
+        org_run_id: &str,
+        replaced_id: &str,
+    ) -> Result<(), String> {
+        let replaced_status: Option<String> = tx
+            .query_row(
+                "SELECT status FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2",
+                params![org_run_id, replaced_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|error| error.to_string())?;
+        let terminal = replaced_status
+            .as_deref()
+            .is_some_and(|status| matches!(status, "completed" | "failed" | "cancelled"));
+        if !terminal {
+            return Err("replacement must reference a terminal task in the same run".to_string());
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 fn enforce_scheduling_policy(

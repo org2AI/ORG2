@@ -17,6 +17,23 @@ pub(crate) use store::{
 };
 pub use store::{FinalSummaryReceipt, FinalSummaryStatus};
 
+pub const FINALIZING_INPUT_NOT_ACCEPTED: &str = "agent_org_finalizing_input_not_accepted";
+
+pub(crate) fn is_finalizing_with_connection(
+    conn: &rusqlite::Connection,
+    org_run_id: &str,
+) -> Result<bool, String> {
+    conn.query_row(
+        "SELECT EXISTS(
+             SELECT 1 FROM agent_org_runtime_final_summary_receipts
+             WHERE org_run_id=?1 AND status IN ('pending','running','persisting')
+         )",
+        [org_run_id],
+        |row| row.get(0),
+    )
+    .map_err(|error| error.to_string())
+}
+
 pub(crate) fn create_schema(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
     schema::create_schema(conn)
 }

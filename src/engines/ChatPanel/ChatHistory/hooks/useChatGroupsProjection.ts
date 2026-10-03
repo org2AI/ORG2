@@ -6,6 +6,10 @@ import {
   isAgentOrgInboxTranscriptEvent,
   isCoordinatorHumanUserEvent,
 } from "../GroupChatView/groupChatPredicates";
+import {
+  type AgentOrgExecution,
+  groupOrgExecutions,
+} from "../agentOrgExecution";
 import { isAgentErrorEvent } from "../chatItemPipeline/classifiers";
 import { isAssistantMessageEvent } from "../chatItemPipeline/dedup";
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
@@ -22,6 +26,7 @@ export interface UnloadedTurnMeta {
 }
 
 export interface ChatGroupMeta {
+  execution?: AgentOrgExecution;
   /** Structural failed-attempt audit, never a logical user turn. */
   retryAudit?: true;
   turnId: string | null;
@@ -84,6 +89,7 @@ export interface UseChatGroupsOptions extends ChatGroupsProjectionOptions {
 }
 
 interface ChatGroup {
+  execution?: AgentOrgExecution;
   header: OptimizedChatItem | null;
   items: OptimizedChatItem[];
 }
@@ -322,17 +328,22 @@ export function projectChatGroups(
     defaultTurnCollapsed = true,
   } = options;
   const { isHeader, isBoundary } = resolveTurnPredicates(options);
-  const groups: ChatGroup[] = [];
-  let current: ChatGroup = { header: null, items: [] };
-
-  for (const sourceItem of optimizedChatHistory) {
+  const itemsWithOutputImages = optimizedChatHistory.map((sourceItem) => {
     // Media belongs to the producing item, never to the turn's final reply.
     // Assign ownership before collapse so hidden tool text cannot move its
     // screenshots after later assistant messages.
     const images = chatItemOutputImages(sourceItem);
-    const item = images.length
-      ? { ...sourceItem, outputImages: images }
-      : sourceItem;
+    return images.length ? { ...sourceItem, outputImages: images } : sourceItem;
+  });
+  const groups: ChatGroup[] =
+    options.turnGrouping?.mode === "agent-org-member"
+      ? groupOrgExecutions(itemsWithOutputImages)
+      : [];
+  let current: ChatGroup = { header: null, items: [] };
+
+  for (const item of options.turnGrouping?.mode === "agent-org-member"
+    ? []
+    : itemsWithOutputImages) {
     if (item.event && isRetryAuditBoundary(item.event)) {
       if (current.header || current.items.length > 0) groups.push(current);
       current = { header: null, items: [item] };
@@ -348,7 +359,9 @@ export function projectChatGroups(
   const groupHeaders = groups.map((group) => group.header);
   const groupMeta: ChatGroupMeta[] = groups.map((group) => {
     const headerEvent = group.header?.event;
-    const turnId = headerEvent?.id ?? null;
+    const turnId = group.execution
+      ? `agent-org-execution-${group.execution.turnIntentId}`
+      : (headerEvent?.id ?? null);
     const messageMs = parseEpochMs(headerEvent?.createdAt);
     // Native runtimes can accept a queued/retried message long after it was
     // written. Their execution boundary, when available, owns worked-for
@@ -377,7 +390,10 @@ export function projectChatGroups(
       group.items.map(getUnloadedTurnMeta).find((value) => value !== null) ??
       null;
     const hasLoadedBodyItem = group.items.some(
-      (item) => !isUnloadedTurnItem(item) && !isTurnPreviewItem(item)
+      (item) =>
+        !isUnloadedTurnItem(item) &&
+        !isTurnPreviewItem(item) &&
+        !(group.execution && item.event?.source === "user")
     );
     const unloadedTurn = hasLoadedBodyItem ? null : unloadedTurnPlaceholder;
     const hasBody = unloadedTurn
@@ -397,6 +413,7 @@ export function projectChatGroups(
         ? { retryAudit: true as const }
         : {}),
       turnId,
+      execution: group.execution,
       assistantModelId: assistantModelIdForGroup(group),
       durationMs: unloadedTurn?.durationMs ?? durationMs,
       itemCount: group.items.length,
@@ -567,21 +584,23 @@ export function projectChatGroups(
   const flatItems = survivingPerGroup.flat();
   const maxFlat = Math.max(0, flatItems.length - 1);
   const originalToFlatIndex = new Map<number, number>();
-  let originalIndex = 0;
+  const originalIndices = new Map(
+    optimizedChatHistory.map((item, index) => [item, index])
+  );
   let flatIndexCursor = 0;
   for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
     const group = groups[groupIndex];
     const surviving = survivingPerGroup[groupIndex];
     const droppedTargets = droppedItemTargetByGroup[groupIndex];
-    if (group.header) {
+    if (group.header && originalIndices.has(group.header)) {
       originalToFlatIndex.set(
-        originalIndex,
+        originalIndices.get(group.header)!,
         Math.min(flatIndexCursor, maxFlat)
       );
-      originalIndex++;
     }
     let localKeptCursor = flatIndexCursor;
     for (let i = 0; i < group.items.length; i++) {
+      const originalIndex = originalIndices.get(group.items[i])!;
       const droppedTarget = droppedTargets[i];
       if (droppedTarget !== null) {
         originalToFlatIndex.set(originalIndex, droppedTarget);
@@ -589,7 +608,6 @@ export function projectChatGroups(
         originalToFlatIndex.set(originalIndex, localKeptCursor);
         localKeptCursor++;
       }
-      originalIndex++;
     }
     flatIndexCursor += surviving.length;
   }

@@ -1,6 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
+import { useBeforeViewportLayoutMutation } from "@src/components/ViewportLayoutMutationContext";
 import {
   BlockOutput,
   EVENT_BLOCK_TRANSPARENT_EXPANDED_SHELL_CLASSES,
@@ -15,6 +17,7 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { HugeiconsIcon, MailOpen01Icon } from "@src/icons";
 
 import { extractGroupMessageContent } from "../GroupChatView/groupChatUtils";
+import { agentOrgExecution } from "../agentOrgExecution";
 
 const INBOX_TRANSCRIPT_ICON = (
   <HugeiconsIcon
@@ -30,10 +33,25 @@ function getInboxTranscriptBody(event: SessionEvent): string {
 
 export const InboxTranscriptCard: React.FC<{
   event: SessionEvent;
-  title: string;
-}> = ({ event, title }) => {
+}> = ({ event }) => {
   const { t } = useTranslation("sessions");
+  const beforeLayoutMutation = useBeforeViewportLayoutMutation();
   const body = getInboxTranscriptBody(event);
+  const execution = agentOrgExecution(event);
+  const unknown = t("agentOrgExecution.unknownSource");
+  const senders =
+    execution?.senders
+      ?.map((sender) => `${sender.name ?? unknown} (${sender.count})`)
+      .join(", ") || unknown;
+  const recipient = execution?.participantName ?? unknown;
+  const summary =
+    execution?.inboxCount !== undefined
+      ? t("agentOrgExecution.inboxSummary", {
+          recipient,
+          count: execution.inboxCount,
+          senders,
+        })
+      : t("agentOrgExecution.legacyInbox");
   const hasContent = body.length > 0;
   const {
     isCollapsed,
@@ -45,22 +63,34 @@ export const InboxTranscriptCard: React.FC<{
 
   return (
     <div className={`${getEventBlockContainerClasses(false)} animate-fade-in`}>
-      <EventBlockHeader
-        isCollapsed={isCollapsed}
-        withHover={false}
-        onToggleCollapse={hasContent ? handleHeaderClick : undefined}
-        onMouseEnter={handleHeaderMouseEnter}
-        onMouseLeave={handleHeaderMouseLeave}
+      {/* Compound event header owns its icon/title geometry; Button owns disclosure semantics. */}
+      <Button
+        layout="custom"
+        className="w-full text-left"
+        disabled={!hasContent}
+        aria-label={summary}
+        aria-expanded={!isCollapsed}
+        onClick={() => {
+          beforeLayoutMutation?.();
+          handleHeaderClick();
+        }}
       >
-        <EventBlockHeaderIcon
-          icon={INBOX_TRANSCRIPT_ICON}
+        <EventBlockHeader
           isCollapsed={isCollapsed}
-          isHeaderHovered={isHeaderHovered}
-          iconSize={SESSION_UI_TOKENS.ICON.SIZE_SM}
-          hasContent={hasContent}
-        />
-        <EventBlockHeaderTitle>{title}</EventBlockHeaderTitle>
-      </EventBlockHeader>
+          withHover={false}
+          onMouseEnter={handleHeaderMouseEnter}
+          onMouseLeave={handleHeaderMouseLeave}
+        >
+          <EventBlockHeaderIcon
+            icon={INBOX_TRANSCRIPT_ICON}
+            isCollapsed={isCollapsed}
+            isHeaderHovered={isHeaderHovered}
+            iconSize={SESSION_UI_TOKENS.ICON.SIZE_SM}
+            hasContent={hasContent}
+          />
+          <EventBlockHeaderTitle>{summary}</EventBlockHeaderTitle>
+        </EventBlockHeader>
+      </Button>
 
       {!isCollapsed && hasContent && (
         <div
@@ -72,7 +102,7 @@ export const InboxTranscriptCard: React.FC<{
                 {t("cards.agentMessage.meta.sender")}
               </span>
               <span className="min-w-0 flex-1 truncate text-text-1">
-                {t("cards.agentMessage.emailBubble.subagentMessages")}
+                {senders}
               </span>
             </div>
             <div className="flex min-w-0 items-baseline gap-2">
@@ -80,7 +110,7 @@ export const InboxTranscriptCard: React.FC<{
                 {t("cards.agentMessage.meta.recipient")}
               </span>
               <span className="min-w-0 flex-1 truncate text-text-1">
-                Coordinator
+                {recipient}
               </span>
             </div>
           </div>

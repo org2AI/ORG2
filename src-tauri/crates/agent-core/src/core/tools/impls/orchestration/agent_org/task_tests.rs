@@ -29,6 +29,8 @@ mod next_work_tests;
 mod rework_tests;
 #[path = "summary_terminal_tests.rs"]
 mod summary_terminal_tests;
+#[path = "task_resource_tests.rs"]
+mod task_resource_tests;
 
 const RUN_ID: &str = "run-task-tools";
 const ROOT_SESSION: &str = "root-task-tools";

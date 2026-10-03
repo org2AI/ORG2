@@ -38,6 +38,8 @@ pub struct ExecIdentity {
     pub call_id: String,
     pub turn_process_control: Option<crate::tools::call_context::TurnProcessControl>,
     process_cancel: CancellationToken,
+    pub(crate) registration_id: String,
+    pub(crate) org_scope: Option<super::registry::OrgResourceScope>,
 }
 
 impl ExecIdentity {
@@ -47,6 +49,8 @@ impl ExecIdentity {
             call_id: call_id.into(),
             turn_process_control: None,
             process_cancel: CancellationToken::new(),
+            registration_id: format!("shell-{}", uuid::Uuid::new_v4()),
+            org_scope: None,
         }
     }
 
@@ -173,6 +177,29 @@ pub async fn execute_via_command(
         warn!("[subprocess] child.id() returned None; PID tracking disabled");
     }
 
+    let completion =
+        super::registry::register_managed_shell(super::registry::ManagedShellRegistration {
+            handle: &identity.registration_id,
+            pid,
+            command,
+            log_path: replay.path().to_path_buf(),
+            session_id: &identity.session_id,
+            call_id: &identity.call_id,
+            control: identity.turn_process_control.as_ref(),
+            org_scope: identity.org_scope.clone(),
+            cancel: identity.process_cancel.clone(),
+        });
+    let mut monitor_completion = match completion {
+        Ok(completion) => Some(completion),
+        Err(error) => {
+            let termination = terminate_child_tree(pid, &mut child).await;
+            replay.mark_incomplete(error.clone());
+            return Err(ToolError::ExecutionFailed(format!(
+                "{error}; child cleanup: {termination:?}"
+            )));
+        }
+    };
+    let result = async {
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
     let runtime = spawn_output_runtime(identity.clone(), stdout, stderr, replay);
@@ -181,7 +208,7 @@ pub async fn execute_via_command(
     let effective_wait = wait_secs.unwrap_or(timeout_secs);
     if mode == ExecMode::Background {
         return handle_backgrounded(
-            command,
+            monitor_completion.take().expect("registered shell"),
             pid,
             effective_wait,
             BackgroundReason::Explicit,
@@ -269,7 +296,7 @@ pub async fn execute_via_command(
         }
 
         match child.try_wait() {
-            Ok(Some(status)) => {
+            Ok(Some(status)) if process_tree::process_tree_gone(pid) => {
                 let was_signaled = status.code().is_none();
                 let exit_code = status.code().unwrap_or(-1);
                 let drain =
@@ -332,7 +359,7 @@ pub async fn execute_via_command(
                 );
                 return Ok(format_summary(summary, exit_code));
             }
-            Ok(None) => {}
+            Ok(_) => {}
             Err(err) => {
                 let termination_error = terminate_child_tree(pid, &mut child).await.err();
                 let drain = match drain_output(runtime.take().expect("output runtime present"))
@@ -366,7 +393,7 @@ pub async fn execute_via_command(
 
         if wait_started_at.elapsed() >= Duration::from_secs(effective_wait) {
             return handle_backgrounded(
-                command,
+                monitor_completion.take().expect("registered shell"),
                 pid,
                 effective_wait,
                 BackgroundReason::Timeout,
@@ -380,7 +407,26 @@ pub async fn execute_via_command(
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
+    }.await;
+    if let Some(completion) = monitor_completion {
+        // Every foreground exit above has joined the readers and writer.
+        // A replay error remains an error result, but cannot keep closed pipes alive.
+        let finality = if process_tree::process_tree_gone(pid) {
+            Ok(())
+        } else {
+            Err("shell process or output finality could not be proved".to_string())
+        };
+        let finished = finality.is_ok();
+        completion.finish(finality);
+        if finished {
+            super::registry::remove(&identity.registration_id);
+        }
+    }
+    result
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(all(test, unix))]
+mod service_tests;

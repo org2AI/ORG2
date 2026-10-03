@@ -465,6 +465,10 @@ pub(crate) async fn prepare_handoff_runtime_evidence(
     context: &TaskToolsContext,
     task_id: &str,
 ) -> Result<PreparedHandoffRuntime, String> {
+    let resource_owner = crate::tools::impls::coding::exec::registry::task_resource_owner(
+        &context.org_context.run_id,
+        task_id,
+    );
     let run_id = context.org_context.run_id.clone();
     let task_id = task_id.to_string();
     let running = tokio::task::spawn_blocking(move || {
@@ -474,6 +478,14 @@ pub(crate) async fn prepare_handoff_runtime_evidence(
     .await
     .map_err(|error| format!("Task handoff target worker failed: {error}"))??;
     let Some((session_id, turn_intent_id, _owner_member_id, _generation)) = running else {
+        if let Some(owner) = resource_owner {
+            return Ok(PreparedHandoffRuntime::Exact(HandoffRuntimeEvidence {
+                old_session_id: owner.session_id,
+                old_turn_intent_id: owner.turn_intent_id,
+                runtime_lease_id: owner.runtime_lease_id,
+                dialog_turn_generation: owner.dialog_turn_generation,
+            }));
+        }
         return Ok(PreparedHandoffRuntime::Quiesced);
     };
     let Some(state) = context.app_state.as_ref() else {
@@ -494,6 +506,33 @@ pub(crate) async fn prepare_handoff_runtime_evidence(
         runtime_lease_id: identity.runtime_lease_id,
         dialog_turn_generation: identity.dialog_turn_generation,
     }))
+}
+
+async fn release_handoff_task_resources(
+    receipt: &TaskExecutionHandoffReceipt,
+) -> Result<bool, ToolError> {
+    if crate::tools::impls::coding::exec::registry::cancel_and_await_task_resources(
+        &receipt.org_run_id,
+        &receipt.old_task_id,
+        Duration::from_secs(10),
+    )
+    .await
+    .is_ok()
+    {
+        return Ok(true);
+    }
+    let count = crate::coordination::agent_org_task_execution_fence::active_effect_count(
+        &receipt.org_run_id,
+        &receipt.old_task_id,
+    );
+    let receipt_id = receipt.id.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::coordination::agent_org_task_handoffs::mark_timeout(&receipt_id, count)
+    })
+    .await
+    .map_err(|error| ToolError::ExecutionFailed(error.to_string()))?
+    .map_err(ToolError::ExecutionFailed)?;
+    Ok(false)
 }
 
 pub(crate) async fn drive_committed_handoff(
@@ -537,6 +576,9 @@ pub(crate) async fn drive_committed_handoff(
         None => false,
     };
     if !exact_live_turn {
+        if !release_handoff_task_resources(&receipt).await? {
+            return Ok(());
+        }
         let run_id = receipt.org_run_id.clone();
         let persisted_session_id = session_id.clone();
         let persisted_turn_id = turn_intent_id.clone();
@@ -658,6 +700,10 @@ pub(crate) async fn drive_committed_handoff(
             .map_err(ToolError::ExecutionFailed)?;
             return Ok(());
         }
+    }
+
+    if exact_live_turn && !release_handoff_task_resources(&receipt).await? {
+        return Ok(());
     }
 
     let local_effect_count =

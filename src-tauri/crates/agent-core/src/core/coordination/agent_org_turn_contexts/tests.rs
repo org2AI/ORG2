@@ -399,6 +399,187 @@ fn row_count(conn: &Connection, table: &str) -> i64 {
     .unwrap_or_else(|error| panic!("count {table}: {error}"))
 }
 
+fn seed_final_summary_receipt(conn: &Connection, status: &str) {
+    conn.execute(
+        "INSERT INTO agent_org_runtime_run_completion_certificates (
+             id,org_run_id,activation_generation,work_revision,request_id,
+             request_digest,outcome,summary,coordinator_session_id,
+             coordinator_turn_intent_id,evidence_task_ids_json,
+             closure_task_ids_json,task_output_refs_json,resolution_links_json,
+             validator_version,created_at
+         ) VALUES (
+             'certificate-finalizing',?1,1,0,'request-finalizing',
+             ?2,'delivered','Ready to summarize',?3,
+             'turn-completion','[]','[]','[]','[]',1,'now'
+         )",
+        params![RUN_ID, "0".repeat(64), ROOT_SESSION_ID],
+    )
+    .expect("seed completion certificate");
+
+    let (turn_intent_id, started_at, terminal_at, event_id, typed_error) = match status {
+        "pending" => (None, None, None, None, None),
+        "running" | "persisting" => (Some("turn-final-summary"), Some("now"), None, None, None),
+        "persisted" => (
+            Some("turn-final-summary"),
+            Some("now"),
+            Some("now"),
+            Some("event-final-summary"),
+            None,
+        ),
+        "failed" => (
+            Some("turn-final-summary"),
+            Some("now"),
+            Some("now"),
+            None,
+            Some("provider_error"),
+        ),
+        other => panic!("unsupported final summary fixture status: {other}"),
+    };
+    conn.execute(
+        "INSERT INTO agent_org_runtime_final_summary_receipts (
+             receipt_id,org_run_id,activation_generation,certificate_id,
+             evidence_digest,attempt,status,coordinator_session_id,
+             turn_intent_id,started_at,terminal_at,event_id,typed_error,
+             created_at,updated_at
+         ) VALUES (
+             'summary-receipt',?1,1,'certificate-finalizing',?2,1,?3,?4,
+             ?5,?6,?7,?8,?9,'now','now'
+         )",
+        params![
+            RUN_ID,
+            "1".repeat(64),
+            status,
+            ROOT_SESSION_ID,
+            turn_intent_id,
+            started_at,
+            terminal_at,
+            event_id,
+            typed_error,
+        ],
+    )
+    .expect("seed final summary receipt");
+}
+
+#[test]
+fn final_summary_active_states_reject_every_new_user_admission_atomically() {
+    for status in ["pending", "running", "persisting"] {
+        let mut conn = connection();
+        seed_final_summary_receipt(&conn, status);
+        conn.execute(
+            "INSERT INTO events (id,session_id,function_name,result_json)
+             VALUES ('event-finalizing-group-root',?1,'user_message',
+                     json_object('turnIntentId','turn-finalizing-group-root'))",
+            [ROOT_SESSION_ID],
+        )
+        .expect("seed GroupRoot event");
+
+        let requests = [
+            AgentOrgTurnAdmission::coordinator(
+                RUN_ID,
+                ROOT_SESSION_ID,
+                "turn-finalizing-root",
+                Some("message-finalizing-root".into()),
+                TurnIntentBridgeSource::UserSubmit,
+            ),
+            group_root_request("turn-finalizing-group-root", "event-finalizing-group-root"),
+            direct_request("turn-finalizing-direct"),
+            group_request("turn-finalizing-mention"),
+        ];
+
+        for request in requests {
+            let error = accept_in_transaction(&mut conn, &request)
+                .expect_err("FinalSummary must reject new User input");
+            assert_eq!(
+                error,
+                format!(
+                    "{}:{RUN_ID}",
+                    crate::coordination::agent_org_final_summary::FINALIZING_INPUT_NOT_ACCEPTED
+                ),
+                "status={status}"
+            );
+        }
+
+        assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 0);
+        assert_eq!(row_count(&conn, "session_turn_intents"), 0);
+    }
+}
+
+#[test]
+fn user_admission_committed_before_finalizing_remains_idempotently_accepted() {
+    let mut conn = connection();
+    let request = AgentOrgTurnAdmission::coordinator(
+        RUN_ID,
+        ROOT_SESSION_ID,
+        "turn-user-won-race",
+        Some("message-user-won-race".into()),
+        TurnIntentBridgeSource::UserSubmit,
+    );
+    let accepted = accept_in_transaction(&mut conn, &request).expect("admit user Turn first");
+    seed_final_summary_receipt(&conn, "pending");
+
+    let replay = accept_in_transaction(&mut conn, &request)
+        .expect("the exact accepted Turn must remain replayable while finalizing");
+    assert_eq!(replay, accepted);
+    assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 1);
+    assert_eq!(row_count(&conn, "session_turn_intents"), 1);
+}
+
+#[test]
+fn final_summary_guard_allows_formal_work_and_terminal_receipts_allow_user_input() {
+    let mut finalizing = connection();
+    seed_final_summary_receipt(&finalizing, "pending");
+    insert_task_assignment(&finalizing, "task-a");
+    let formal = accept_in_transaction(&mut finalizing, &task_request("turn-formal-finalizing"))
+        .expect("formal Task execution must continue while summary receipt is active");
+    assert_eq!(formal.turn_kind, AgentOrgTurnKind::TaskExecution);
+
+    for status in ["persisted", "failed"] {
+        let mut conn = connection();
+        seed_final_summary_receipt(&conn, status);
+        let context = accept_in_transaction(
+            &mut conn,
+            &AgentOrgTurnAdmission::coordinator(
+                RUN_ID,
+                ROOT_SESSION_ID,
+                format!("turn-after-{status}"),
+                Some(format!("message-after-{status}")),
+                TurnIntentBridgeSource::UserSubmit,
+            ),
+        )
+        .expect("terminal final summary receipt must release User input");
+        assert_eq!(context.turn_kind, AgentOrgTurnKind::Coordinator);
+    }
+}
+
+#[test]
+fn final_summary_guard_classifies_only_external_user_sources() {
+    let coordinator_user = AgentOrgTurnAdmission::coordinator(
+        RUN_ID,
+        ROOT_SESSION_ID,
+        "turn-user",
+        Some("message-user".into()),
+        TurnIntentBridgeSource::UserSubmit,
+    );
+    let coordinator_system = AgentOrgTurnAdmission::coordinator(
+        RUN_ID,
+        ROOT_SESSION_ID,
+        "turn-system",
+        None,
+        TurnIntentBridgeSource::AgentOrg,
+    );
+
+    assert!(is_user_originated_admission(&coordinator_user));
+    assert!(is_user_originated_admission(&direct_request("turn-direct")));
+    assert!(is_user_originated_admission(&group_request("turn-group")));
+    assert!(is_user_originated_admission(&group_root_request(
+        "turn-group-root-classification",
+        "event-group-root-classification"
+    )));
+    assert!(!is_user_originated_admission(&coordinator_system));
+    assert!(!is_user_originated_admission(&task_request("turn-task")));
+    assert!(!is_user_originated_admission(&inbox_request("turn-inbox")));
+}
+
 #[test]
 fn coordinator_is_root_scoped_and_never_allocates_member_sequence() {
     let mut conn = connection();

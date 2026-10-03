@@ -1,5 +1,4 @@
 import React, { memo, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 
 import Message from "@src/components/Message";
 
@@ -79,7 +78,6 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
     onEditUserMessage,
     newEventDividerLabel = null,
   }) => {
-    const { t } = useTranslation("sessions");
     const groupChat = useGroupChatContext();
     const event = chatItem?.event;
 
@@ -105,11 +103,9 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
       return { event: previousEvent, message };
     }, [groupChat, previousChatItem]);
 
-    const inboxTranscriptLabel = useMemo(() => {
-      if (!event || simpleMessage) return null;
-      if (!isAgentOrgInboxTranscriptEvent(event)) return null;
-      return t("groupChat.inboxTranscript.readMessages");
-    }, [event, simpleMessage, t]);
+    const isInboxTranscript = Boolean(
+      event && !simpleMessage && isAgentOrgInboxTranscriptEvent(event)
+    );
 
     const usesGroupChatMessageBubble = simpleMessage !== null;
     const showGroupBubbleSenderChrome =
@@ -187,9 +183,9 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
 
     const renderedItem =
       chatItem && !isHiddenUnloadedTurnItem && !isStructuralOnlyItem ? (
-        inboxTranscriptLabel && event ? (
+        isInboxTranscript && event ? (
           <ChatItemWrap variant="text" className="py-1!">
-            <InboxTranscriptCard event={event} title={inboxTranscriptLabel} />
+            <InboxTranscriptCard event={event} />
           </ChatItemWrap>
         ) : simpleMessage ? (
           <ChatItemWrap variant="text" className={groupMessageWrapClass}>

@@ -39,6 +39,8 @@ mod store_write;
 mod task_bindings;
 
 #[cfg(test)]
+mod store_write_tests;
+#[cfg(test)]
 mod tests;
 
 pub use message::{

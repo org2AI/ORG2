@@ -147,6 +147,7 @@ export function willEventRenderContent(event: SessionEvent): boolean {
 }
 
 function computeWillEventRenderContent(event: SessionEvent): boolean {
+  if (event.actionType === "agent_org_execution") return true;
   const actionType = event.actionType;
   const functionName = event.functionName;
 

@@ -11,6 +11,8 @@ import {
   chatSearchSyncAtomFamily,
 } from "@src/store/ui/chatPanel/miscAtoms";
 
+import { agentOrgExecutionNavigationAtom } from "../../agentOrgExecutionNavigation";
+import { useTranscriptViewport } from "../../viewport/useTranscriptViewport";
 import {
   type UseChatSearchOptions,
   type UseChatSearchReturn,
@@ -22,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   highlight: vi.fn(),
   clear: vi.fn(),
   navigate: vi.fn(),
+  expandTurn: vi.fn(),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@src/engines/SessionCore", () => ({
@@ -30,9 +33,10 @@ vi.mock("@src/engines/SessionCore", () => ({
 vi.mock("@src/engines/ChatPanel/ChatCollapseScope", async () => {
   const { atom } = await import("jotai");
   const collapse = atom(null, () => undefined);
+  const expandTurn = atom(null, (_get, _set, value) => mocks.expandTurn(value));
   return {
     useChatCollapseState: () => ({
-      setTurnCollapseOverrideAtom: collapse,
+      setTurnCollapseOverrideAtom: expandTurn,
       setCollapseStateAtom: collapse,
     }),
   };
@@ -279,4 +283,282 @@ describe("chat search highlight scheduling", () => {
     await advance(1000);
     expect(mocks.invoke).not.toHaveBeenCalled();
   });
+});
+
+it("selects the exact execution page before scrolling to its formal group", async () => {
+  const scrollToGroup = vi.fn();
+  const event = {
+    ...options.chatHistory[0],
+    args: {
+      agentOrgExecution: {
+        turnIntentId: "old",
+        participantId: "reviewer",
+        participantName: "Reviewer",
+        sourceKind: "member_messages" as const,
+      },
+    },
+  };
+  options = {
+    ...options,
+    virtualListRef: {
+      current: {
+        scrollToGroup,
+        scrollToChatTarget: vi.fn(),
+        revealTranscriptAnchor: vi.fn(),
+      },
+    },
+    chatHistory: [event],
+    turnPaginationEnabled: true,
+    currentPageIndex: 1,
+    flatItems: [{ chunk_id: event.id, type: "activity", event }],
+    groupCounts: [1, 0],
+    groupMeta: [
+      {
+        turnId: "agent-org-execution-old",
+        execution: event.args.agentOrgExecution,
+        durationMs: 0,
+        itemCount: 1,
+        bodyEventCount: 1,
+        hasBody: true,
+        previewText: "",
+        startMs: null,
+        endMs: null,
+        unloadedTurn: null,
+      },
+      {
+        turnId: "new",
+        durationMs: 0,
+        itemCount: 0,
+        bodyEventCount: 0,
+        hasBody: false,
+        previewText: "",
+        startMs: null,
+        endMs: null,
+        unloadedTurn: null,
+      },
+    ],
+    pages: [
+      {
+        startGroupIndex: 0,
+        endGroupIndex: 0,
+        flatStartIndex: 0,
+        flatEndIndex: 1,
+        cursorIdeSummary: null,
+      },
+      {
+        startGroupIndex: 1,
+        endGroupIndex: 1,
+        flatStartIndex: 1,
+        flatEndIndex: 1,
+        cursorIdeSummary: null,
+      },
+    ],
+  };
+  act(() => {
+    store.set(agentOrgExecutionNavigationAtom, {
+      sessionId: "session-1",
+      turnIntentId: "old",
+    });
+    root.render(createElement(Provider, { store }, createElement(Harness)));
+  });
+  expect(options.setTurnPageSelection).toHaveBeenCalledWith({
+    sessionId: "session-1",
+    pageIndex: 0,
+  });
+  expect(mocks.navigate).not.toHaveBeenCalled();
+  options = { ...options, currentPageIndex: 0 };
+  act(() =>
+    root.render(createElement(Provider, { store }, createElement(Harness)))
+  );
+  await advance(32);
+  expect(scrollToGroup).toHaveBeenCalledWith({
+    groupIndex: 0,
+    behavior: "auto",
+  });
+  expect(mocks.navigate).not.toHaveBeenCalled();
+  expect(store.get(agentOrgExecutionNavigationAtom)).toBeNull();
+});
+
+it.each([false, true])(
+  "locates an execution without a rendered input event (pagination: %s)",
+  async (paginated) => {
+    const scrollToGroup = vi.fn();
+    const execution = {
+      turnIntentId: "report",
+      participantId: "coordinator",
+      participantName: "Coordinator",
+      sourceKind: "final_summary" as const,
+    };
+    const meta = {
+      durationMs: 0,
+      itemCount: 0,
+      bodyEventCount: 0,
+      hasBody: false,
+      previewText: "",
+      startMs: null,
+      endMs: null,
+      unloadedTurn: null,
+    };
+    options = {
+      ...options,
+      // The persisted execution anchor belongs to the header, never flatItems.
+      chatHistory: [
+        { ...options.chatHistory[0], args: { agentOrgExecution: execution } },
+      ],
+      flatItems: [],
+      groupCounts: [0, 0],
+      groupMeta: [
+        { ...meta, turnId: "older" },
+        { ...meta, turnId: "agent-org-execution-report", execution },
+      ],
+      pages: [0, 1].map((index) => ({
+        startGroupIndex: index,
+        endGroupIndex: index,
+        flatStartIndex: 0,
+        flatEndIndex: 0,
+        cursorIdeSummary: null,
+      })),
+      turnPaginationEnabled: paginated,
+      currentPageIndex: 1,
+      virtualListRef: {
+        current: {
+          scrollToGroup,
+          scrollToChatTarget: vi.fn(),
+          revealTranscriptAnchor: vi.fn(),
+        },
+      },
+    };
+    act(() => {
+      store.set(agentOrgExecutionNavigationAtom, {
+        sessionId: "session-1",
+        turnIntentId: "report",
+      });
+      root.render(createElement(Provider, { store }, createElement(Harness)));
+    });
+    // Expanding the turn publishes a fresh projection before the frame runs.
+    options = { ...options, groupMeta: [...options.groupMeta] };
+    act(() =>
+      root.render(createElement(Provider, { store }, createElement(Harness)))
+    );
+    expect(mocks.expandTurn).toHaveBeenCalledTimes(1);
+    await advance(32);
+    expect(scrollToGroup).toHaveBeenCalledWith({
+      groupIndex: paginated ? 0 : 1,
+      behavior: "auto",
+    });
+    expect(
+      options.virtualListRef.current?.scrollToChatTarget
+    ).not.toHaveBeenCalled();
+    expect(store.get(agentOrgExecutionNavigationAtom)).toBeNull();
+  }
+);
+
+it("keeps a distant execution visible when expansion resizes before the scroll event", async () => {
+  const scroller = document.createElement("div");
+  Object.defineProperties(scroller, {
+    clientHeight: { value: 400 },
+    scrollHeight: { value: 2200 },
+  });
+  scroller.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+  scroller.scrollTo = (value) => {
+    scroller.scrollTop = typeof value === "object" ? (value.top ?? 0) : 0;
+  };
+  for (const [id, top] of [
+    ["older", 0],
+    ["report", 1600],
+  ] as const) {
+    const anchor = document.createElement("div");
+    anchor.dataset.transcriptAnchorId = id;
+    anchor.getBoundingClientRect = () =>
+      ({
+        top: top - scroller.scrollTop,
+        bottom: top + 500 - scroller.scrollTop,
+      }) as DOMRect;
+    scroller.append(anchor);
+  }
+  let resize = () => {};
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        resize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    }
+  );
+  const execution = {
+    turnIntentId: "report",
+    participantId: "coordinator",
+    participantName: "Coordinator",
+    sourceKind: "final_summary" as const,
+  };
+  options = {
+    ...options,
+    groupMeta: [
+      {
+        turnId: "agent-org-execution-report",
+        execution,
+        durationMs: 0,
+        itemCount: 1,
+        bodyEventCount: 1,
+        hasBody: true,
+        previewText: "",
+        startMs: null,
+        endMs: null,
+        unloadedTurn: null,
+      },
+    ],
+    groupCounts: [1],
+    virtualListRef: {
+      current: {
+        revealTranscriptAnchor: () => true,
+        scrollToChatTarget: vi.fn(),
+        scrollToGroup: () => {
+          scroller.scrollTo({ top: 1600 });
+          // WebKit observes the expanded content before delivering its scroll event.
+          resize();
+        },
+      },
+    },
+  };
+  function ViewportHarness() {
+    const viewport = useTranscriptViewport({
+      sessionKey: options.sessionId,
+      contentKey: "expanded-report",
+      itemCount: 2,
+    });
+    const { setScrollRoot } = viewport;
+    useLayoutEffect(() => {
+      setScrollRoot(scroller);
+    }, [setScrollRoot]);
+    useChatSearch({
+      ...options,
+      onExplicitNavigation: viewport.detachForNavigation,
+    });
+    return null;
+  }
+  try {
+    act(() =>
+      root.render(
+        createElement(Provider, { store }, createElement(ViewportHarness))
+      )
+    );
+    await advance(32);
+    scroller.scrollTop = 0;
+    act(() =>
+      store.set(agentOrgExecutionNavigationAtom, {
+        sessionId: "session-1",
+        turnIntentId: "report",
+      })
+    );
+    await advance(32);
+    expect(scroller.scrollTop).toBe(1600);
+    act(resize);
+    expect(scroller.scrollTop).toBe(1600);
+    expect(store.get(agentOrgExecutionNavigationAtom)).toBeNull();
+  } finally {
+    act(() => root.render(null));
+    vi.unstubAllGlobals();
+  }
 });

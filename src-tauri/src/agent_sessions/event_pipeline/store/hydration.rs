@@ -330,6 +330,19 @@ impl EventStore {
             left.created_at
                 .cmp(&right.created_at)
                 .then_with(|| {
+                    left.args
+                        .get("historySequence")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or(i64::MAX)
+                        .cmp(
+                            &right
+                                .args
+                                .get("historySequence")
+                                .and_then(serde_json::Value::as_i64)
+                                .unwrap_or(i64::MAX),
+                        )
+                })
+                .then_with(|| {
                     timeline_source_order(&left.source).cmp(&timeline_source_order(&right.source))
                 })
                 .then_with(|| left.id.cmp(&right.id))

@@ -1183,7 +1183,10 @@ impl LLMProvider for E2eFakeProvider {
         {
             agent_org_terminal::stream_window(on_delta, cancel_flag).await?;
         }
-        let cancellable_wait = if agent_org_completion_wait::member_wait(messages) {
+        let cancellable_wait = if agent_org_completion_wait::pause_before_completion_wait(messages)
+        {
+            Some(Duration::from_secs(120))
+        } else if agent_org_completion_wait::member_wait(messages) {
             Some(Duration::from_secs(8))
         } else if Self::pause_wait_required(messages) || Self::handoff_wait_required(messages) {
             // Real shell-process materialization across all nine Members can

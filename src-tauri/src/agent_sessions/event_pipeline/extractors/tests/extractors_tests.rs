@@ -5,9 +5,7 @@ use crate::agent_sessions::event_pipeline::types::{
     ActivityStatus, EventDisplayStatus, EventDisplayVariant, EventSource, SessionEvent,
 };
 use core_types::cli_alias::get_ui_canonical;
-use core_types::extracted::{
-    ExtractedData, OrgTaskListObservation, OrgTaskOperationOutcome,
-};
+use core_types::extracted::{ExtractedData, OrgTaskListObservation, OrgTaskOperationOutcome};
 
 fn make_event(
     function_name: &str,
@@ -727,6 +725,37 @@ fn test_extract_org_task_structured_non_mutations_are_rejected() {
             }
             _ => panic!("Expected OrgTask variant"),
         }
+    }
+}
+
+#[test]
+fn test_extract_org_task_preserves_exact_rejected_request_provenance() {
+    let event = make_event(
+        "task_graph_create",
+        EventDisplayVariant::ToolCall,
+        serde_json::json!({
+            "tasks": [{ "key": "new-work", "subject": "New work" }]
+        }),
+        serde_json::json!({
+            "created": false,
+            "requires_episode_resolution": true,
+            "rejected_request_turn_intent_id": "turn-user-request",
+            "guidance": "Task not created."
+        }),
+    );
+
+    let data = extract_event_data(&event).expect("extract rejected Task graph");
+    match data {
+        ExtractedData::OrgTask(org_task) => {
+            assert_eq!(org_task.outcome, OrgTaskOperationOutcome::Rejected);
+            assert_eq!(org_task.requires_episode_resolution, Some(true));
+            assert_eq!(
+                org_task.rejected_request_turn_intent_id.as_deref(),
+                Some("turn-user-request")
+            );
+            assert_eq!(org_task.guidance.as_deref(), Some("Task not created."));
+        }
+        _ => panic!("Expected OrgTask variant"),
     }
 }
 

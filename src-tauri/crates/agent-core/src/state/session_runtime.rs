@@ -790,7 +790,7 @@ impl AgentSession {
                     dialog_turn_generation: turn_id.clone(),
                 },
                 background_cancel: CancellationToken::new(),
-                require_owned_job_finality: false,
+                is_agent_org: false,
             },
         );
         *self.active_turn_identity.write() = Some(ActiveTurnIdentity {
@@ -912,11 +912,27 @@ impl AgentSession {
             }
         }
 
-        if effect.cancel_background_workers {
+        let is_agent_org = self
+            .get_runtime()
+            .await
+            .is_some_and(|runtime| runtime.agent_org_context.is_some())
+            || crate::tools::impls::coding::exec::registry::session_has_org_resources(&self.id);
+        if effect.cancel_background_workers && is_agent_org {
+            if let Some(control) = self.turn_process_control() {
+                crate::tools::impls::coding::exec::registry::cancel_subagents_for_owner(
+                    &control.owner,
+                );
+            }
+        } else if effect.cancel_background_workers {
             crate::tools::impls::coding::exec::registry::cancel_subagents_for_session(&self.id);
         }
 
-        match shell_cancellation_scope(reason) {
+        let shell_scope = if reason == CancelReason::UserStop && is_agent_org {
+            ShellCancellationScope::ActiveTurn
+        } else {
+            shell_cancellation_scope(reason)
+        };
+        match shell_scope {
             ShellCancellationScope::ActiveTurn => {
                 if let Some(control) = self.turn_process_control() {
                     control.background_cancel.cancel();
@@ -974,11 +990,15 @@ impl AgentSession {
             .store(!effect.allow_crash_repair_on_next_turn, Ordering::SeqCst);
         self.persist_next_cancel_marker
             .store(effect.persist_cancel_marker, Ordering::SeqCst);
-        if let Some(control) = identity.process_control {
+        if let Some(control) = identity.process_control.as_ref() {
             control.background_cancel.cancel();
         }
         if effect.cancel_background_workers {
-            crate::tools::impls::coding::exec::registry::cancel_subagents_for_session(&self.id);
+            if let Some(control) = identity.process_control.as_ref() {
+                crate::tools::impls::coding::exec::registry::cancel_subagents_for_owner(
+                    &control.owner,
+                );
+            }
         }
         turn.cancel();
         drop(guard);

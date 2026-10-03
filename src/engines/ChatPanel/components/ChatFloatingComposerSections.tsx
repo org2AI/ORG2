@@ -129,7 +129,6 @@ export const ComposerInteractionCards: React.FC<
 );
 
 interface ComposerActivityTrackersProps {
-  sessionId: string;
   inputAreaSessionId: string;
   processExpanded: boolean;
   onToggleProcess: () => void;
@@ -144,7 +143,6 @@ interface ComposerActivityTrackersProps {
 export const ComposerActivityTrackers: React.FC<
   ComposerActivityTrackersProps
 > = ({
-  sessionId,
   inputAreaSessionId,
   processExpanded,
   onToggleProcess,
@@ -156,16 +154,16 @@ export const ComposerActivityTrackers: React.FC<
   <>
     {processExpanded && (
       <ActiveProcesses
-        key={`process-expanded-${sessionId}`}
-        sessionId={sessionId}
+        key={`process-expanded-${inputAreaSessionId}`}
+        sessionId={inputAreaSessionId}
         onToggle={onToggleProcess}
         onVisibleCountChange={onProcessVisibleCountChange}
       />
     )}
     {!processExpanded && (
       <ActiveProcesses
-        key={`process-hidden-${sessionId}`}
-        sessionId={sessionId}
+        key={`process-hidden-${inputAreaSessionId}`}
+        sessionId={inputAreaSessionId}
         onToggle={onToggleProcess}
         onVisibleCountChange={onProcessVisibleCountChange}
         hidden
@@ -234,10 +232,10 @@ interface ComposerStatusBannersProps {
   onModeSwitchCollapse: () => void;
   agentOrgIntervention: AgentOrgInterventionView | null;
   streamRetry: StreamRetryInfo | null;
-  groupChatPausedBottomContent: React.ReactNode;
+  agentOrgLifecycleBottomContent: React.ReactNode;
 }
 
-/** Banners stacked above the composer: mode switch, org intervention, stream retry, paused group chat. */
+/** Banners stacked above the composer: mode switch, org intervention, stream retry, Agent Org lifecycle. */
 export const ComposerStatusBanners: React.FC<ComposerStatusBannersProps> = ({
   sessionId,
   hasModeSwitch,
@@ -245,7 +243,7 @@ export const ComposerStatusBanners: React.FC<ComposerStatusBannersProps> = ({
   onModeSwitchCollapse,
   agentOrgIntervention,
   streamRetry,
-  groupChatPausedBottomContent,
+  agentOrgLifecycleBottomContent,
 }) => (
   <>
     {hasModeSwitch && !modeSwitchCollapsed && (
@@ -274,6 +272,6 @@ export const ComposerStatusBanners: React.FC<ComposerStatusBannersProps> = ({
         maxAttempts={streamRetry.maxAttempts}
       />
     )}
-    {groupChatPausedBottomContent}
+    {agentOrgLifecycleBottomContent}
   </>
 );

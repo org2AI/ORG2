@@ -9,6 +9,9 @@ use serde::Serialize;
 
 use crate::coordination::agent_org_turn_contexts::{accept_with_connection, AgentOrgTurnAdmission};
 
+mod turn_authority;
+pub(crate) use turn_authority::{claimed_continuation_in_tx, released_execution_in_tx};
+
 const FORMAL_TURN_KINDS: [&str; 2] = ["coordinator", "task_execution"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

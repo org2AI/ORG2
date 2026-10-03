@@ -91,6 +91,8 @@ export interface TurnResourceInteraction {
 }
 
 export interface TurnSummary {
+  execution?: import("@src/engines/SessionCore/core/agentOrgHistory").AgentOrgExecution;
+  turnIntentId?: string | null;
   sessionId: string;
   turnId: string;
   startSequence: number;

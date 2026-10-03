@@ -126,7 +126,7 @@ interface TerminalBlockProps {
    * NOTE: `"running"` alone does NOT show the Stop button; `isLoading` must
    * also be true. Backgrounded processes show status/PID only.
    */
-  processStatus?: "running" | "background" | "exited" | "killed";
+  processStatus?: "running" | "background" | "exited" | "killed" | "unknown";
   /** Callback when user clicks Stop */
   onStop?: (pid: number) => void;
   /** Token/context attribution metadata for this shell call. */
@@ -231,6 +231,13 @@ const TerminalBlock: React.FC<TerminalBlockProps> = memo(
     const canStop = pid !== undefined && isLoading && !isBackground;
 
     const statusLabel = useMemo(() => {
+      if (processStatus === "unknown") {
+        return (
+          <span className="shrink-0 text-text-3">
+            {tCommon("status.unknown")}
+          </span>
+        );
+      }
       if (processStatus === "killed") {
         return (
           <span className="shrink-0 text-danger-6">
@@ -245,7 +252,7 @@ const TerminalBlock: React.FC<TerminalBlockProps> = memo(
         return <span className="shrink-0 text-text-3">{label}</span>;
       }
       return null;
-    }, [processStatus, pid, t]);
+    }, [processStatus, pid, t, tCommon]);
 
     if (!command && !output && !streamOutput && !replayState) return null;
 

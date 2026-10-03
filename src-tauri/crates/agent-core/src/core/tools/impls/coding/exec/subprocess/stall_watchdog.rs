@@ -39,7 +39,7 @@ impl StallWatchdog {
         }
     }
 
-    pub(super) fn probe(&mut self, identity: &ExecIdentity, pid: u32) {
+    pub(super) fn probe(&mut self, identity: &ExecIdentity, pid: u32, handle: &str) {
         if pid == 0 || self.last_probe.elapsed() < STALL_CHECK_INTERVAL {
             return;
         }
@@ -53,7 +53,7 @@ impl StallWatchdog {
             self.last_growth = Instant::now();
             if self.latched {
                 self.latched = false;
-                registry::clear_stalled_waiting_input(&pid.to_string());
+                registry::clear_stalled_waiting_input(handle);
             }
             return;
         }
@@ -64,13 +64,19 @@ impl StallWatchdog {
             return;
         }
         self.latched = true;
-        if registry::mark_stalled_waiting_input(&pid.to_string()) {
+        if registry::mark_stalled_waiting_input(handle) {
             broadcast_system_output(
                 identity,
                 &format!("[process {pid} appears to be waiting for interactive input]"),
             );
-            crate::tools::impls::orchestration::job_wake::current_job_completion_wake_hook()
-                .wake_owner(&identity.session_id);
+            if !identity
+                .turn_process_control
+                .as_ref()
+                .is_some_and(|control| control.is_agent_org)
+            {
+                crate::tools::impls::orchestration::job_wake::current_job_completion_wake_hook()
+                    .wake_owner(&identity.session_id);
+            }
         }
     }
 }

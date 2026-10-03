@@ -184,7 +184,7 @@ fn emit_snapshot(app: &AppHandle, state: &EventStoreState, session_id: &str) {
 /// Build the settled wire projection after an already-emitted full baseline.
 pub(super) fn build_settled_snapshot_delta(store: &mut EventStore) -> SnapshotDelta {
     use crate::agent_sessions::event_pipeline::derived::{
-        build_simulator_preview_indexes, compact_retry_event_for_snapshot,
+        build_simulator_preview_indexes, chat_sort_cmp, compact_retry_event_for_snapshot,
         is_superseded_retry_prompt, is_visible_in_chat, is_visible_in_messages,
         is_visible_in_simulator, latest_canvas_preview, sort_simulator_events,
         superseded_retry_intents,
@@ -208,7 +208,7 @@ pub(super) fn build_settled_snapshot_delta(store: &mut EventStore) -> SnapshotDe
         .iter()
         .map(|event| event.id.clone())
         .collect::<Vec<_>>();
-    let mut chat_event_ids = Vec::with_capacity(events.len() / 2);
+    let mut chat_events = Vec::with_capacity(events.len() / 2);
     let mut messages_event_ids = Vec::with_capacity(events.len() / 2);
     let mut simulator_preview_events = Vec::with_capacity(events.len() / 2);
     let mut has_running_event = false;
@@ -217,7 +217,7 @@ pub(super) fn build_settled_snapshot_delta(store: &mut EventStore) -> SnapshotDe
             has_running_event = true;
         }
         if is_visible_in_chat(event) || is_superseded_retry_prompt(event, &superseded) {
-            chat_event_ids.push(event.id.clone());
+            chat_events.push(event);
         }
         if is_visible_in_messages(event) && !is_superseded_retry_prompt(event, &superseded) {
             messages_event_ids.push(event.id.clone());
@@ -229,6 +229,11 @@ pub(super) fn build_settled_snapshot_delta(store: &mut EventStore) -> SnapshotDe
             ));
         }
     }
+    chat_events.sort_by(|a, b| chat_sort_cmp(a, b));
+    let chat_event_ids = chat_events
+        .iter()
+        .map(|event| event.id.clone())
+        .collect::<Vec<_>>();
     sort_simulator_events(&mut simulator_preview_events);
     let preview_indexes = build_simulator_preview_indexes(&simulator_preview_events);
     let latest_canvas_preview = latest_canvas_preview(events);

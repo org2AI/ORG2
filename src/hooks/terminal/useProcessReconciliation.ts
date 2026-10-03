@@ -40,6 +40,7 @@ import { toBackendPtySessionId } from "@src/util/ui/terminal/ptySessionId";
 const log = createLogger("ProcessReconciliation");
 
 interface RunningShellJob {
+  handle?: string;
   session_id: string;
   call_id: string;
   pid: number;
@@ -66,16 +67,17 @@ interface PtySessionInfo {
 export function findStaleShellProcesses(
   processMap: ShellProcessMap,
   runningJobs: readonly RunningShellJob[]
-): Array<{ sessionId: string; pid: number; callId: string }> {
+): Array<{ sessionId: string; pid: number; callId: string; handle?: string }> {
   const liveJobKeys = new Set(
     runningJobs.map((job) =>
-      JSON.stringify([job.session_id, job.call_id, job.pid])
+      JSON.stringify([job.session_id, job.call_id, job.pid, job.handle])
     )
   );
   const staleProcesses: Array<{
     sessionId: string;
     pid: number;
     callId: string;
+    handle?: string;
   }> = [];
 
   for (const [sessionId, sessionProcesses] of processMap.entries()) {
@@ -83,13 +85,19 @@ export function findStaleShellProcesses(
       if (
         (process.status === "running" || process.status === "background") &&
         !liveJobKeys.has(
-          JSON.stringify([sessionId, process.callId, process.pid])
+          JSON.stringify([
+            sessionId,
+            process.callId,
+            process.pid,
+            process.handle,
+          ])
         )
       ) {
         staleProcesses.push({
           sessionId,
           pid: process.pid,
           callId: process.callId,
+          handle: process.handle,
         });
       }
     }
@@ -169,11 +177,11 @@ export function useProcessReconciliation(): void {
             exactRunningJobs
           )) {
             dispatchUpdateShellProcessRef.current({
-              type: "exit",
+              type: "unknown",
               sessionId: process.sessionId,
               pid: process.pid,
               callId: process.callId,
-              killed: false,
+              handle: process.handle,
             });
           }
 
@@ -184,7 +192,9 @@ export function useProcessReconciliation(): void {
             if (
               !existing ||
               existing.callId !== job.call_id ||
+              existing.handle !== job.handle ||
               existing.status === "exited" ||
+              existing.status === "unknown" ||
               existing.status === "killed"
             ) {
               dispatchUpdateShellProcessRef.current({
@@ -192,6 +202,7 @@ export function useProcessReconciliation(): void {
                 sessionId: job.session_id,
                 pid: job.pid,
                 callId: job.call_id,
+                handle: job.handle,
                 command: job.command,
               });
             }

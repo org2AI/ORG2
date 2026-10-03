@@ -248,6 +248,7 @@ export function normalizeEventProps(
         sessionEvent.createdAt
       ),
       shellPid: sessionEvent.shellPid,
+      shellProcessHandle: sessionEvent.shellProcessHandle,
       shellProcessStatus: sessionEvent.shellProcessStatus,
       shellExitCode: sessionEvent.shellExitCode,
       shellLogPath: sessionEvent.shellLogPath,
@@ -279,6 +280,7 @@ export function normalizeEventProps(
     ((input as { function?: string }).function as string | undefined);
   const shellInput = input as {
     shellPid?: number;
+    shellProcessHandle?: string;
     shell_pid?: number;
     shellProcessStatus?: UniversalEventProps["shellProcessStatus"];
     shell_process_status?: UniversalEventProps["shellProcessStatus"];
@@ -308,6 +310,7 @@ export function normalizeEventProps(
       normalized.createdAt
     ),
     shellPid: shellInput.shellPid ?? shellInput.shell_pid,
+    shellProcessHandle: shellInput.shellProcessHandle,
     shellProcessStatus:
       shellInput.shellProcessStatus ?? shellInput.shell_process_status,
     shellExitCode: shellInput.shellExitCode ?? shellInput.shell_exit_code,

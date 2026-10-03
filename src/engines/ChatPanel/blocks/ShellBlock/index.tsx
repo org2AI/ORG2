@@ -10,7 +10,7 @@
  * The block only resolves the foreground terminal long-wait label because that
  * display state is derived from runtime process metadata local to this block.
  */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getEventIcon, getToolIcon } from "@src/config/toolIcons";
@@ -160,6 +160,7 @@ const RunShellView: React.FC<ShellBlockProps> = (props) => {
     action,
     killHandle,
     shellPid,
+    shellProcessHandle,
     shellProcessStatus,
   } = shellData;
 
@@ -213,20 +214,18 @@ const RunShellView: React.FC<ShellBlockProps> = (props) => {
     ? ""
     : unescapeShellString(streamOutput);
 
-  const handleStop = useCallback(
-    async (pid: number) => {
-      try {
-        await killAgentShellProcess({
-          pid,
-          sessionId: props.sessionId,
-          callId: props.shellReplay?.ref.callId ?? props.callId,
-        });
-      } catch (err: unknown) {
-        log.error("[ShellBlock] Failed to kill process:", err);
-      }
-    },
-    [props.callId, props.sessionId, props.shellReplay]
-  );
+  const handleStop = async (pid: number) => {
+    try {
+      await killAgentShellProcess({
+        pid,
+        sessionId: props.sessionId,
+        callId: props.shellReplay?.ref.callId ?? props.callId,
+        handle: shellProcessHandle,
+      });
+    } catch (err: unknown) {
+      log.error("[ShellBlock] Failed to kill process:", err);
+    }
+  };
 
   if (isFailed && !command && action !== SHELL_ACTION_KILL) {
     return <FailedEventRow toolName="run_shell" label={props.failedLabel} />;

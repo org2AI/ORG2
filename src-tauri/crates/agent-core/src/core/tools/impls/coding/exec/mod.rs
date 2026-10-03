@@ -242,7 +242,10 @@ impl ExecTool {
     }
 
     fn is_valid_shell_kill_handle(handle: &str) -> bool {
-        !handle.is_empty() && handle.chars().all(|ch| ch.is_ascii_digit())
+        (!handle.is_empty() && handle.chars().all(|ch| ch.is_ascii_digit()))
+            || handle
+                .strip_prefix("shell-")
+                .is_some_and(|id| uuid::Uuid::parse_str(id).is_ok())
     }
 }
 
@@ -271,13 +274,13 @@ impl Tool for ExecTool {
         external terminal output cannot be captured like integrated stdout/stderr. \
         Set interactive: true ONLY for commands that require user input (passwords, sudo, SSH key passphrases). \
         Set mode: \"background\" up-front for long-running processes (dev servers, watchers, builds \
-        you want to spawn then poll). Background mode returns a PID/await_output handle as soon as the process \
-        is spawned; use await_output(command=\"wait_for\", handles=[pid]) to monitor until the process exits.\n\
+        you want to spawn then poll). Background mode returns a registration/await_output handle as soon as the process \
+        is spawned; use await_output(command=\"wait_for\", handles=[handle]) to monitor until the process exits.\n\
         In the default blocking mode, commands that exceed the timeout are automatically backgrounded \
-        (never killed) as a safety net — you get partial output plus a PID handle.\n\
-        Kill: set kill_handle to the PID of a backgrounded process to terminate it (SIGTERM → 2s grace → SIGKILL).\n\
+        (never killed) as a safety net — you get partial output plus a registration handle.\n\
+        Kill: set kill_handle to the returned registration handle of a backgrounded process to terminate it (SIGTERM → 2s grace → SIGKILL).\n\
         For long-running commands (builds, installs, tests, git clone), prefer mode=\"background\" from the start, \
-        then call await_output(command=\"wait_for\", handles=[pid]); do not treat progress output as completion. \
+        then call await_output(command=\"wait_for\", handles=[handle]); do not treat progress output as completion. \
         IMPORTANT: Always limit output — use | head, --short, --oneline -N, -maxdepth, etc. \
         Do not use executable shell substitutions (`...`, $(...), or ${...}); for literal code fences/backticks, use a single-quoted heredoc such as <<'EOF' or use edit_file/write_file."
     }
@@ -296,14 +299,14 @@ impl Tool for ExecTool {
             external terminal output cannot be captured like integrated stdout/stderr. \
             Set interactive: true ONLY for commands that require user input (passwords, sudo, SSH key passphrases). \
             Set mode: \"background\" up-front for long-running processes (dev servers, watchers, builds \
-            you want to spawn then poll). Background mode returns a PID/await_output handle immediately after spawn; \
-            use await_output(command=\"wait_for\", handles=[pid]) to monitor until the process exits.\n\
+            you want to spawn then poll). Background mode returns a registration/await_output handle immediately after spawn; \
+            use await_output(command=\"wait_for\", handles=[handle]) to monitor until the process exits.\n\
             In the default blocking mode, commands that exceed the timeout ({timeout}s) are automatically \
-            backgrounded (never killed) as a safety net. You get bounded partial output, a PID handle, and durable Session Replay access.\n\
-            Kill: set kill_handle to the PID of a backgrounded process to terminate it \
+            backgrounded (never killed) as a safety net. You get bounded partial output, a registration handle, and durable Session Replay access.\n\
+            Kill: set kill_handle to the returned registration handle of a backgrounded process to terminate it \
             (SIGTERM → 2s grace → SIGKILL).\n\
             For long-running commands (builds, installs, tests, git clone), prefer mode=\"background\" from the start, \
-            then call await_output(command=\"wait_for\", handles=[pid]); do not treat progress output as completion. \
+            then call await_output(command=\"wait_for\", handles=[handle]); do not treat progress output as completion. \
             IMPORTANT: Always limit output — use | head, --short, --oneline -N, -maxdepth, etc. \
             Do not use executable shell substitutions (`...`, $(...), or ${{...}}); for literal code fences/backticks, use a single-quoted heredoc such as <<'EOF' or use {edit_file}.\n\
             \n\
@@ -370,7 +373,7 @@ impl Tool for ExecTool {
                 "mode": {
                     "type": "string",
                     "enum": ["blocking", "background"],
-                    "description": "Execution mode. 'blocking' (default): wait for completion up to `wait` seconds, then auto-background on timeout. 'background': spawn and return immediately with a PID/await_output handle while complete output continues into Session Replay; intended for dev servers, watchers, and other long-running processes."
+                    "description": "Execution mode. 'blocking' (default): wait for completion up to `wait` seconds, then auto-background on timeout. 'background': spawn and return immediately with a registration/await_output handle while complete output continues into Session Replay; intended for dev servers, watchers, and other long-running processes."
                 },
                 "wait": {
                     "type": "integer",
@@ -378,7 +381,7 @@ impl Tool for ExecTool {
                 },
                 "kill_handle": {
                     "type": "string",
-                    "description": "Instead of running a command, kill a backgrounded shell process by its handle (PID). Sends SIGTERM, waits 2s grace, then SIGKILL. When this is set, 'command' is not required."
+                    "description": "Instead of running a command, kill a backgrounded shell process by its returned registration handle. Sends SIGTERM, waits 2s grace, then SIGKILL. When this is set, 'command' is not required."
                 }
             },
             "required": []
@@ -419,6 +422,8 @@ impl Tool for ExecTool {
 
         if let Some(handle) = kill_handle {
             if Self::is_valid_shell_kill_handle(handle) {
+                registry::require_job_session(handle, &ctx.session_id)
+                    .map_err(ToolError::ExecutionFailed)?;
                 return match registry::kill_shell(handle).await {
                     Ok(()) => Ok(format!("Process {handle} killed.")),
                     Err(msg) => Err(ToolError::ExecutionFailed(msg)),
@@ -427,7 +432,7 @@ impl Tool for ExecTool {
 
             if command.is_none() {
                 return Err(ToolError::InvalidParams(format!(
-                    "Invalid kill_handle '{handle}'. run_shell kill handles are numeric process handles returned by prior background shell output. To run a command, pass it in the command field instead."
+                    "Invalid kill_handle '{handle}'. run_shell kill handles are process handles returned by prior background shell output. To run a command, pass it in the command field instead."
                 )));
             }
 
@@ -593,8 +598,36 @@ impl Tool for ExecTool {
                     .to_string(),
             ));
         }
-        let identity = subprocess::ExecIdentity::new(&ctx.session_id, &ctx.call_id)
+        let mut identity = subprocess::ExecIdentity::new(&ctx.session_id, &ctx.call_id)
             .with_turn_process_control(ctx.turn_process_control.clone());
+        if matches!(
+            ctx.authority,
+            crate::tools::call_context::ToolCallAuthority::PersistedAgentOrg(_)
+        ) {
+            let context =
+                crate::coordination::agent_org_turn_contexts::require_existing_context_for_session(
+                    &ctx.session_id,
+                    &ctx.turn_intent_id,
+                )
+                .map_err(ToolError::ExecutionFailed)?;
+            if !identity
+                .turn_process_control
+                .as_ref()
+                .is_some_and(|control| {
+                    control.is_agent_org
+                        && control.owner.session_id == ctx.session_id
+                        && control.owner.turn_intent_id == ctx.turn_intent_id
+                })
+            {
+                return Err(ToolError::ExecutionFailed(
+                    "Agent Org shell requires its exact Turn process owner".into(),
+                ));
+            }
+            identity.org_scope = Some(registry::OrgResourceScope {
+                org_run_id: context.org_run_id,
+                task_id: context.task_id,
+            });
+        }
         let replay_root = self.shell_replays_root.as_ref().ok_or_else(|| {
             ToolError::ExecutionFailed("Shell replay storage root is not configured.".to_string())
         })?;

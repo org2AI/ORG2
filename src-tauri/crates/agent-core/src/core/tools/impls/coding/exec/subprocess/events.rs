@@ -7,6 +7,14 @@ use crate::bus::event_pipeline_bridge;
 use super::super::shell_replay::active_state;
 use super::{BackgroundReason, ExecIdentity};
 
+fn registration_is_current(identity: &ExecIdentity) -> bool {
+    super::super::registry::shell_registration_matches(
+        &identity.registration_id,
+        &identity.session_id,
+        &identity.call_id,
+    )
+}
+
 pub(crate) fn broadcast_exec_output(
     identity: &ExecIdentity,
     chunk: &str,
@@ -14,7 +22,7 @@ pub(crate) fn broadcast_exec_output(
     sequence: u64,
     persisted_bytes: u64,
 ) {
-    if identity.cancellation_requested() {
+    if identity.cancellation_requested() || !registration_is_current(identity) {
         return;
     }
     crate::bus::broadcast_event(
@@ -50,6 +58,9 @@ fn patch_process_state(
     identity: &ExecIdentity,
     merge_args: serde_json::Value,
 ) {
+    if !registration_is_current(identity) {
+        return;
+    }
     if let Some(handle) = app_handle {
         event_pipeline_bridge::update_tool_args_by_call_id(
             handle,
@@ -71,6 +82,7 @@ pub(super) fn broadcast_process_started(
         identity,
         serde_json::json!({
             "shellPid": pid,
+            "shellProcessHandle": identity.registration_id,
             "shellProcessStatus": "running",
         }),
     );
@@ -80,6 +92,7 @@ pub(super) fn broadcast_process_started(
             "sessionId": identity.session_id,
             "toolCallId": identity.call_id,
             "pid": pid,
+            "handle": identity.registration_id,
             "command": command,
         }),
     );
@@ -96,6 +109,7 @@ pub(super) fn broadcast_process_backgrounded(
         identity,
         serde_json::json!({
             "shellPid": pid,
+            "shellProcessHandle": identity.registration_id,
             "shellProcessStatus": "background",
         }),
     );
@@ -105,6 +119,7 @@ pub(super) fn broadcast_process_backgrounded(
             "sessionId": identity.session_id,
             "toolCallId": identity.call_id,
             "pid": pid,
+            "handle": identity.registration_id,
             "reason": reason.as_wire_str(),
         }),
     );
@@ -117,11 +132,23 @@ pub(super) fn broadcast_process_exited(
     killed: bool,
     app_handle: Option<&AppHandle>,
 ) {
+    if !registration_is_current(identity) || !super::process_tree::process_tree_gone(pid) {
+        return;
+    }
+    super::super::registry::mark_exited(
+        &identity.registration_id,
+        if killed {
+            super::super::registry::JobStatus::Killed
+        } else {
+            super::super::registry::JobStatus::Exited(exit_code.unwrap_or(-1))
+        },
+    );
     patch_process_state(
         app_handle,
         identity,
         serde_json::json!({
             "shellPid": pid,
+            "shellProcessHandle": identity.registration_id,
             "shellProcessStatus": if killed { "killed" } else { "exited" },
             "shellExitCode": exit_code,
         }),
@@ -132,6 +159,7 @@ pub(super) fn broadcast_process_exited(
             "sessionId": identity.session_id,
             "toolCallId": identity.call_id,
             "pid": pid,
+            "handle": identity.registration_id,
             "exitCode": exit_code,
             "killed": killed,
         }),

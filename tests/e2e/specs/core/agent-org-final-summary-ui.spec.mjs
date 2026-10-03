@@ -77,6 +77,13 @@ describe("Agent Org final summary rendered UI", () => {
     await runCompletionWaitScenario({ postJson });
   });
 
+  it("delivers completed pre-pause work after the resumed member exits", async () => {
+    await runCompletionWaitScenario({
+      postJson,
+      pauseResumeBeforeMemberExit: true,
+    });
+  });
+
   it("repairs a reviewed defect, verifies the new version and redirects a pending consumer before delivery", async () => {
     await runReworkScenario();
   });

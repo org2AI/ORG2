@@ -143,7 +143,7 @@ pub(super) async fn execute_tool_iteration(
     let blocked_terminal_task_calls = if config
         .turn_process_control
         .as_ref()
-        .is_some_and(|control| control.require_owned_job_finality)
+        .is_some_and(|control| control.is_agent_org)
     {
         let Some(control) = config.turn_process_control.as_ref() else {
             state.terminal_error =

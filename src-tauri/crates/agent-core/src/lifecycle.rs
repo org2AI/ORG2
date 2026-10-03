@@ -176,6 +176,7 @@ fn persist_and_emit_terminal_turn(
     terminal_turn: &TerminalTurnSignal,
     final_status: AgentSessionStatus,
     app_handle: Option<&tauri::AppHandle>,
+    inbox_wake: Option<&dyn InboxWakeHook>,
 ) {
     let session_status: crate::session::SessionStatus = final_status.into();
     let persisted = match session_persistence::finalize_terminal_turn_status(
@@ -212,6 +213,35 @@ fn persist_and_emit_terminal_turn(
             "persisted": persisted,
         }),
     );
+
+    // Inbox writes made while the previous turn was Running cannot wake it.
+    // Retry that existing doorbell only after the durable status is wakeable;
+    // spawning it in member finalization races this status write and loses work.
+    if persisted {
+        if let (Some(hook), Some(intent)) = (inbox_wake, &terminal_turn.turn_intent_id) {
+            let target = (|| -> Result<_, String> {
+                let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+                let context =
+                    crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+                        &conn, session_id, intent,
+                    )?;
+                Ok(should_rewake_agent_org_member_after_turn(
+                    &context.org_run_id,
+                    &context.participant_id,
+                )?
+                .then_some((context.org_run_id, context.participant_id)))
+            })();
+            match target {
+                Ok(Some((run_id, member_id))) => hook.wake_member(&member_id, &run_id),
+                Ok(None) => {}
+                Err(error) => tracing::warn!(
+                    session_id,
+                    error,
+                    "post-terminal inbox check failed; refusing wake"
+                ),
+            }
+        }
+    }
 }
 
 pub fn build_session_error_event(session_id: &str, message: &str) -> SessionEvent {
@@ -279,6 +309,11 @@ async fn persist_session_error_event_for_intent(
         event.id = format!("session-error-{session_id}-turn-{intent_id}");
         event.chunk_id = Some(event.id.clone());
         event.result["turnIntentId"] = serde_json::Value::String(intent_id.to_owned());
+        if let Ok(execution) =
+            crate::coordination::agent_org_history::execution(session_id, intent_id)
+        {
+            event.args["agentOrgExecution"] = serde_json::json!(execution);
+        }
     }
 
     // Lifecycle errors are terminal user-visible facts, not high-frequency
@@ -509,45 +544,6 @@ pub fn finalize_agent_org_member_turn(
                 ) {
                     tracing::warn!(run_id = %snapshot.context.run_id, member_id = %snapshot.member_id, error = %err, "failed to clear Agent Org recovery budget after successful turn");
                 }
-                // Race-condition guard: a peer may have written an inbox row
-                // while this session was Running (which caused the
-                // `should_dispatch_wake` gate to skip the wake). Now that the
-                // session is transitioning to Idle, check for unread rows and
-                // self-wake if any exist. This also runs after task requeue:
-                // user group-chat rows must not be stranded behind a requeued
-                // TaskAssigned row when a turn is interrupted.
-                if let Some(handle) = app_handle {
-                    let member_id = snapshot.member_id.clone();
-                    let run_id = snapshot.context.run_id.clone();
-                    let handle_clone = handle.clone();
-                    tokio::spawn(async move {
-                        let should_rewake = tokio::task::spawn_blocking({
-                            let mid = member_id.clone();
-                            let rid = run_id.clone();
-                            move || should_rewake_agent_org_member_after_turn(&rid, &mid)
-                        })
-                        .await
-                        .unwrap_or_else(|err| Err(err.to_string()));
-
-                        if matches!(should_rewake, Ok(true)) {
-                            tracing::info!(
-                                member_id = %member_id,
-                                run_id = %run_id,
-                                "[lifecycle] inbox has unread rows after turn end (race-guard); \
-                                 re-waking member"
-                            );
-                            AppHandleInboxWakeHook::new(handle_clone)
-                                .wake_member(&member_id, &run_id);
-                        } else if let Err(err) = should_rewake {
-                            tracing::warn!(
-                                run_id = %run_id,
-                                member_id = %member_id,
-                                error = %err,
-                                "[lifecycle] unread-inbox race-guard check failed; refusing wake"
-                            );
-                        }
-                    });
-                }
             }
 
             if let (TurnTerminalStatus::Failed, Err(err)) = (terminal_status, response) {
@@ -702,17 +698,13 @@ pub async fn finalize_session(
         .await
         .unwrap_or((false, None))
     };
-    let (
-        user_directed_turn,
-        intervention_suspended_formal_turn,
-        final_summary_turn,
-        authority_error,
-    ) = if is_agent_org_member_session {
-        let sid = session_id.to_string();
-        let turn_intent_id = terminal_turn
-            .as_ref()
-            .and_then(|signal| signal.turn_intent_id.clone());
-        match tokio::task::spawn_blocking(move || -> Result<(bool, bool, bool), String> {
+    let (user_directed_turn, yielded_formal_turn, final_summary_turn, authority_error) =
+        if is_agent_org_member_session {
+            let sid = session_id.to_string();
+            let turn_intent_id = terminal_turn
+                .as_ref()
+                .and_then(|signal| signal.turn_intent_id.clone());
+            match tokio::task::spawn_blocking(move || -> Result<(bool, bool, bool), String> {
                 let Some(turn_intent_id) = turn_intent_id else {
                     return Ok((false, false, false));
                 };
@@ -725,11 +717,13 @@ pub async fn finalize_session(
                     )?;
                 let user_directed = context.is_user_directed_work();
                 let suspended_formal = !user_directed
-                    && crate::coordination::agent_member_interventions::AgentMemberInterventionStore::open_receipt_for_original_turn(
+                    && (crate::coordination::agent_org_pause::released_execution_in_tx(
+                        &connection, &sid, &turn_intent_id,
+                    )? || crate::coordination::agent_member_interventions::AgentMemberInterventionStore::open_receipt_for_original_turn(
                         &sid,
                         &turn_intent_id,
                     )?
-                    .is_some();
+                    .is_some());
                 let final_summary =
                     crate::coordination::agent_org_final_summary::has_summary_receipt_for_turn_with_connection(
                         &connection,
@@ -746,11 +740,11 @@ pub async fn finalize_session(
                 Ok(Err(error)) => (false, false, false, Some(error)),
                 Err(error) => (false, false, false, Some(error.to_string())),
             }
-    } else {
-        // Ordinary SDE finalization never reads Agent Org Turn context or
-        // intervention state.
-        (false, false, false, None)
-    };
+        } else {
+            // Ordinary SDE finalization never reads Agent Org Turn context or
+            // intervention state.
+            (false, false, false, None)
+        };
 
     if let Some(error) = authority_error.as_deref() {
         tracing::error!(
@@ -772,7 +766,7 @@ pub async fn finalize_session(
         });
     let final_status = if authority_error.is_some() {
         AgentSessionStatus::Failed
-    } else if user_directed_turn || intervention_suspended_formal_turn || final_summary_turn {
+    } else if user_directed_turn || yielded_formal_turn || final_summary_turn {
         // UDW failure belongs to that direct Turn/receipt, not to the durable
         // Member or Team lifecycle. The structured agent:error still renders
         // the failure while the canonical Session returns to Idle.
@@ -795,7 +789,7 @@ pub async fn finalize_session(
 
     if is_agent_org_member_session
         && !user_directed_turn
-        && !intervention_suspended_formal_turn
+        && !yielded_formal_turn
         && !final_summary_turn
         && authority_error.is_none()
     {
@@ -833,7 +827,7 @@ pub async fn finalize_session(
     }
 
     if is_agent_org_member_session
-        && (user_directed_turn || intervention_suspended_formal_turn || final_summary_turn)
+        && (user_directed_turn || yielded_formal_turn || final_summary_turn)
         && authority_error.is_none()
     {
         if let Some(intent) = terminal_turn
@@ -883,7 +877,32 @@ pub async fn finalize_session(
     }
 
     if let Some(ref terminal_turn) = terminal_turn {
-        persist_and_emit_terminal_turn(session_id, terminal_turn, final_status, app_handle);
+        let rewake = is_agent_org_member_session
+            && !user_directed_turn
+            && !yielded_formal_turn
+            && !final_summary_turn
+            && authority_error.is_none()
+            && terminal_status == TurnTerminalStatus::Completed;
+        let sid = session_id.to_string();
+        let signal = terminal_turn.clone();
+        let handle = app_handle.cloned();
+        if let Err(error) = tokio::task::spawn_blocking(move || {
+            let hook = handle
+                .as_ref()
+                .filter(|_| rewake)
+                .map(|handle| AppHandleInboxWakeHook::new(handle.clone()));
+            persist_and_emit_terminal_turn(
+                &sid,
+                &signal,
+                final_status,
+                handle.as_ref(),
+                hook.as_deref().map(|hook| hook as &dyn InboxWakeHook),
+            );
+        })
+        .await
+        {
+            tracing::warn!(session_id, %error, "terminal persistence worker panicked");
+        }
     } else {
         let sid = session_id.to_string();
         if let Err(err) = tokio::task::spawn_blocking(move || {

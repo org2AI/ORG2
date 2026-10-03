@@ -166,6 +166,7 @@ fn extract_shell_with_output_limit(
         execution_time,
         is_failure,
         shell_pid,
+        shell_process_handle: args.and_then(|a| obj_str(a, "shellProcessHandle")),
         shell_process_status,
         shell_log_path,
         git_artifacts,

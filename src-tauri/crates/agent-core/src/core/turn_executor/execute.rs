@@ -165,7 +165,7 @@ pub async fn execute_turn(
     if config
         .turn_process_control
         .as_ref()
-        .is_some_and(|control| control.require_owned_job_finality)
+        .is_some_and(|control| control.is_agent_org)
     {
         let control = config
             .turn_process_control
@@ -173,6 +173,10 @@ pub async fn execute_turn(
             .ok_or_else(|| "Agent Org Turn finality requires an exact runtime owner".to_string())?;
         if !crate::tools::impls::coding::exec::registry::list_jobs_for_owner(&control.owner)
             .is_empty()
+            || ((is_cancelled(cancel_flag) || state.terminal_error.is_some())
+                && !crate::tools::impls::coding::exec::registry::owned_jobs_are_terminal(
+                    &control.owner,
+                ))
         {
             crate::tools::impls::coding::exec::registry::cancel_and_await_jobs_for_owner(
                 &control.owner,

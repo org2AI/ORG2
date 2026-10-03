@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CANCEL_REASON } from "@src/api/tauri/agent";
+import { sessionByIdAtom } from "@src/store/session/sessionAtom/atoms";
 
 import {
   BOUNDARY_EFFECTS,
@@ -63,6 +64,20 @@ describe("sessionTimelineBoundary", () => {
     patchByIdsSpy.mockResolvedValue(undefined);
     killAgentShellProcessSpy.mockResolvedValue("killed");
     isTurnActiveSpy.mockReturnValue(false);
+  });
+
+  it("leaves Org process and event cleanup to the exact backend Turn boundary", async () => {
+    const sessionAtom = sessionByIdAtom("org-session");
+    storeGetSpy.mockImplementation((atom) =>
+      atom === sessionAtom
+        ? { id: "org-session", agentOrgId: "team" }
+        : new Map()
+    );
+    beginStopBoundary("org-session");
+    await Promise.resolve();
+    expect(killAgentShellProcessSpy).not.toHaveBeenCalled();
+    expect(getEventsSpy).not.toHaveBeenCalled();
+    expect(patchByIdsSpy).not.toHaveBeenCalled();
   });
 
   it("makes Stop boundary local and O(1)", () => {

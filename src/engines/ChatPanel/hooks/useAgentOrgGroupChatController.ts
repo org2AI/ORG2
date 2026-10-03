@@ -14,6 +14,7 @@ import {
   sendAgentOrgGroupRootMessage,
   stopAgentOrgGroupDelivery,
 } from "@src/api/tauri/agent";
+import { isAgentOrgFinalizingInputError } from "@src/api/tauri/agent/orgTasks/errors";
 import {
   GROUP_CHAT_MIXED_TARGETS_ERROR,
   type GroupChatOutgoing,
@@ -367,6 +368,12 @@ export function useAgentOrgGroupChatController({
           await refreshProjection();
           return true;
         } catch (error: unknown) {
+          if (isAgentOrgFinalizingInputError(error)) {
+            setOptimisticTurns((current) =>
+              current.filter((item) => item.turnIntentId !== turnIntentId)
+            );
+            throw new Error(t("groupChat.finalizingBanner.body"));
+          }
           // A response can be lost after the backend has durably admitted the
           // Turn. Read the exact run projection back before deciding whether
           // the submission failed; if the read itself is unavailable, retain
@@ -481,6 +488,9 @@ export function useAgentOrgGroupChatController({
             )
           );
           logger.error("Failed to send Member Group message:", error);
+          if (isAgentOrgFinalizingInputError(error)) {
+            throw new Error(t("groupChat.finalizingBanner.body"));
+          }
           throw new Error(t("groupChat.submitError"));
         }
         setGroupChatRetryError(reason || "group_delivery_outcome_unknown");

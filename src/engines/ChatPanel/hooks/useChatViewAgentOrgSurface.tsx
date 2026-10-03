@@ -13,7 +13,11 @@
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 
-import { GroupChatPausedBanner } from "@src/engines/ChatPanel/components/ChatStatusBanners";
+import { AGENT_ORG_RUN_PHASE } from "@src/api/tauri/agent/orgTasks/runView";
+import {
+  AgentOrgFinalizingBanner,
+  GroupChatPausedBanner,
+} from "@src/engines/ChatPanel/components/ChatStatusBanners";
 import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
 import { activeSessionIdAtom } from "@src/store/session";
 
@@ -111,12 +115,15 @@ export function useChatViewAgentOrgSurface({
     onBeforeMessageDispatch,
   });
 
-  const groupChatPausedBottomContent = groupChatRunPaused ? (
-    <GroupChatPausedBanner
-      disabled={isResumingGroupChat}
-      onResume={handleResumeGroupChatRun}
-    />
-  ) : null;
+  const agentOrgLifecycleBottomContent =
+    agentOrgRunView?.runPhase === AGENT_ORG_RUN_PHASE.FINALIZING ? (
+      <AgentOrgFinalizingBanner />
+    ) : groupChatRunPaused ? (
+      <GroupChatPausedBanner
+        disabled={isResumingGroupChat}
+        onResume={handleResumeGroupChatRun}
+      />
+    ) : null;
 
   const {
     intervention: agentOrgIntervention,
@@ -180,7 +187,7 @@ export function useChatViewAgentOrgSurface({
     handleSendNow,
     queueEditProps,
     sessionMessageQueue,
-    groupChatPausedBottomContent,
+    agentOrgLifecycleBottomContent,
     shouldShowCurrentPlanSurface,
     agentOrgInterventionSlot,
   };

@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Solicitud del usuario",
+      "member_messages": "Mensajes recibidos",
+      "task_dispatch": "Tarea asignada",
+      "final_summary": "Informe final"
+    },
+    "unknownSource": "Origen no disponible",
+    "legacyInbox": "Mensajes recibidos · origen no disponible",
+    "inboxSummary": "{{recipient}} recibió {{count}} mensajes de {{senders}}",
+    "viewDetails": "Ver detalles de ejecución",
+    "unavailable": "Detalles de ejecución no disponibles"
+  },
   "landedMessageEdit": {
     "title": "¿Enviar como mensaje nuevo?",
     "body": "Este mensaje pertenece a una sesión de ejecución. Editarlo aquí no permite retroceder en la conversación. ¿Enviar este texto como mensaje nuevo al final? Se conservarán los mensajes y los cambios en archivos existentes.",
@@ -2311,6 +2324,10 @@
       "body": "Reanuda para trabajar con el Coordinador. Aún puedes usar @Member para una tarea secundaria.",
       "resume": "Reanudar"
     },
+    "finalizingBanner": {
+      "title": "Finalizando esta ronda de trabajo",
+      "body": "Puedes seguir editando el borrador y enviarlo cuando termine el informe final."
+    },
     "toolUseSummary": {
       "note": "{{sender}} realizó {{summary}}",
       "readFiles_one": "{{count}} lectura de archivo",
@@ -2419,7 +2436,17 @@
     "currentRecordUnavailable": "Estado actual no disponible",
     "currentStatusLabel": "Estado actual",
     "currentOwnerLabel": "Responsable actual",
-    "replacementLabel": "Sustitución"
+    "replacementLabel": "Sustitución",
+    "rejectedRequestRecovery": {
+      "restore": "Restaurar como borrador",
+      "warning": "Es posible que otras partes ya se hayan ejecutado. Revisa y reenvía solo lo pendiente.",
+      "unavailable": "No se pudo verificar la solicitud original y no se restauró",
+      "previewTitle": "¿Añadir la solicitud rechazada al borrador?",
+      "existingDraft": "Borrador actual",
+      "recoveredRequest": "Solicitud rechazada",
+      "append": "Añadir al borrador",
+      "appendExplanation": "La solicitud se añadirá antes del borrador actual. No se enviará automáticamente."
+    }
   },
   "manageAgentDef": {
     "action": {

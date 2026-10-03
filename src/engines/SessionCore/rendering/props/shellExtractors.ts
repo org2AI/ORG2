@@ -69,6 +69,7 @@ export function extractShellData(
       executionTime: s.executionTime,
       isFailure: s.isFailure,
       shellPid: props.shellPid ?? s.shellPid,
+      shellProcessHandle: props.shellProcessHandle ?? s.shellProcessHandle,
       shellProcessStatus: props.shellProcessStatus ?? s.shellProcessStatus,
       shellLogPath: props.shellLogPath ?? s.shellLogPath,
     };
@@ -159,6 +160,9 @@ export function extractShellData(
     executionTime,
     isFailure,
     shellPid,
+    shellProcessHandle:
+      props.shellProcessHandle ??
+      (args?.shellProcessHandle as string | undefined),
     shellProcessStatus,
     shellLogPath,
   };

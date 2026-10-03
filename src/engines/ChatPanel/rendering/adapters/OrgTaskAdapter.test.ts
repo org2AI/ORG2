@@ -196,6 +196,35 @@ describe("OrgTaskAdapter raw fallback rendering", () => {
     expect(markup).not.toContain('data-operation-outcome="failed"');
   });
 
+  it("shows exact rejected-request recovery only when durable provenance exists", () => {
+    const markup = renderToStaticMarkup(
+      createElement(OrgTaskAdapter, {
+        ...baseProps,
+        sessionId: "session-root",
+        functionName: "task_create",
+        rustExtracted: {
+          kind: "orgTask",
+          action: "create",
+          outcome: "rejected",
+          requiresEpisodeResolution: true,
+          rejectedRequestTurnIntentId: "turn-user-request",
+          guidance: "Task not created.",
+          task: {
+            id: "",
+            subject: "Rejected new work",
+          },
+        },
+      })
+    );
+
+    expect(markup).toContain("Task not created.");
+    expect(markup).toContain(
+      'data-testid="agent-org-rejected-request-restore-button"'
+    );
+    expect(markup).toContain("Restore as draft");
+    expect(markup).toContain("resend only unfinished work");
+  });
+
   it("keeps the event status immutable while showing the current cancelled Task", () => {
     const markup = renderToStaticMarkup(
       createElement(

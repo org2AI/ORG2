@@ -1213,3 +1213,6 @@ async fn provider_error_after_task_output_does_not_undo_committed_work() {
         "task success and execution failure are different facts"
     );
 }
+
+#[path = "lifecycle_terminal_wake_tests.rs"]
+mod terminal_wake_tests;

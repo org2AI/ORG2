@@ -38,6 +38,7 @@ export function CompactTaskCard({
   formattedTimestamp,
   timestamp,
   hideAssignedRow = false,
+  rejectedRequestRecoveryAction,
 }: {
   title: string;
   description?: string;
@@ -66,6 +67,7 @@ export function CompactTaskCard({
    * body would be redundant.
    */
   hideAssignedRow?: boolean;
+  rejectedRequestRecoveryAction?: React.ReactNode;
 }) {
   const { t } = useTranslation("sessions");
 
@@ -167,6 +169,7 @@ export function CompactTaskCard({
           className="mt-2"
         >
           {operationMessage}
+          {rejectedRequestRecoveryAction}
         </PageNotice>
       )}
 

@@ -1,8 +1,13 @@
 //! Test provider behavior only: real task tools create the work and evidence.
 use super::*;
 use serde_json::json;
+use std::collections::HashSet;
+use std::sync::{Mutex, OnceLock};
 
 const SCENARIO: &str = "member_end_wait_";
+const PAUSE_RESUME_BEFORE_COMPLETE_SCENARIO: &str = "pause_resume_before_complete_";
+
+static HELD_BEFORE_COMPLETION: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
 pub(super) fn tool_calls(messages: &[Value], tools: Option<&[Value]>) -> Vec<ToolCallRequest> {
     if !E2eFakeProvider::has_tool(tools, ORG_RUN_COMPLETE_TOOL) {
@@ -82,6 +87,46 @@ pub(super) fn member_wait(messages: &[Value]) -> bool {
             >= 2
 }
 
+/// Give the rendered Pause/Resume test a deterministic window after the
+/// owning member has started its Task but before it records completion. The
+/// first provider call for the scenario waits until Pause cancels it; the
+/// durable Resume continuation sees the same transcript and proceeds.
+pub(super) fn pause_before_completion_wait(messages: &[Value]) -> bool {
+    let Some((start, text)) = messages
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(index, message)| {
+            (message["role"] == "user")
+                .then(|| content_text(&message["content"]))
+                .flatten()
+                .filter(|text| {
+                    text.contains(PAUSE_RESUME_BEFORE_COMPLETE_SCENARIO) && is_task_assignment(text)
+                })
+                .map(|text| (index, text))
+        })
+    else {
+        return false;
+    };
+    let Some(scenario_id) = completion_scenario_id(&text) else {
+        return false;
+    };
+    if !scenario_id.contains(PAUSE_RESUME_BEFORE_COMPLETE_SCENARIO)
+        || messages[start + 1..]
+            .iter()
+            .filter(|message| message["role"] == "tool")
+            .count()
+            != 1
+    {
+        return false;
+    }
+    HELD_BEFORE_COMPLETION
+        .get_or_init(|| Mutex::new(HashSet::new()))
+        .lock()
+        .expect("E2E completion hold lock")
+        .insert(scenario_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,5 +144,18 @@ mod tests {
         );
         messages.push(json!({"role":"tool","content":"{\"outcome\":\"waiting\"}"}));
         assert!(tool_calls(&messages, Some(&tools)).is_empty());
+    }
+
+    #[test]
+    fn pause_window_only_holds_the_first_pre_completion_call() {
+        let messages = vec![
+            json!({
+                "role":"user",
+                "content":"Task assigned by coordinator: E2E_AGENT_ORG_COMPLETION:member_end_wait_pause_resume_before_complete_unit_1\nTask ID: task-1"
+            }),
+            json!({"role":"tool","content":"{}"}),
+        ];
+        assert!(pause_before_completion_wait(&messages));
+        assert!(!pause_before_completion_wait(&messages));
     }
 }

@@ -11,7 +11,7 @@ import {
 import type { SessionEvent } from "../types";
 
 function shellEvent(
-  shellProcessStatus: "running" | "background" | "exited" | "killed"
+  shellProcessStatus: "running" | "background" | "exited" | "killed" | "unknown"
 ): SessionEvent {
   return {
     id: `event-${shellProcessStatus}`,
@@ -96,7 +96,7 @@ describe("runningEventGate", () => {
     expect(sessionHasComposerStopBlockingWork(events, "session-1")).toBe(true);
   });
 
-  it.each(["exited", "killed"] as const)(
+  it.each(["exited", "killed", "unknown"] as const)(
     "classifies %s shell as settled for every running role",
     (shellProcessStatus) => {
       const events = [shellEvent(shellProcessStatus)];

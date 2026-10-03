@@ -496,6 +496,8 @@ pub(super) fn extract_org_task(
         status_changed: obj_bool(&result_object, "status_changed"),
         task_assigned_dispatched: obj_bool(&result_object, "task_assigned_dispatched"),
         completion_deferred: obj_bool(&result_object, "completion_deferred"),
+        requires_episode_resolution: obj_bool(&result_object, "requires_episode_resolution"),
+        rejected_request_turn_intent_id: obj_str(&result_object, "rejected_request_turn_intent_id"),
         guidance: obj_str(&result_object, "guidance")
             .or_else(|| legacy_task_rejection_guidance(&result_object)),
         error_message: org_task_error_message(&result_object),

@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Pedido do usuário",
+      "member_messages": "Mensagens recebidas",
+      "task_dispatch": "Tarefa atribuída",
+      "final_summary": "Relatório final"
+    },
+    "unknownSource": "Origem indisponível",
+    "legacyInbox": "Mensagens recebidas · origem indisponível",
+    "inboxSummary": "{{recipient}} recebeu {{count}} mensagens de {{senders}}",
+    "viewDetails": "Ver detalhes da execução",
+    "unavailable": "Detalhes da execução indisponíveis"
+  },
   "landedMessageEdit": {
     "title": "Enviar como nova mensagem?",
     "body": "Esta mensagem pertence a uma sessão de execução. Editá-la aqui não permite retroceder na conversa. Enviar este texto como nova mensagem no final? As mensagens e alterações de arquivos existentes serão mantidas.",
@@ -2311,6 +2324,10 @@
       "body": "Retome para trabalhar com o Coordenador. Você ainda pode usar @Member para uma tarefa paralela.",
       "resume": "Retomar"
     },
+    "finalizingBanner": {
+      "title": "Finalizando esta rodada de trabalho",
+      "body": "Continue editando o rascunho. Você poderá enviá-lo após o relatório final."
+    },
     "toolUseSummary": {
       "note": "{{sender}} realizou {{summary}}",
       "readFiles_one": "{{count}} leitura de arquivo",
@@ -2419,7 +2436,17 @@
     "currentRecordUnavailable": "Estado atual indisponível",
     "currentStatusLabel": "Status atual",
     "currentOwnerLabel": "Responsável atual",
-    "replacementLabel": "Substituição"
+    "replacementLabel": "Substituição",
+    "rejectedRequestRecovery": {
+      "restore": "Restaurar como rascunho",
+      "warning": "Outras partes podem já ter sido executadas. Revise e reenvie apenas o que falta.",
+      "unavailable": "Não foi possível verificar nem restaurar a solicitação original",
+      "previewTitle": "Adicionar a solicitação rejeitada ao rascunho?",
+      "existingDraft": "Rascunho atual",
+      "recoveredRequest": "Solicitação rejeitada",
+      "append": "Adicionar ao rascunho",
+      "appendExplanation": "A solicitação será adicionada antes do rascunho atual. Nada será enviado automaticamente."
+    }
   },
   "manageAgentDef": {
     "action": {

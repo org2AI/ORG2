@@ -6,15 +6,20 @@
 use crate::tools::impls::coding::exec::registry;
 use tracing::info;
 
-/// Kill an agent shell process by PID.
+/// Stop an exact application-owned shell registration.
 ///
 /// This is the Tauri command invoked when the user clicks Stop in the chat
-/// TerminalBlock. Only processes spawned by the agent are killable; the
-/// frontend should only send PIDs received from `agent:shell_process_started`.
+/// TerminalBlock. Session, call, registration handle and PID must all match;
+/// a historical PID alone never authorizes an operating-system signal.
 #[tauri::command]
-pub async fn agent_kill_shell_process(pid: u32) -> Result<String, String> {
-    info!("[agent_kill_shell_process] Killing PID {}", pid);
-    registry::terminate_shell_process_tree(pid).await
+pub async fn agent_kill_shell_process(
+    pid: u32,
+    handle: String,
+    session_id: String,
+    call_id: String,
+) -> Result<String, String> {
+    registry::stop_registered_shell(&handle, &session_id, &call_id, pid).await?;
+    Ok("Process stopped".to_string())
 }
 
 /// List all currently running agent shell jobs (across all sessions).

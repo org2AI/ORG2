@@ -21,6 +21,7 @@ import {
   setSessionRuntimeStatusAtom,
   streamRetryStatusAtom,
 } from "@src/store/session/cliSessionStatusAtom";
+import { sessionByIdAtom } from "@src/store/session/sessionAtom/atoms";
 import { shellProcessMapAtom } from "@src/store/session/shellProcessAtom";
 import {
   hasLiveSubagentJobs,
@@ -136,6 +137,7 @@ async function killShellProcessesForBoundary(
           pid: process.pid,
           sessionId,
           callId: process.callId,
+          handle: process.handle,
         })
       )
   );
@@ -215,27 +217,34 @@ export function beginTimelineBoundary(
   //   provider deliver the cancelled terminal promptly so the FSM flips idle
   //   and the queued Send-Now message dispatches, instead of stalling until
   //   the command finishes on its own.
-  void killShellProcessesForBoundary(sessionId, effect.shellKill).catch(
-    (error) => {
-      log.warn(
-        "[sessionTimelineBoundary] failed to kill shell processes",
-        error
-      );
-    }
+  const session = store.get(sessionByIdAtom(sessionId));
+  const queueSession = store.get(sessionByIdAtom(queueSessionId));
+  const backendOwnsOrgBoundary = Boolean(
+    session?.agentOrgId || session?.orgMemberId || queueSession?.agentOrgId
   );
+  if (!backendOwnsOrgBoundary)
+    void killShellProcessesForBoundary(sessionId, effect.shellKill).catch(
+      (error) => {
+        log.warn(
+          "[sessionTimelineBoundary] failed to kill shell processes",
+          error
+        );
+      }
+    );
   // All boundary causes close the interrupted turn's running events. For
   // force-send this is what clears stale `displayStatus:"running"` rows that
   // would otherwise keep `anyRunning` true in usePlanningIndicator and
   // suppress the planning footer after the redispatch. Idempotent with the
   // provider terminal's own close (rendered-status merge tolerates it).
-  void closeRunningEventsForTimelineBoundary(sessionId, reason).catch(
-    (error) => {
-      log.warn(
-        "[sessionTimelineBoundary] failed to close running events",
-        error
-      );
-    }
-  );
+  if (!backendOwnsOrgBoundary)
+    void closeRunningEventsForTimelineBoundary(sessionId, reason).catch(
+      (error) => {
+        log.warn(
+          "[sessionTimelineBoundary] failed to close running events",
+          error
+        );
+      }
+    );
   if (reason === "force-send") {
     // Send Now guarantees a redispatch the moment the provider confirms the
     // cancel — from the user's point of view the turn continues. Writing

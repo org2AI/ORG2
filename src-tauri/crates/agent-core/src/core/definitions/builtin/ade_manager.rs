@@ -131,7 +131,11 @@ pub fn ade_manager() -> AgentDefinition {
             ..Default::default()
         },
 
-        soul_content: Some(include_str!("prompts/ade_manager.md").to_string()),
+        soul_content: Some(format!(
+            "{}\n\n{}",
+            include_str!("prompts/ade_manager.md"),
+            app_ui::docs::rulebook_markdown(),
+        )),
         sovereign_prompt: false,
         auto_continue: false,
 
@@ -220,7 +224,10 @@ mod tests {
             tool_names::CONTROL_ORGII,
             tool_names::SPOTLIGHT,
             tool_names::LIST_SESSION_WORKSPACE,
-        ] {
+        ]
+        .into_iter()
+        .chain(app_ui::agent_tools::ALL.iter().map(|kind| kind.name()))
+        {
             assert!(
                 !excluded.iter().any(|t| t == tool),
                 "{tool} must NOT be excluded — ADE Manager subsumes GUI Control"

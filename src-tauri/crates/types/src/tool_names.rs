@@ -89,6 +89,14 @@ pub const CONTROL_BROWSER_WITH_PLAYWRIGHT: &str = "control_browser_with_playwrig
 pub const CONTROL_EXTERNAL_BROWSER: &str = "control_external_browser";
 pub const CONTROL_INTERNAL_BROWSER: &str = "control_internal_browser";
 pub const CONTROL_ORGII: &str = "control_orgii";
+pub const OPEN_IN_ORG2: &str = "open_in_org2";
+pub const GET_ORG2_CONTEXT: &str = "get_org2_context";
+pub const LIST_ORG2_TABS: &str = "list_org2_tabs";
+pub const LIST_ORG2_TERMINALS: &str = "list_org2_terminals";
+pub const READ_ORG2_TERMINAL: &str = "read_org2_terminal";
+pub const WRITE_ORG2_TERMINAL: &str = "write_org2_terminal";
+pub const GET_ORG2_UI_DOCS: &str = "get_org2_ui_docs";
+pub const GET_ORG2_UI_RESULT: &str = "get_org2_ui_result";
 pub const SPOTLIGHT: &str = "spotlight";
 pub const REPLY_SESSION_COMMENT: &str = "reply_session_comment";
 

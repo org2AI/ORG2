@@ -236,6 +236,7 @@ export function sameChatHistoryListProps(
       "onScrollRootChange",
       previous.onScrollRootChange === next.onScrollRootChange,
     ],
+    ["isNavigating", previous.isNavigating === next.isNavigating],
     [
       "onRowLayoutCommit",
       previous.onRowLayoutCommit === next.onRowLayoutCommit,

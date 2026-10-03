@@ -3,6 +3,7 @@ import { act, createElement, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TranscriptNavigationTarget } from "../transcriptNavigation";
 import {
   type UseTranscriptViewportReturn,
   useTranscriptViewport,
@@ -34,13 +35,16 @@ describe("useTranscriptViewport", () => {
     sessionKey,
     contentKey,
     localSubmitKey,
+    navigationScopeKey,
   }: {
     sessionKey: string;
     contentKey: string;
     localSubmitKey?: string | null;
+    navigationScopeKey?: string;
   }) {
     const value = useTranscriptViewport({
       sessionKey,
+      navigationScopeKey,
       contentKey,
       itemCount: 2,
       localSubmitKey,
@@ -55,7 +59,8 @@ describe("useTranscriptViewport", () => {
   const render = (
     sessionKey: string,
     contentKey: string,
-    localSubmitKey?: string | null
+    localSubmitKey?: string | null,
+    navigationScopeKey?: string
   ) => {
     act(() =>
       root.render(
@@ -63,6 +68,7 @@ describe("useTranscriptViewport", () => {
           sessionKey,
           contentKey,
           localSubmitKey,
+          navigationScopeKey,
         })
       )
     );
@@ -498,5 +504,164 @@ describe("useTranscriptViewport", () => {
     ).toHaveLength(10);
     expect(resizeDisconnect).toHaveBeenCalledTimes(10);
     expect(frames).toHaveLength(0);
+  });
+  const navigationTarget = (
+    id = "turn-a",
+    top = 100
+  ): TranscriptNavigationTarget => ({
+    id,
+    scopeKey: "session-a",
+    onEnd: vi.fn(),
+    readGeometry: vi.fn(() => ({
+      status: "measured" as const,
+      revision: 1,
+      scrollTop: top,
+      anchor: { itemId: id, offsetFromViewportTop: 0 },
+    })),
+  });
+
+  it("does not capture intermediate rows while mounting; measured target becomes the reading anchor", () => {
+    const target = navigationTarget();
+    let measured = false;
+    target.readGeometry = () =>
+      measured
+        ? {
+            status: "measured",
+            revision: 2,
+            scrollTop: 100,
+            anchor: { itemId: "turn-a", offsetFromViewportTop: 0 },
+          }
+        : { status: "pending", scrollTop: 300 };
+    act(() => viewport.beginNavigation(target));
+    act(flushFrames);
+    act(() => viewport.handleScroll(false));
+    act(triggerResize);
+    expect(viewport.isNavigating()).toBe(true);
+    expect(scrollRoot.scrollTop).toBe(300);
+    expect(target.onEnd).not.toHaveBeenCalled();
+    measured = true;
+    act(triggerResize);
+    act(flushFrames);
+    expect(scrollRoot.scrollTop).toBe(100);
+    expect(target.onEnd).toHaveBeenCalledExactlyOnceWith("settled");
+    firstAnchorTop = 175;
+    act(triggerResize);
+    expect(scrollRoot.scrollTop).toBe(175);
+  });
+
+  it("rejects an old scheduled frame after a newer destination takes ownership", () => {
+    const first = navigationTarget();
+    const second = navigationTarget("turn-b", 500);
+    let firstGeneration = 0;
+    act(() => {
+      firstGeneration = viewport.beginNavigation(first);
+    });
+    const staleFrame = [...frames.values()][0];
+    act(() => {
+      expect(viewport.beginNavigation(second)).toBeGreaterThan(firstGeneration);
+    });
+    act(() => staleFrame(0));
+    expect(first.readGeometry).not.toHaveBeenCalled();
+    expect(frames).toHaveLength(1);
+    act(flushFrames);
+    expect(first.onEnd).toHaveBeenCalledExactlyOnceWith("superseded");
+    expect(second.onEnd).toHaveBeenCalledExactlyOnceWith("settled");
+    expect(scrollRoot.scrollTop).toBe(500);
+  });
+
+  it.each(["wheel", "touchstart", "keydown", "pointerdown"])(
+    "lets %s take over before the next native scroll",
+    (kind) => {
+      const target = navigationTarget();
+      act(() => viewport.beginNavigation(target));
+      const event =
+        kind === "wheel"
+          ? new WheelEvent(kind, { deltaY: 120 })
+          : kind === "keydown"
+            ? new KeyboardEvent(kind, { key: "ArrowUp" })
+            : kind === "pointerdown"
+              ? new MouseEvent(kind, { button: 0, clientX: 499 })
+              : new Event(kind);
+      act(() => scrollRoot.dispatchEvent(event));
+      expect(target.onEnd).toHaveBeenCalledExactlyOnceWith("user");
+      scrollRoot.scrollTop = 250;
+      act(() => viewport.handleScroll(false));
+      firstAnchorTop += 40;
+      act(triggerResize);
+      act(flushFrames);
+      expect(scrollRoot.scrollTop).toBe(290);
+      expect(viewport.isNavigating()).toBe(false);
+    }
+  );
+
+  it("waits for an intentional destination page and cancels a different page selection", () => {
+    render("session-a", "content", null, "page-0");
+    act(flushFrames);
+    const target = { ...navigationTarget(), scopeKey: "page-1" };
+    act(() => viewport.beginNavigation(target));
+    act(flushFrames);
+    expect(target.readGeometry).not.toHaveBeenCalled();
+    render("session-a", "expanded", null, "page-1");
+    act(flushFrames);
+    expect(target.onEnd).toHaveBeenCalledExactlyOnceWith("settled");
+    const next = { ...navigationTarget(), scopeKey: "page-2" };
+    act(() => viewport.beginNavigation(next));
+    render("session-a", "content", null, "page-3");
+    act(flushFrames);
+    expect(next.onEnd).toHaveBeenCalledExactlyOnceWith("scope");
+    expect(next.readGeometry).not.toHaveBeenCalled();
+  });
+
+  it("cancels session changes and invalidates already queued work", () => {
+    const target = navigationTarget();
+    act(() => viewport.beginNavigation(target));
+    const staleFrame = [...frames.values()][0];
+    render("session-b", "content");
+    act(() => staleFrame(0));
+    act(flushFrames);
+    expect(target.onEnd).toHaveBeenCalledExactlyOnceWith("scope");
+    expect(target.readGeometry).not.toHaveBeenCalled();
+  });
+
+  it("leaves the current position when the target disappears", () => {
+    const target = navigationTarget();
+    target.readGeometry = () => ({ status: "missing" });
+    act(() => viewport.beginNavigation(target));
+    act(flushFrames);
+    expect(target.onEnd).toHaveBeenCalledExactlyOnceWith("missing");
+    expect(scrollRoot.scrollTop).toBe(600);
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("does no navigation work while hidden and revalidates once on return", () => {
+    const target = navigationTarget();
+    act(() => viewport.beginNavigation(target));
+    visibilityState = "hidden";
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    act(triggerResize);
+    act(flushFrames);
+    expect(frames).toHaveLength(0);
+    expect(target.readGeometry).not.toHaveBeenCalled();
+    visibilityState = "visible";
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    act(flushFrames);
+    expect(target.onEnd).toHaveBeenCalledExactlyOnceWith("settled");
+    expect(frames).toHaveLength(0);
+  });
+
+  it("returns pending navigation and callbacks to baseline when unmounted", () => {
+    const target = navigationTarget();
+    act(() => viewport.beginNavigation(target));
+    act(() => root.render(null));
+    expect(target.onEnd).toHaveBeenCalledExactlyOnceWith("unmount");
+    expect(frames).toHaveLength(0);
+  });
+  it("does not retry a refused browser scroll every frame", () => {
+    scrollTo.mockImplementation(() => {});
+    act(() => viewport.beginNavigation(navigationTarget()));
+    act(flushFrames);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(frames).toHaveLength(0);
+    expect(viewport.isNavigating()).toBe(true);
   });
 });

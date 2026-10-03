@@ -117,6 +117,13 @@ describe("GroupHeaderRenderer after a round the agent never worked in", () => {
     expect(marginTopOf(2, hasBody)).toBe("");
   });
 
+  it("exposes an empty user turn's exact message identity for search", () => {
+    marginTopOf(1, [false, false, true]);
+    expect(
+      container.querySelector('[data-chat-event-ids="user-1"]')?.textContent
+    ).toContain("[Request interrupted by user]");
+  });
+
   it("keeps the round gap after a round with a body", () => {
     expect(marginTopOf(1, [true, false, true])).toBe(
       `${CHAT_FOOTER_SPACER.ROUND_GAP_PX}px`

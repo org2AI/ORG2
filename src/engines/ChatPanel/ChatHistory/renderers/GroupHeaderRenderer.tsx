@@ -266,7 +266,7 @@ export const GroupHeaderRenderer: React.FC<GroupHeaderRendererProps> = memo(
 
     return (
       <div
-        data-chat-event-ids={meta?.execution ? header.event?.id : undefined}
+        data-chat-event-ids={header.event?.id || header.chunk_id}
         className={`group/turn ${CHAT_ITEM_PADDING_X} ${CHAT_PANEL_WIDTH_TOKENS.contentWidth} ${headerPaddingBottomClass}`.trim()}
         style={roundGap > 0 ? { marginTop: roundGap } : undefined}
       >

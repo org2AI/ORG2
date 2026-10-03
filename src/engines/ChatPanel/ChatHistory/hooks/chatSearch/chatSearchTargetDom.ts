@@ -106,10 +106,10 @@ export function findSearchTargetElement(
 
 const SEARCH_SCROLL_IN_VIEW_PADDING_PX = 48;
 
-export function scrollSearchTargetIntoView(
+export function getSearchTargetScrollTop(
   scrollRoot: HTMLElement,
   element: HTMLElement,
-  behavior: ScrollBehavior = "auto"
+  alignOversizedToStart = false
 ) {
   const rootRect = scrollRoot.getBoundingClientRect();
   const elRect = element.getBoundingClientRect();
@@ -119,10 +119,15 @@ export function scrollSearchTargetIntoView(
     elRect.top >= rootRect.top + padding &&
     elRect.bottom <= rootRect.bottom - padding
   ) {
-    return;
+    return scrollRoot.scrollTop;
   }
 
   const elementTop = elRect.top - rootRect.top + scrollRoot.scrollTop;
+  if (
+    alignOversizedToStart &&
+    elRect.height > scrollRoot.clientHeight - 2 * padding
+  )
+    return Math.max(0, elementTop - padding);
   let targetTop = scrollRoot.scrollTop;
 
   if (elRect.top < rootRect.top + padding) {
@@ -131,10 +136,16 @@ export function scrollSearchTargetIntoView(
     targetTop = elementTop + elRect.height - scrollRoot.clientHeight + padding;
   }
 
-  scrollRoot.scrollTo({
-    top: Math.max(0, targetTop),
-    behavior,
-  });
+  return Math.max(0, targetTop);
+}
+
+export function scrollSearchTargetIntoView(
+  scrollRoot: HTMLElement,
+  element: HTMLElement,
+  behavior: ScrollBehavior = "auto"
+) {
+  const top = getSearchTargetScrollTop(scrollRoot, element);
+  if (top !== scrollRoot.scrollTop) scrollRoot.scrollTo({ top, behavior });
 }
 
 export function resolveVisibleSearchResultIndex(

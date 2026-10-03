@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 
+import {
+  type BeginTranscriptNavigation,
+  chatNavigationScopeKey,
+} from "../viewport/transcriptNavigation";
 import { useAgentOrgOverviewDisclosure } from "./useAgentOrgOverviewDisclosure";
 import type { useChatHistoryProjectionModel } from "./useChatHistoryProjectionModel";
 import type { UseChatHistoryStateReturn } from "./useChatHistoryState";
@@ -44,7 +48,7 @@ interface UseChatNavigationControllerOptions {
   turnPageListOpen: boolean;
   turnPaginationEnabled: boolean;
   virtualListRef: UseChatHistoryStateReturn["virtualListRef"];
-  onExplicitNavigation: () => void;
+  onExplicitNavigation: BeginTranscriptNavigation;
 }
 
 /** Owns user navigation state for overview, minimap and pinned turn chrome. */
@@ -101,14 +105,27 @@ export function useChatNavigationController({
   );
   const handleConversationMinimapNavigate = useCallback(
     (groupIndex: number) => {
-      onExplicitNavigation();
-      // Commit the destination before row measurement captures a reading anchor.
-      virtualListRef.current?.scrollToGroup({
-        groupIndex,
-        behavior: "auto",
+      const anchorId = virtualListRef.current?.getGroupAnchorId(groupIndex);
+      if (!anchorId) return;
+      onExplicitNavigation({
+        id: anchorId,
+        scopeKey: chatNavigationScopeKey(
+          activeId,
+          turnPaginationEnabled ? currentPageIndex : null
+        ),
+        readGeometry: () =>
+          virtualListRef.current?.readNavigationGeometry({ anchorId }) ?? {
+            status: "pending",
+          },
       });
     },
-    [onExplicitNavigation, virtualListRef]
+    [
+      activeId,
+      currentPageIndex,
+      onExplicitNavigation,
+      turnPaginationEnabled,
+      virtualListRef,
+    ]
   );
   const conversationHistoryPageIndex = resolveConversationHistoryPageIndex({
     activeGroupIndex,

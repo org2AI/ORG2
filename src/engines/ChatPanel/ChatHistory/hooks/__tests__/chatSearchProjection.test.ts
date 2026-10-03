@@ -14,9 +14,8 @@ import {
 import {
   buildEventIdProjectionIndex,
   collectChatItemEventIds,
-  resolvePageIndexForFlatIndex,
-  toDisplayFlatIndex,
 } from "../chatSearchProjection";
+import { projectChatGroups } from "../useChatGroupsProjection";
 
 function event(id: string): SessionEvent {
   return {
@@ -50,6 +49,30 @@ function item(
 }
 
 describe("chatSearchProjection", () => {
+  it("keeps exact ownership for collapsed events and empty turn headers", () => {
+    const allItems = [item("user-a"), item("answer-a"), item("user-b")];
+    const groups = projectChatGroups(allItems, {
+      isTurnHeaderItem: (row) => row.chunk_id.startsWith("user-"),
+      defaultTurnCollapsed: true,
+      tailTurnPhase: "complete",
+    });
+    const index = buildEventIdProjectionIndex(
+      groups.flatItems,
+      groups.groupCounts,
+      groups.groupMeta,
+      allItems,
+      groups.originalToFlatIndex,
+      groups.groupHeaders
+    );
+    expect(index.get("user-a")).toMatchObject({
+      groupIndex: 0,
+      turnId: "user-a",
+    });
+    expect(index.get("user-b")).toMatchObject({
+      groupIndex: 1,
+      turnId: "user-b",
+    });
+  });
   it("collects nested activity stack event ids", () => {
     const stack = item("stack-1", {
       type: "activityStackGroup",
@@ -78,23 +101,6 @@ describe("chatSearchProjection", () => {
       turnId: "turn-b",
       itemChunkId: "evt-2",
     });
-  });
-
-  it("resolves pagination page and display-local flat index", () => {
-    const pages = [
-      { flatStartIndex: 0, flatEndIndex: 2 },
-      { flatStartIndex: 2, flatEndIndex: 4 },
-    ];
-
-    expect(resolvePageIndexForFlatIndex(3, pages)).toBe(1);
-    expect(toDisplayFlatIndex(3, pages[1])).toBe(1);
-  });
-
-  it("keeps global flat indices when pagination is off (no page slice)", () => {
-    const firstPageOnly = { flatStartIndex: 0, flatEndIndex: 2 };
-
-    expect(toDisplayFlatIndex(5, undefined)).toBe(5);
-    expect(toDisplayFlatIndex(5, firstPageOnly)).toBeNull();
   });
 });
 

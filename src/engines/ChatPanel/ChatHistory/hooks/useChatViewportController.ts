@@ -6,6 +6,7 @@ import type {
   ScrollNavState,
 } from "../ChatHistory.types";
 import { CHAT_FOOTER_SPACER } from "../config/chatFooterSpacer";
+import { chatNavigationScopeKey } from "../viewport/transcriptNavigation";
 import { useTranscriptViewport } from "../viewport/useTranscriptViewport";
 import { useChatFooterSpacer } from "./useChatFooterSpacer";
 import type { UseChatHistoryStateReturn } from "./useChatHistoryState";
@@ -15,6 +16,7 @@ const FLOATING_MINIMAP_IDLE_DELAY_MS = 1_200;
 
 interface UseChatViewportControllerOptions {
   activeId: string | null;
+  currentPageIndex: number;
   bottomInset: number;
   browserAddToConversationNav: BrowserAddToConversationNavState;
   displayTotalFlatItems: number;
@@ -38,6 +40,7 @@ interface UseChatViewportControllerOptions {
  */
 export function useChatViewportController({
   activeId,
+  currentPageIndex,
   bottomInset,
   browserAddToConversationNav,
   displayTotalFlatItems,
@@ -84,6 +87,8 @@ export function useChatViewportController({
   );
   const {
     detachForNavigation,
+    beginNavigation,
+    isNavigating,
     followTail,
     handleScroll,
     preserveForLayoutMutation,
@@ -92,6 +97,10 @@ export function useChatViewportController({
     showScrollToBottom,
   } = useTranscriptViewport({
     sessionKey: activeId,
+    navigationScopeKey: chatNavigationScopeKey(
+      activeId,
+      turnPaginationEnabled ? currentPageIndex : null
+    ),
     contentKey: tailFollowKey,
     itemCount: displayTotalFlatItems,
     tailGapPx: CHAT_FOOTER_SPACER.MIN_WHEN_FULL_PX,
@@ -150,6 +159,8 @@ export function useChatViewportController({
   return {
     conversationMinimapScrolling,
     detachForNavigation,
+    beginNavigation,
+    isNavigating,
     footerSpacerHeight,
     handleChatListScrollStateChange,
     handleRangeChanged,

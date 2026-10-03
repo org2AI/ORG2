@@ -120,6 +120,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   });
   const viewport = useChatViewportController({
     activeId,
+    currentPageIndex: projection.currentPageIndex,
     bottomInset,
     browserAddToConversationNav,
     displayTotalFlatItems: projection.displayTotalFlatItems,
@@ -158,7 +159,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     turnPageListOpen: projection.turnPageListOpen,
     turnPaginationEnabled,
     virtualListRef: historyState.virtualListRef,
-    onExplicitNavigation: viewport.detachForNavigation,
+    onExplicitNavigation: viewport.beginNavigation,
   });
   const emptyState = useChatEmptyState({
     isAgentWorking: platform.isAgentWorking,
@@ -172,6 +173,9 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     sessionId: activeId,
     chatHistory: historyState.chatHistory,
     flatItems: projection.flatItems,
+    sourceItems: projection.activeProjectionHistory,
+    originalToFlatIndex: projection.originalToFlatIndex,
+    groupHeaders: projection.groupHeaders,
     groupCounts: projection.groupCounts,
     groupMeta: projection.groupMeta,
     pages: projection.pages,
@@ -180,7 +184,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     setTurnPageSelection: projection.setTurnPageSelection,
     virtualListRef: historyState.virtualListRef,
     chatContainerRef: historyState.chatContainerRef,
-    onExplicitNavigation: viewport.detachForNavigation,
+    onExplicitNavigation: viewport.beginNavigation,
   });
   // Agent-started sessions carry no message the reader wrote: their user-role
   // turns are the parent's dispatches. Resolve the parent once here so every

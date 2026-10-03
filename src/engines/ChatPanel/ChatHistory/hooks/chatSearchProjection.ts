@@ -1,6 +1,5 @@
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import type { ChatGroupMeta } from "./useChatGroups";
-import type { ChatTurnPage } from "./useChatTurnPagination";
 
 interface ChatSearchProjectionTarget {
   globalFlatIndex: number;
@@ -51,13 +50,28 @@ function buildFlatIndexToGroupIndex(groupCounts: readonly number[]): number[] {
 export function buildEventIdProjectionIndex(
   flatItems: readonly OptimizedChatItem[],
   groupCounts: readonly number[],
-  groupMeta: readonly Pick<ChatGroupMeta, "turnId">[]
+  groupMeta: readonly Pick<ChatGroupMeta, "turnId">[],
+  sourceItems: readonly OptimizedChatItem[] = flatItems,
+  originalToFlatIndex?: ReadonlyMap<number, number>,
+  groupHeaders: readonly (OptimizedChatItem | null)[] = []
 ): Map<string, ChatSearchProjectionTarget> {
   const flatToGroup = buildFlatIndexToGroupIndex(groupCounts);
+  const headerGroups = new Map(
+    groupHeaders.flatMap((item, index) =>
+      item ? [[item, index] as const] : []
+    )
+  );
   const index = new Map<string, ChatSearchProjectionTarget>();
 
-  flatItems.forEach((item, globalFlatIndex) => {
-    const groupIndex = flatToGroup[globalFlatIndex] ?? 0;
+  sourceItems.forEach((item, sourceIndex) => {
+    const globalFlatIndex = originalToFlatIndex
+      ? originalToFlatIndex.get(sourceIndex)
+      : sourceIndex;
+    if (globalFlatIndex === undefined) return;
+    // Collapsing removes rows, not their message identity. Empty headers must
+    // retain their own group even when their flat offset touches another group.
+    const groupIndex =
+      headerGroups.get(item) ?? flatToGroup[globalFlatIndex] ?? 0;
     const target: ChatSearchProjectionTarget = {
       globalFlatIndex,
       groupIndex,
@@ -70,34 +84,4 @@ export function buildEventIdProjectionIndex(
   });
 
   return index;
-}
-
-export function resolvePageIndexForFlatIndex(
-  globalFlatIndex: number,
-  pages: readonly Pick<ChatTurnPage, "flatStartIndex" | "flatEndIndex">[]
-): number | null {
-  for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-    const page = pages[pageIndex];
-    if (
-      globalFlatIndex >= page.flatStartIndex &&
-      globalFlatIndex < page.flatEndIndex
-    ) {
-      return pageIndex;
-    }
-  }
-  return null;
-}
-
-export function toDisplayFlatIndex(
-  globalFlatIndex: number,
-  page: Pick<ChatTurnPage, "flatStartIndex" | "flatEndIndex"> | undefined
-): number | null {
-  if (!page) return globalFlatIndex;
-  if (
-    globalFlatIndex < page.flatStartIndex ||
-    globalFlatIndex >= page.flatEndIndex
-  ) {
-    return null;
-  }
-  return globalFlatIndex - page.flatStartIndex;
 }

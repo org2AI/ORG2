@@ -14,20 +14,17 @@ import type { AgentStatusTrailState } from "@src/engines/ChatPanel/hooks/agentSt
 
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import type { GroupHeaderRenderPart } from "../renderers/GroupHeaderRenderer";
+import type { TranscriptNavigationGeometry } from "../viewport/transcriptNavigation";
 
 export type EventSummary = NonNullable<OptimizedChatItem["event"]>;
 
 export interface ChatHistoryListHandle {
-  scrollToGroup: (options: {
-    groupIndex: number;
-    behavior?: ScrollBehavior;
-  }) => void;
-  scrollToChatTarget: (options: {
+  getGroupAnchorId: (groupIndex: number) => string | null;
+  readNavigationGeometry: (target: {
+    anchorId: string;
     eventId?: string;
     itemId?: string;
-    flatIndex?: number;
-    behavior?: ScrollBehavior;
-  }) => void;
+  }) => TranscriptNavigationGeometry;
   /** Mount an off-screen virtual group before restoring its exact pixel anchor. */
   revealTranscriptAnchor: (anchorId: string) => boolean;
 }
@@ -94,7 +91,9 @@ export interface ChatHistoryListProps {
    * Called after re-measured virtual rows were committed synchronously, so the
    * viewport owner can correct scroll against the offsets about to paint.
    */
-  onRowLayoutCommit?: () => void;
+  onRowLayoutCommit?: (duringReactCommit?: boolean) => void;
+  /** While navigating, the viewport aligns the target after committed measurement. */
+  isNavigating?: () => boolean;
   /**
    * When set, `GroupItemRenderer` paints a `NewEventDivider` with this
    * label above each group's last item. Subagent panes opt in so the

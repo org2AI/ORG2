@@ -189,6 +189,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
   const {
     conversationMinimapScrolling,
     detachForNavigation,
+    isNavigating,
     footerSpacerHeight,
     handleChatListScrollStateChange,
     handleRangeChanged,
@@ -571,6 +572,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                       staticScrollerRef={staticScrollerRef}
                       onScrollRootChange={setScrollRoot}
                       onRowLayoutCommit={reconcileLayout}
+                      isNavigating={isNavigating}
                       newEventDividerLabel={newEventDividerLabel}
                     />
                   </>

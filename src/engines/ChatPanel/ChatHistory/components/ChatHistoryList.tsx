@@ -17,12 +17,11 @@
  * - `ChatHistoryListActiveGroupReporter.ts` — the scroll-driven active
  *   group index/pin reporter hook.
  */
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { elementScroll, useVirtualizer } from "@tanstack/react-virtual";
 import React, {
   memo,
   useCallback,
   useEffect,
-  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useReducer,
@@ -35,10 +34,6 @@ import { AgentStatusTrail } from "@src/engines/ChatPanel/blocks/primitives";
 import { CHAT_PANEL_TRANSCRIPT_TOP_PADDING_PX } from "@src/engines/ChatPanel/header/chatPanelHeaderLayout";
 
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
-import {
-  findChatSearchTargetElement,
-  scrollSearchTargetIntoView,
-} from "../hooks/chatSearch";
 import { getUnloadedTurnMeta } from "../hooks/useChatGroups";
 import { GroupItemRenderer } from "../renderers";
 import { useChatHistoryListActiveGroupReporter } from "./ChatHistoryListActiveGroupReporter";
@@ -52,6 +47,7 @@ import {
   resolveActiveGroupPinState,
   resolveVisibleGroupIndices,
 } from "./ChatHistoryListLayout";
+import { useChatHistoryListNavigation } from "./ChatHistoryListNavigation";
 import type {
   ChatHistoryListProps,
   RowGroupMeta,
@@ -100,6 +96,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
     staticScrollerRef,
     onScrollRootChange,
     onRowLayoutCommit,
+    isNavigating,
     newEventDividerLabel = null,
   }) => {
     // Planning indicator state in refs so polling ticks don't invalidate
@@ -158,18 +155,12 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
       () => buildChatGroupRenderKeys(turnIds, groupFallbackIds),
       [groupFallbackIds, turnIds]
     );
-    const flatIndexToGroupIndex = useMemo(() => {
-      const indexes: number[] = [];
-      for (const group of virtualGroups) {
-        for (let offset = 0; offset < group.itemCount; offset++) {
-          indexes[group.startFlatIndex + offset] = group.groupIndex;
-        }
-      }
-      return indexes;
-    }, [virtualGroups]);
     // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual exposes imperative helpers that cannot be memoized safely.
     const virtualizer = useVirtualizer({
       count: virtualGroups.length,
+      scrollToFn: (offset, options, instance) => {
+        if (!isNavigating?.()) elementScroll(offset, options, instance);
+      },
       getScrollElement: () => virtualScrollerRef.current,
       estimateSize: () => 360,
       overscan: 4,
@@ -177,9 +168,12 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
         groupRenderKeys[index] ?? `chat-group-index:${index}`,
     });
     const virtualItems = virtualizer.getVirtualItems();
+    const measuredRows = useRef(new WeakMap<Element, number>()).current;
+    const layoutRevision = useRef(0);
     // Row sizes the committed row offsets were computed from.
     const committedRowSizesRef = useRef(new Map<number, number>());
     useLayoutEffect(() => {
+      layoutRevision.current += 1;
       committedRowSizesRef.current = new Map(
         virtualItems.map((item) => [item.index, item.size])
       );
@@ -197,8 +191,10 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
         if (!node) return;
         if (!rowResizeObserverRef.current) {
           rowResizeObserverRef.current = new ResizeObserver((entries) => {
+            let measured = false;
             const resizedRows: Array<{ index: number; size: number }> = [];
             for (const entry of entries) {
+              if (!entry.target.isConnected) continue;
               const blockSize =
                 entry.borderBoxSize[0]?.blockSize ??
                 entry.target.getBoundingClientRect().height;
@@ -206,10 +202,18 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
                 entry.target as HTMLDivElement
               );
               const size = Math.round(blockSize);
+              if (measuredRows.get(entry.target) !== size) measured = true;
+              measuredRows.set(entry.target, size);
               if (committedRowSizesRef.current.get(index) === size) continue;
               resizedRows.push({ index, size });
             }
-            if (resizedRows.length === 0) return;
+            if (resizedRows.length === 0) {
+              if (measured) {
+                layoutRevision.current += 1;
+                onRowLayoutCommitRef.current?.();
+              }
+              return;
+            }
             // Rows re-wrap on every frame of a pane resize. TanStack moves
             // scrollTop as soon as it learns a size, but moves the rows only on
             // its next asynchronous render, so this frame would paint shifted
@@ -230,7 +234,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
           observer.unobserve(node);
         };
       },
-      [virtualizer]
+      [measuredRows, virtualizer]
     );
 
     useEffect(() => {
@@ -255,108 +259,21 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
       });
     }, [onRangeChanged, virtualGroups, virtualItems]);
 
-    useImperativeHandle(
+    useChatHistoryListNavigation({
       virtualListRef,
-      () => ({
-        revealTranscriptAnchor: (anchorId) => {
-          const scrollRoot =
-            virtualScrollerRef.current ?? staticScrollerRef?.current;
-          if (!scrollRoot) return false;
-          const mounted = Array.from(
-            scrollRoot.querySelectorAll<HTMLElement>(
-              "[data-transcript-anchor-id]"
-            )
-          ).some(
-            (element) =>
-              element.getAttribute("data-transcript-anchor-id") === anchorId
-          );
-          if (mounted) return true;
-
-          const groupIndex = groupRenderKeys.indexOf(anchorId);
-          if (groupIndex < 0 || scrollRoot !== virtualScrollerRef.current) {
-            return false;
-          }
-          virtualizer.scrollToIndex(groupIndex, {
-            align: "start",
-            behavior: "auto",
-          });
-          return false;
-        },
-        scrollToGroup: ({ groupIndex, behavior = "smooth" }) => {
-          const boundedGroupIndex = Math.max(
-            0,
-            Math.min(groupIndex, virtualGroups.length - 1)
-          );
-          const staticScrollRoot = staticScrollerRef?.current;
-          const staticGroup = staticScrollRoot?.querySelector<HTMLElement>(
-            `[data-chat-group-index="${boundedGroupIndex}"]`
-          );
-          if (staticScrollRoot && staticGroup) {
-            const rootRect = staticScrollRoot.getBoundingClientRect();
-            const groupRect = staticGroup.getBoundingClientRect();
-            staticScrollRoot.scrollTo({
-              top: staticScrollRoot.scrollTop + groupRect.top - rootRect.top,
-              behavior,
-            });
-            return;
-          }
-          virtualizer.scrollToIndex(boundedGroupIndex, {
-            align: "start",
-            behavior,
-          });
-        },
-        scrollToChatTarget: ({
-          eventId,
-          itemId,
-          flatIndex,
-          behavior = "auto",
-        }) => {
-          const scrollRoot =
-            virtualScrollerRef.current ?? staticScrollerRef?.current;
-          if (!scrollRoot) return;
-
-          const scrollToDomTarget = (): boolean => {
-            const target = findChatSearchTargetElement(scrollRoot, {
-              eventId,
-              itemId,
-              flatIndex,
-            });
-            if (!target) return false;
-            scrollSearchTargetIntoView(scrollRoot, target, behavior);
-            return true;
-          };
-
-          if (scrollToDomTarget()) return;
-
-          if (
-            flatIndex === undefined ||
-            scrollRoot !== virtualScrollerRef.current
-          ) {
-            return;
-          }
-
-          const groupIndex = flatIndexToGroupIndex[flatIndex] ?? 0;
-          virtualizer.scrollToIndex(groupIndex, {
-            align: "start",
-            behavior: "auto",
-          });
-
-          window.requestAnimationFrame(() => {
-            if (!scrollToDomTarget()) {
-              window.requestAnimationFrame(scrollToDomTarget);
-            }
-          });
-        },
-      }),
-      [
-        flatIndexToGroupIndex,
-        groupRenderKeys,
-        staticScrollerRef,
-        virtualGroups.length,
-        virtualizer,
-        virtualScrollerRef,
-      ]
-    );
+      virtualScrollerRef,
+      staticScrollerRef,
+      virtualizer,
+      groupRenderKeys,
+      measuredRows,
+      committedRowSizes: committedRowSizesRef,
+      layoutRevision,
+    });
+    useLayoutEffect(() => {
+      // Mounts and projection commits can make a pending target resolvable.
+      // Defer viewport work out of React's commit; coalesce in the owner.
+      onRowLayoutCommitRef.current?.(true);
+    }, [virtualItems, groupRenderKeys]);
     const rowGroupMeta = useMemo(
       () => buildRowGroupMeta(effectiveGroupCounts),
       [effectiveGroupCounts]

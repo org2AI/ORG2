@@ -258,6 +258,8 @@ module.exports = () => {
       ],
     },
     resolve: {
+      // Match webpack: linked private packages are source, not frozen vendor JS.
+      symlinks: true,
       extensions: [".tsx", ".ts", ".js", ".mjs"],
       modules: ["node_modules"],
       alias: {

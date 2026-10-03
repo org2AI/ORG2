@@ -167,6 +167,12 @@ jobs:
       - name: Type check (tsgo)
         run: pnpm typecheck:fast
 
+      - name: Build private frontend packages
+        run: pnpm build:packages
+
+      - name: Verify workspace bundler integration
+        run: pnpm test:workspace
+
       # Every rule in package.json#eslintConfig judges one file at a time, so a pull request
       # cannot make an untouched file newly non-compliant; whole-tree linting
       # spent ~3m45s re-proving 6000+ unchanged files. Diffs that change the

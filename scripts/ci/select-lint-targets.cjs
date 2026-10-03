@@ -17,10 +17,8 @@ const fs = require("node:fs");
 
 const LINTABLE_EXTENSIONS = Object.freeze([".ts", ".tsx", ".js", ".jsx"]);
 
-// package.json#eslintConfig ignores everything outside src/ (ignorePatterns "/*" + "!/src"),
-// so passing a path from anywhere else would lint nothing and only slow the
-// step down.
-const LINTABLE_PREFIX = "src/";
+// Match the app and private package source roots covered by `pnpm lint`.
+const LINTABLE_SOURCE = /^(?:src\/|packages\/[^/]+\/src\/)/;
 
 // A change to any of these re-judges files the diff never touched, so the
 // changed-file shortcut stops being sound and the full run has to happen.
@@ -33,11 +31,13 @@ const FULL_LINT_TRIGGERS = new Set([
   "package.json",
   "pnpm-lock.yaml",
   "tsconfig.json",
+  "pnpm-workspace.yaml",
+  "config/tsconfig.package.json",
 ]);
 
 function isLintable(filePath) {
   return (
-    filePath.startsWith(LINTABLE_PREFIX) &&
+    LINTABLE_SOURCE.test(filePath) &&
     LINTABLE_EXTENSIONS.some((extension) => filePath.endsWith(extension))
   );
 }
@@ -50,7 +50,7 @@ function requiresFullLint(filePaths) {
   );
 }
 
-// mode "all"   -> run `pnpm lint` over src/
+// mode "all"   -> run `pnpm lint` over app and package sources
 // mode "files" -> lint exactly `files`
 // mode "skip"  -> the diff touched no lintable file (docs, Rust, assets)
 function selectLintTargets(filePaths) {

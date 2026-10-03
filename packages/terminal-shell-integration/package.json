@@ -1,0 +1,26 @@
+{
+  "name": "@orgii/terminal-shell-integration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "peerDependencies": {
+    "@xterm/xterm": "^6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.11"
+  }
+}

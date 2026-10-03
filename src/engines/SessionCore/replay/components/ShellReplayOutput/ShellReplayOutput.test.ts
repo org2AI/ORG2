@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { shellReplayScopeKey } from "@orgii/replay-core/shell";
 import { act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -8,10 +9,7 @@ import { rpc } from "@src/api/tauri/rpc";
 import type { ShellReplayState } from "@src/engines/SessionCore/core/types";
 
 import { ShellReplayOutput } from ".";
-import {
-  shellReplayRangeCache,
-  shellReplayScopeKey,
-} from "../../shellReplayRange";
+import { shellReplayRangeCache } from "../../shellReplayRange";
 
 vi.mock("@src/api/tauri/rpc", () => ({
   rpc: { sessionCore: { shellReplay: { readRange: vi.fn() } } },

@@ -1,3 +1,4 @@
+import { ShellIntegrationAddon } from "@orgii/terminal-shell-integration";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
@@ -7,7 +8,6 @@ import { Terminal } from "@xterm/xterm";
 import type { MutableRefObject } from "react";
 
 import { TERMINAL_LINE_HEIGHT } from "@src/config/terminalAppearance";
-import { ShellIntegrationAddon } from "@src/engines/TerminalCore/addons/ShellIntegrationAddon";
 // Direct leaf import to avoid pulling @src/store's barrel — which transitively
 // reaches SidebarModules/Terminal → engines/TerminalCore → this file.
 import type { TerminalThemeName } from "@src/store/ui/uiAtom";

@@ -12,6 +12,9 @@ use crate::foundation::session_bridge::{TurnIntentBridgeSource, TurnIntentBridge
 use crate::session::persistence::{session_type, upsert_session, UnifiedSessionRecord};
 use rusqlite::params;
 
+#[path = "agent_member_interventions/continuation_tests.rs"]
+mod continuation_tests;
+
 const MEMBER_ID: &str = "member-direct";
 const MEMBER_AGENT_ID: &str = "agent-direct";
 
@@ -1140,7 +1143,7 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
     crate::coordination::agent_org_finality::finalize_turn(
         &fixture.member_session_id,
         "turn-original",
-        false,
+        crate::lifecycle::TurnTerminalStatus::Failed,
         "user_directed_yield",
     )
     .expect("terminalize the prior formal Turn before continuation");

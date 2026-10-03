@@ -4,6 +4,8 @@
 //! in-memory scheduler (which cannot share a transaction with SQLite), then
 //! commits or refunds it by token once dispatch succeeds or fails.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use super::budget::{
     budget_disposition_with_connection, record_attempt_with_connection, BudgetDisposition,
     RecoveryAttemptSnapshot,
@@ -22,6 +24,18 @@ pub(crate) struct MemberRewakeReservation {
     member_id: String,
     token: String,
     previous: Option<RecoveryAttemptSnapshot>,
+    settled: AtomicBool,
+}
+
+impl Drop for MemberRewakeReservation {
+    fn drop(&mut self) {
+        // A discarded scheduler closure or pre-provider panic never spends a wake.
+        if !self.settled.load(Ordering::Acquire) {
+            if let Err(error) = refund_member_rewake_reservation(self) {
+                tracing::warn!(%error, "unstarted wake reservation release failed");
+            }
+        }
+    }
 }
 
 pub(crate) enum MemberRewakeReservationOutcome {
@@ -87,6 +101,7 @@ pub(crate) fn reserve_member_rewake_dispatch(
                 member_id: member_id.to_string(),
                 token,
                 previous,
+                settled: AtomicBool::new(false),
             },
         ))
     })
@@ -110,6 +125,7 @@ pub(crate) fn commit_member_rewake_reservation(
             ],
         )
         .map_err(|err| err.to_string())?;
+        reservation.settled.store(true, Ordering::Release);
         Ok(())
     })
 }
@@ -140,10 +156,17 @@ pub(crate) fn refund_member_rewake_reservation(
             .map_err(|err| err.to_string())?;
         if !owns_current {
             tx.commit().map_err(|err| err.to_string())?;
+            reservation.settled.store(true, Ordering::Release);
             return Ok(false);
         }
 
-        if let Some(previous) = reservation.previous.as_ref() {
+        // A superseded provisional token may already have been dropped. Only
+        // completed accounting is safe to restore; new input owns a new budget.
+        if let Some(previous) = reservation
+            .previous
+            .as_ref()
+            .filter(|p| p.reservation_token.is_none())
+        {
             tx.execute(
                 "UPDATE agent_org_runtime_recovery_attempts
                  SET reason_fingerprint=?1, attempts=?2, next_allowed_at=?3,
@@ -178,6 +201,7 @@ pub(crate) fn refund_member_rewake_reservation(
             .map_err(|err| err.to_string())?;
         }
         tx.commit().map_err(|err| err.to_string())?;
+        reservation.settled.store(true, Ordering::Release);
         Ok(true)
     })
 }

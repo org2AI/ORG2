@@ -304,8 +304,10 @@ async fn dispatch_group_delivery(
         None,
         Some(run_id.to_string()),
         TurnIntentBridgeSource::AgentOrg,
+        None,
     )
-    .await?;
+    .await
+    .and_then(|admission| admission.into_ready())?;
     Ok(())
 }
 

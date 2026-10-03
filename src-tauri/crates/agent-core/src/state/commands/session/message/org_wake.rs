@@ -6,6 +6,29 @@
 //! TaskExecution turn's exec mode is read from the first-class column on the
 //! exact Task bound by its persisted Turn context.
 
+pub(super) async fn refund_unstarted_wake(
+    reservation: Option<&crate::coordination::agent_org_watchdog::MemberRewakeReservation>,
+    session_id: &str,
+    turn_id: &str,
+    app_handle: Option<&tauri::AppHandle>,
+) -> Result<(), String> {
+    if let Some(reservation) = reservation {
+        crate::coordination::agent_org_watchdog::refund_member_rewake_reservation(reservation)?;
+    }
+    let (session_id, turn_id) = (session_id.to_string(), turn_id.to_string());
+    let (run_id, receipts) = tokio::task::spawn_blocking(move || {
+        crate::coordination::agent_org_run_completion::recheck_after_turn(&session_id, &turn_id)
+    })
+    .await
+    .map_err(|error| error.to_string())??;
+    if let Some(handle) = app_handle.filter(|_| !receipts.is_empty()) {
+        use crate::tools::impls::orchestration::org_send_message::InboxWakeHook;
+        crate::tools::impls::orchestration::inbox_wake::AppHandleInboxWakeHook::new(handle.clone())
+            .wake_member_for_formal_receipts("coordinator", &run_id, &receipts);
+    }
+    Ok(())
+}
+
 /// Atomically claim a queued Agent Org Wake at the moment the scheduler
 /// actually starts it. A pre-enqueue status check is only a snapshot: the Run
 /// or member can be paused, archived, replaced, or put under direct user

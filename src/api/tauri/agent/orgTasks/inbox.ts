@@ -12,7 +12,7 @@ export interface AgentOrgInboxPreviewRow {
   requestId?: string | null;
   createdAt: string;
   readAt?: string | null;
-  deliveryResolution?: "cancelled" | "superseded" | null;
+  deliveryResolution?: "cancelled" | "superseded" | "system_reconciled" | null;
 }
 
 export interface AgentOrgInboxRuntimeRow extends AgentOrgInboxPreviewRow {

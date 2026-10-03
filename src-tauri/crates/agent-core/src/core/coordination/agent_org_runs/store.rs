@@ -1,6 +1,7 @@
 mod completion;
 mod delete;
 mod lifecycle;
+mod next_work;
 mod queries;
 mod quiescence;
 mod session_lookup;

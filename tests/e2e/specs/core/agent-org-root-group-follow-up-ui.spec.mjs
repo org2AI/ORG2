@@ -1,4 +1,8 @@
-/* global describe, before, it, browser */
+/* global describe, before, afterEach, it, browser */
+import {
+  captureTerminalFailure,
+  runFormalTerminalScenario,
+} from "../../support/core/agentOrgTerminalDriver.mjs";
 import {
   AGENT_ORG_COORDINATOR_MEMBER_ID,
   REPLY_TIMEOUT_MS,
@@ -6,6 +10,7 @@ import {
   assertE2ERepoFixture,
   assertNoMemberIntervention,
   configureCreatorForDefaultAgentOrg,
+  execJS,
   getApiAccount,
   invokeE2E,
   openRenderedGroupChatView,
@@ -44,6 +49,11 @@ describe("Agent Org Root Group follow-up rendered UI", () => {
   before(async () => {
     assertE2ERepoFixture();
     await waitForApp();
+  });
+
+  afterEach(async function () {
+    if (this.currentTest?.state === "failed")
+      await captureTerminalFailure(this.currentTest.title);
   });
 
   it("accepts Idle follow-ups and keeps busy follow-ups as distinct FIFO turns", async () => {
@@ -128,15 +138,25 @@ describe("Agent Org Root Group follow-up rendered UI", () => {
     let queuedState = null;
     await browser.waitUntil(
       async () => {
-        queuedState = unwrap(
-          await invokeE2E("inspectChatState"),
-          "inspectChatState(Root FIFO queued)"
-        );
-        return (queuedState.queuedMessages ?? []).some(
-          (message) =>
-            message.sessionId === sessionId &&
-            message.content === queuedMessage &&
-            message.priority === "next"
+        // Group-root FIFO is persisted as Turn intents, separate from the
+        // ordinary chat's in-memory message queue. Assert its rendered state.
+        queuedState = await execJS(`
+          const items = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"]'));
+          const active = items.find((item) => item.textContent.includes(${JSON.stringify(activeMessage)}));
+          const queued = items.find((item) => item.textContent.includes(${JSON.stringify(queuedMessage)}));
+          return {
+            activeId: active?.getAttribute('data-turn-intent-id'),
+            activeState: active?.getAttribute('data-state'),
+            queuedId: queued?.getAttribute('data-turn-intent-id'),
+            queuedState: queued?.getAttribute('data-state'),
+          };
+        `);
+        return Boolean(
+          queuedState.activeId &&
+          queuedState.queuedId &&
+          queuedState.activeId !== queuedState.queuedId &&
+          queuedState.activeState === "running" &&
+          queuedState.queuedState === "queued"
         );
       },
       {
@@ -193,4 +213,9 @@ describe("Agent Org Root Group follow-up rendered UI", () => {
       );
     }
   });
+  for (const kind of ["stream", "tool", "failure", "panic"]) {
+    it(`preserves exact formal execution finality through the rendered ${kind} path`, async () => {
+      await runFormalTerminalScenario(kind);
+    });
+  }
 });

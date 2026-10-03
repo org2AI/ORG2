@@ -212,17 +212,11 @@ fn recover_task_execution_failure_inner(
             &context.org_run_id,
             &audit,
         )?;
-        crate::foundation::session_bridge::update_turn_intent_status_with_connection(
+        crate::coordination::agent_org_finality::finalize_turn_in_tx(
             &tx,
             session_id,
             failed_turn_intent_id,
-            crate::foundation::session_bridge::TurnIntentBridgeStatus::Failed,
-        )?;
-        crate::coordination::agent_org_finality::release_turn_lease_in_tx(
-            &tx,
-            session_id,
-            failed_turn_intent_id,
-            "released",
+            crate::lifecycle::TurnTerminalStatus::Failed,
             "task_execution_recovered",
         )?;
         let receipt_id = if let Some(notification) = startup_notification {

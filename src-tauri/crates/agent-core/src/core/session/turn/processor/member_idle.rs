@@ -71,7 +71,7 @@ pub trait MemberIdleHook: Send + Sync {
         &self,
         org_run_id: &str,
         coordinator_agent_id: &str,
-        member_id: &str,
+        member_turn: MemberIdleSource<'_>,
         member_agent_id: &str,
         member_name: &str,
         reason: MemberIdleReason,
@@ -93,7 +93,7 @@ impl MemberIdleHook for NoopMemberIdleHook {
         &self,
         _org_run_id: &str,
         _coordinator_agent_id: &str,
-        _member_id: &str,
+        _member_turn: MemberIdleSource<'_>,
         _member_agent_id: &str,
         _member_name: &str,
         _reason: MemberIdleReason,
@@ -244,7 +244,10 @@ pub fn maybe_emit_member_idle(
 ) {
     maybe_emit_member_idle_with_details(
         org_context,
-        current_member_id,
+        current_member_id.map(|member_id| MemberIdleSource {
+            member_id,
+            turn_intent_id: None,
+        }),
         reason,
         current_mode,
         None,
@@ -253,9 +256,17 @@ pub fn maybe_emit_member_idle(
     );
 }
 
+/// Exact optional provenance. Callers without an execution identity may still
+/// emit history, but that notification cannot authorize system reconciliation.
+#[derive(Clone, Copy)]
+pub struct MemberIdleSource<'a> {
+    pub member_id: &'a str,
+    pub turn_intent_id: Option<&'a str>,
+}
+
 pub fn maybe_emit_member_idle_with_details(
     org_context: Option<&crate::coordination::agent_org_runs::AgentOrgRunContext>,
-    current_member_id: Option<&str>,
+    current_member: Option<MemberIdleSource<'_>>,
     reason: MemberIdleReason,
     current_mode: Option<AgentExecMode>,
     summary: Option<String>,
@@ -266,14 +277,17 @@ pub fn maybe_emit_member_idle_with_details(
         return;
     };
     let Some((coordinator_agent_id, member_id, member_agent_id, member_name)) =
-        idle_emit_target(current_member_id, org_context)
+        idle_emit_target(current_member.map(|source| source.member_id), org_context)
     else {
         return;
     };
     current_member_idle_hook().post_member_idle(
         &org_context.run_id,
         coordinator_agent_id,
-        member_id,
+        MemberIdleSource {
+            member_id,
+            turn_intent_id: current_member.and_then(|source| source.turn_intent_id),
+        },
         member_agent_id,
         member_name,
         reason,
@@ -335,7 +349,7 @@ mod tests {
             &self,
             run_id: &str,
             coordinator_agent_id: &str,
-            member_id: &str,
+            member_turn: MemberIdleSource<'_>,
             member_agent_id: &str,
             member_name: &str,
             reason: MemberIdleReason,
@@ -347,7 +361,7 @@ mod tests {
             self.calls.lock().unwrap().push(RecordedCall {
                 run_id: run_id.into(),
                 coordinator_agent_id: coordinator_agent_id.into(),
-                member_id: member_id.into(),
+                member_id: member_turn.member_id.into(),
                 member_agent_id: member_agent_id.into(),
                 member_name: member_name.into(),
                 reason,

@@ -70,7 +70,9 @@ pub fn reconcile_agent_org_turns_after_restart(
     let finality_reconciliation = agent_org_finality::reconcile_after_restart(conn)?;
     let handoff_reconciliation = agent_org_task_handoffs::reconcile_after_restart(conn)?;
     let summary_reconciliation = agent_org_final_summary::reconcile_after_restart(conn)?;
-    Ok(runtime_absence
+    let completion_reconciliation = agent_org_run_completion::reconcile_after_restart(conn)?;
+    Ok(completion_reconciliation
+        + runtime_absence
         + turn_reconciliation
         + finality_reconciliation
         + handoff_reconciliation

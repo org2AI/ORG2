@@ -56,8 +56,10 @@ pub async fn send_message_impl_for_job_wake(
         None,
         None,
         TurnIntentBridgeSource::Resume,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
 }
 
 /// Agent Org wake entry point with a scheduler idempotency key scoped to the
@@ -68,13 +70,14 @@ pub async fn send_message_impl_for_job_wake(
 /// batch's stable identity: concurrent delivery of the same facts still
 /// coalesces, while a later fact that arrived after the active Turn drained
 /// its input queues one trailing Turn instead of being mistaken for a retry.
-pub async fn send_message_impl_for_org_wake(
+pub(crate) async fn send_message_impl_for_org_wake(
     state: &AgentAppState,
     session_id: String,
     org_run_id: &str,
     member_id: &str,
     formal_receipt_batch_id: Option<&str>,
-) -> Result<AgentResponse, String> {
+    reservation: std::sync::Arc<crate::coordination::agent_org_watchdog::MemberRewakeReservation>,
+) -> Result<crate::coordination::agent_org_turn_contexts::WakeAdmission<AgentResponse>, String> {
     send_message_impl(
         state,
         session_id,
@@ -98,6 +101,7 @@ pub async fn send_message_impl_for_org_wake(
         Some(member_id.to_string()),
         Some(org_run_id.to_string()),
         TurnIntentBridgeSource::Resume,
+        Some(reservation),
     )
     .await
 }
@@ -149,8 +153,10 @@ pub async fn send_message_impl_for_mobile_remote(
         None,
         None,
         TurnIntentBridgeSource::MobileRemote,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
 }
 
 pub(crate) fn agent_org_wake_client_message_id(
@@ -190,8 +196,10 @@ pub(crate) async fn send_message_impl_for_direct_recovery(
         None,
         Some(work.org_run_id),
         TurnIntentBridgeSource::UserSubmit,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
 }
 
 pub(crate) async fn send_message_impl_for_user_directed_wake(
@@ -217,8 +225,10 @@ pub(crate) async fn send_message_impl_for_user_directed_wake(
         None,
         Some(wake.org_run_id),
         TurnIntentBridgeSource::AgentOrg,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
 }
 
 /// Submit a Coordinator message that originated on the Team Group surface.
@@ -255,8 +265,10 @@ pub(crate) async fn send_message_impl_for_group_root(
         None,
         Some(org_run_id),
         TurnIntentBridgeSource::UserSubmit,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
 }
 
 /// Debug-only entry point for E2E follow-up turns.
@@ -300,6 +312,8 @@ pub async fn send_message_impl_for_test(
         None,
         None,
         TurnIntentBridgeSource::UserSubmit,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
 }

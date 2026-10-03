@@ -446,8 +446,10 @@ async fn enqueue_continuation(
         None,
         None,
         crate::foundation::session_bridge::TurnIntentBridgeSource::Queue,
+        None,
     )
-    .await;
+    .await
+    .and_then(|admission| admission.into_ready());
 
     match result {
         Ok(_) => info!(

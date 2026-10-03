@@ -11,6 +11,9 @@ use crate::foundation::session_bridge::{TurnIntentBridgeSource, TurnIntentBridge
 
 use super::agent_org_runs::{AgentOrgRunStatus, COORDINATOR_MEMBER_ID};
 
+mod wake_admission;
+pub(crate) use wake_admission::{revalidate_wake_in_tx, WakeAdmission};
+
 const TASK_WAKE_CANDIDATE_LIMIT: i64 =
     crate::coordination::agent_org_payload_limits::TASK_RUN_MAX_OPEN_TASKS as i64 + 1;
 
@@ -436,6 +439,9 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             actor_version INTEGER,
             activation_generation INTEGER,
             coordinator_work_revision INTEGER,
+            coordinator_presented_outputs_json TEXT NOT NULL DEFAULT '[]'
+                CHECK(json_valid(coordinator_presented_outputs_json)=1
+                      AND json_type(coordinator_presented_outputs_json)='array'),
             coordinator_observed_task_ids_json TEXT NOT NULL DEFAULT '[]'
                 CHECK(json_valid(coordinator_observed_task_ids_json)=1
                       AND json_type(coordinator_observed_task_ids_json)='array'
@@ -587,7 +593,7 @@ pub(crate) fn accept_wake(
     turn_intent_id: &str,
     client_message_id: Option<String>,
     member_id: &str,
-) -> Result<AgentOrgTurnContext, String> {
+) -> Result<WakeAdmission<AgentOrgTurnContext>, String> {
     database::db::with_sessions_writer(|| {
         let mut connection = database::db::get_connection().map_err(|error| error.to_string())?;
         let transaction = connection
@@ -613,29 +619,19 @@ fn accept_wake_with_connection(
     turn_intent_id: &str,
     client_message_id: Option<String>,
     member_id: &str,
-) -> Result<AgentOrgTurnContext, String> {
-    if has_live_pause_continuation(conn, org_run_id, member_id)? {
-        return Err(invariant_error(format!(
-            "Participant {member_id} already has a durable Pause continuation"
-        )));
-    }
-    if member_id == COORDINATOR_MEMBER_ID {
-        return accept_with_connection(
-            conn,
-            &AgentOrgTurnAdmission::coordinator(
-                org_run_id,
-                session_id,
-                turn_intent_id,
-                client_message_id,
-                TurnIntentBridgeSource::Resume,
-            ),
-        );
-    }
-
-    let binding = resolve_next_task_wake_binding(conn, org_run_id, session_id, member_id)?;
-    accept_with_connection(
-        conn,
-        &AgentOrgTurnAdmission::task_execution(
+) -> Result<WakeAdmission<AgentOrgTurnContext>, String> {
+    let coordinator = AgentOrgTurnAdmission::coordinator(
+        org_run_id,
+        session_id,
+        turn_intent_id,
+        client_message_id.clone(),
+        TurnIntentBridgeSource::Resume,
+    );
+    let request = match wake_admission::assess_wake(conn, &coordinator, member_id)? {
+        WakeAdmission::NoReadyWork => return Ok(WakeAdmission::NoReadyWork),
+        WakeAdmission::Deferred => return Ok(WakeAdmission::Deferred),
+        WakeAdmission::Ready(None) => coordinator,
+        WakeAdmission::Ready(Some(binding)) => AgentOrgTurnAdmission::task_execution(
             org_run_id,
             session_id,
             turn_intent_id,
@@ -645,7 +641,8 @@ fn accept_wake_with_connection(
             binding.activation_generation,
         )
         .with_task_execution_authority_source(binding.authority_source),
-    )
+    };
+    accept_with_connection(conn, &request).map(WakeAdmission::Ready)
 }
 
 /// A Resume receipt is the sole owner of its participant until the persisted
@@ -1152,7 +1149,7 @@ fn resolve_next_task_wake_binding(
     org_run_id: &str,
     session_id: &str,
     member_id: &str,
-) -> Result<TaskWakeBinding, String> {
+) -> Result<Option<TaskWakeBinding>, String> {
     let generation: Option<i64> = conn
         .query_row(
             "SELECT activation_generation FROM agent_org_runtime_runs
@@ -1175,6 +1172,12 @@ fn resolve_next_task_wake_binding(
                AND delivery_class='formal_work'
                AND read_at IS NULL
                AND payload_kind IN ('task_assigned','plan_approval_response')
+               AND NOT EXISTS (
+                   SELECT 1 FROM agent_org_task_execution_leases lease
+                   JOIN session_turn_intents intent USING(session_id,turn_intent_id)
+                   WHERE lease.continuation_receipt_id='inbox:' || agent_org_runtime_inbox.id
+                     AND intent.status NOT IN ('queued','running','optimistic')
+               )
                AND NOT EXISTS (
                    SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
                    WHERE resolution.inbox_id=agent_org_runtime_inbox.id
@@ -1215,9 +1218,9 @@ fn resolve_next_task_wake_binding(
                         member_id,
                         inbox_id,
                         error = %error,
-                        "ignoring malformed formal wake candidate"
+                        "malformed formal wake candidate"
                     );
-                    continue;
+                    return Err(invariant_error(error.to_string()));
                 }
             };
         if let Err(error) = message.validate() {
@@ -1226,9 +1229,14 @@ fn resolve_next_task_wake_binding(
                 member_id,
                 inbox_id,
                 error = %error,
-                "ignoring invalid formal wake candidate"
+                "invalid formal wake candidate"
             );
-            continue;
+            return Err(invariant_error(error.to_string()));
+        }
+        if message.kind_tag() != payload_kind {
+            return Err(invariant_error(format!(
+                "formal wake kind mismatch for {inbox_id}"
+            )));
         }
 
         let (task_id, source_kind) = match (payload_kind.as_str(), message) {
@@ -1264,14 +1272,14 @@ fn resolve_next_task_wake_binding(
             }
             _ => continue,
         };
-        return Ok(TaskWakeBinding {
+        return Ok(Some(TaskWakeBinding {
             task_id,
             activation_generation: generation,
             authority_source: super::agent_org_finality::TaskExecutionAuthoritySource::inbox(
                 source_kind,
                 inbox_id,
             ),
-        });
+        }));
     }
 
     if let Some((inbox_id, task_id)) =
@@ -1279,19 +1287,17 @@ fn resolve_next_task_wake_binding(
             conn, org_run_id, member_id, None,
         )?
     {
-        return Ok(TaskWakeBinding {
+        return Ok(Some(TaskWakeBinding {
             task_id,
             activation_generation: generation,
             authority_source: super::agent_org_finality::TaskExecutionAuthoritySource::inbox(
                 super::agent_org_finality::TaskExecutionAuthoritySourceKind::CoordinatorMessage,
                 inbox_id,
             ),
-        });
+        }));
     }
 
-    Err(invariant_error(format!(
-        "Member {member_id} has no canonical ready TaskExecution input"
-    )))
+    Ok(None)
 }
 
 fn task_is_pending_and_ready(

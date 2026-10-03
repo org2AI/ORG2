@@ -164,8 +164,10 @@ pub(crate) async fn dispatch_return_continuation(
         None,
         Some(receipt.org_run_id.clone()),
         TurnIntentBridgeSource::Resume,
+        None,
     )
-    .await;
+    .await
+    .and_then(|admission| admission.into_ready());
     if let Err(error) = dispatch {
         if error.starts_with("Failed to enqueue message:") {
             let requeue_session_id = receipt.session_id.clone();

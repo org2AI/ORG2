@@ -2475,7 +2475,12 @@ pub async fn test_agent_org_post_member_idle(
 
     maybe_emit_member_idle_with_details(
         Some(&context),
-        member_id.as_deref(),
+        member_id.as_deref().map(|member_id| {
+            agent_core::core::session::turn::member_idle::MemberIdleSource {
+                member_id,
+                turn_intent_id: None,
+            }
+        }),
         reason,
         current_mode,
         None,

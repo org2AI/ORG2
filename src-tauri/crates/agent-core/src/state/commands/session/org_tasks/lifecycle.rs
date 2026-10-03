@@ -1044,8 +1044,10 @@ async fn dispatch_one_continuation(
         None,
         Some(dispatch.run_id.clone()),
         TurnIntentBridgeSource::Resume,
+        None,
     )
-    .await?;
+    .await
+    .and_then(|admission| admission.into_ready())?;
     Ok(())
 }
 

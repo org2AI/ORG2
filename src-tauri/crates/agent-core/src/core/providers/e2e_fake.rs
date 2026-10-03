@@ -11,6 +11,11 @@ use super::traits::{
     finish_reason, usage_key, LLMProvider, LLMResponse, ProviderError, StreamDelta, ToolCallRequest,
 };
 
+mod agent_org_completion_wait;
+mod agent_org_report;
+mod agent_org_rework;
+mod agent_org_terminal;
+
 const ADDRESS_COMMENTS_MARKER: &str =
     "Teammates left review comments on this session. Address every comment below";
 const ADDRESS_COMMENT_ID_MARKER: &str = " — id: ";
@@ -843,7 +848,16 @@ impl E2eFakeProvider {
     }
 
     fn build_response(messages: &[Value], tools: Option<&[Value]>) -> LLMResponse {
-        let mut tool_calls = Self::address_comment_tool_calls(messages, tools);
+        let mut tool_calls = agent_org_rework::tool_calls(messages, tools);
+        if tool_calls.is_empty() {
+            tool_calls = agent_org_completion_wait::tool_calls(messages, tools);
+        }
+        if tool_calls.is_empty() {
+            tool_calls = agent_org_terminal::tool_calls(messages, tools);
+        }
+        if tool_calls.is_empty() {
+            tool_calls = Self::address_comment_tool_calls(messages, tools);
+        }
         if tool_calls.is_empty() {
             tool_calls = Self::agent_org_completion_candidate_tool_calls(messages, tools);
         }
@@ -1148,17 +1162,39 @@ impl LLMProvider for E2eFakeProvider {
             return Err(ProviderError::Cancelled);
         }
 
-        let cancellable_wait =
-            if Self::pause_wait_required(messages) || Self::handoff_wait_required(messages) {
-                // Real shell-process materialization across all nine Members can
-                // take longer than the old 30-second fake response window on a
-                // packaged build. Keep every formal Turn cancellably in flight
-                // until the test clicks Pause; this is still interrupted
-                // immediately through the normal provider cancel flag.
-                Some(Duration::from_secs(120))
-            } else {
-                control_wait_duration(messages)
-            };
+        agent_org_report::wait_window(messages, on_delta, cancel_flag).await?;
+
+        let terminal_window = agent_org_terminal::member_window(messages);
+        if terminal_window
+            .as_deref()
+            .is_some_and(|id| id.starts_with("panic_"))
+        {
+            panic!("E2E_TERMINAL_PROVIDER_PANIC");
+        }
+        if terminal_window
+            .as_deref()
+            .is_some_and(|id| id.starts_with("failure_"))
+        {
+            return Err(ProviderError::Other("E2E_TERMINAL_PROVIDER_FAILURE".into()));
+        }
+        if terminal_window
+            .as_deref()
+            .is_some_and(|id| id.starts_with("stream_"))
+        {
+            agent_org_terminal::stream_window(on_delta, cancel_flag).await?;
+        }
+        let cancellable_wait = if agent_org_completion_wait::member_wait(messages) {
+            Some(Duration::from_secs(8))
+        } else if Self::pause_wait_required(messages) || Self::handoff_wait_required(messages) {
+            // Real shell-process materialization across all nine Members can
+            // take longer than the old 30-second fake response window on a
+            // packaged build. Keep every formal Turn cancellably in flight
+            // until the test clicks Pause; this is still interrupted
+            // immediately through the normal provider cancel flag.
+            Some(Duration::from_secs(120))
+        } else {
+            control_wait_duration(messages)
+        };
         let response = if let Some(wait_duration) = cancellable_wait {
             if let Some(flag) = cancel_flag {
                 tokio::select! {

@@ -15,7 +15,10 @@ use super::agent_org_turn_contexts::{self, AgentOrgTurnAdmission, AgentOrgTurnCo
 use super::agent_org_user_directed_work::{self, NewUserDirectedDelivery, UserDirectedSourceKind};
 use crate::foundation::session_bridge::TurnIntentBridgeStatus;
 
+mod continuation;
 mod persistence;
+
+pub(crate) use continuation::continuation_nudge_for_turn;
 
 const ACTIVE_STATUSES_SQL: &str = "'yield_requested','active','return_requested'";
 pub const DEFAULT_USER_DIRECTED_QUEUE_CAP: i64 = 32;

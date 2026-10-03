@@ -124,6 +124,69 @@ pub async fn process_message(
     input: TurnInput,
     app_handle: Option<tauri::AppHandle>,
 ) -> Result<ProcessingResult, String> {
+    process_message_with_terminal(session, input, app_handle)
+        .await
+        .0
+}
+
+/// Accepted execution identity survives errors and cancellation. The public
+/// ProcessingResult stays unchanged; internal callers share this terminal.
+pub(crate) async fn process_message_with_terminal(
+    session: Arc<AgentSession>,
+    input: TurnInput,
+    app_handle: Option<tauri::AppHandle>,
+) -> (
+    Result<ProcessingResult, String>,
+    crate::lifecycle::TerminalTurnSignal,
+) {
+    let turn_id = input
+        .turn_id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let turn_intent_id = input.turn_intent_id.clone();
+    use futures::FutureExt;
+    let outcome = std::panic::AssertUnwindSafe(process_message_inner(
+        Arc::clone(&session),
+        input,
+        app_handle,
+        turn_id.clone(),
+    ))
+    .catch_unwind()
+    .await
+    .unwrap_or_else(|payload| {
+        Err(format!(
+            "Turn executor panicked unexpectedly: {}",
+            crate::session::scheduler::panic_payload_to_string(payload.as_ref()),
+        ))
+    });
+    let status = match &outcome {
+        Ok((_, status)) => *status,
+        Err(_)
+            if session
+                .cancel_flag
+                .load(std::sync::atomic::Ordering::SeqCst) =>
+        {
+            crate::lifecycle::TurnTerminalStatus::Cancelled
+        }
+        Err(_) => crate::lifecycle::TurnTerminalStatus::Failed,
+    };
+    (
+        outcome.map(|(result, _)| result),
+        crate::lifecycle::TerminalTurnSignal {
+            turn_id,
+            turn_intent_id: Some(turn_intent_id),
+            status,
+            completed_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        },
+    )
+}
+
+async fn process_message_inner(
+    session: Arc<AgentSession>,
+    input: TurnInput,
+    app_handle: Option<tauri::AppHandle>,
+    execution_turn_id: String,
+) -> Result<(ProcessingResult, crate::lifecycle::TurnTerminalStatus), String> {
     let runtime = session
         .get_runtime()
         .await
@@ -198,7 +261,7 @@ pub async fn process_message(
         images: input.images,
         is_resume: input.is_resume,
         display_text: input.display_text,
-        turn_id: input.turn_id,
+        turn_id: Some(execution_turn_id),
         turn_intent_id: input.turn_intent_id,
     };
 
@@ -275,3 +338,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod terminal_tests;

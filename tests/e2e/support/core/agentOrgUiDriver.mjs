@@ -303,7 +303,8 @@ export const js = {
   mode: `
     const creator = document.querySelector(".session-creator-chat-panel");
     const history = document.querySelector('[data-testid="chat-message-list"]');
-    return creator ? "creator" : history ? "chat" : "unknown";
+    const group = document.querySelector('[data-testid="agent-org-group-projection"]');
+    return creator ? "creator" : history || group ? "chat" : "unknown";
   `,
 };
 
@@ -1093,6 +1094,27 @@ export async function selectRenderedOrgMemberAgentDefinition({
   );
 }
 
+async function renderedSendHasReceipt(state, marker) {
+  if (JSON.stringify(state).includes(marker)) return true;
+  if (
+    !state.activeSessionId ||
+    !(await execJS(js.exists('[data-testid="agent-org-group-projection"]')))
+  )
+    return false;
+  // Group-root Turns own a durable projection separate from the ordinary
+  // Session transcript. Read that authority before ever retrying a send.
+  const { page } = unwrap(
+    await invokeE2E("agentOrgGroupProjectionPage", state.activeSessionId),
+    "rendered group send receipt"
+  );
+  return (page.items ?? []).some(
+    (item) =>
+      item.kind === "user_message" &&
+      item.turnIntentId &&
+      item.text.includes(marker)
+  );
+}
+
 export async function sendRenderedChatPrompt(prompt) {
   const inputSelector = '[data-testid="chat-input"] [contenteditable="true"]';
   const marker = prompt.match(/([A-Z0-9_]+_[a-zA-Z0-9_]+_\d+)/)?.[1] ?? prompt;
@@ -1112,7 +1134,7 @@ export async function sendRenderedChatPrompt(prompt) {
       await invokeE2E("inspectChatState"),
       `inspectChatState(rendered-send-${attempt}-before)`
     );
-    if (JSON.stringify(acceptedState).includes(marker)) return;
+    if (await renderedSendHasReceipt(acceptedState, marker)) return;
 
     try {
       await browser.waitUntil(
@@ -1174,7 +1196,7 @@ export async function sendRenderedChatPrompt(prompt) {
             await invokeE2E("inspectChatState"),
             `inspectChatState(rendered-send-${attempt}-acceptance)`
           );
-          return JSON.stringify(acceptedState).includes(marker);
+          return renderedSendHasReceipt(acceptedState, marker);
         },
         {
           timeout: 5_000,
@@ -1977,10 +1999,22 @@ export async function sendFromRenderedCreator(prompt) {
 
 export async function openRenderedSidebarSession(sessionId) {
   const selector = `[data-testid="sidebar-session-item-${sessionId}"]`;
-  await browser.waitUntil(async () => execJS(js.exists(selector)), {
-    timeout: RENDER_TIMEOUT_MS,
-    timeoutMsg: `Sidebar session ${sessionId} did not appear`,
-  });
+  await browser.waitUntil(
+    async () => {
+      if (await execJS(js.exists(selector))) return true;
+      // A restart across midnight moves this session into a collapsed date group.
+      for (const group of ["today", "yesterday", "thisWeek", "older"]) {
+        const toggle = `[data-sidebar-section-toggle="${group}"][aria-expanded="false"]`;
+        if (await execJS(js.exists(toggle)))
+          await execJS(js.visibleClick(toggle));
+      }
+      return execJS(js.exists(selector));
+    },
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      timeoutMsg: `Sidebar session ${sessionId} did not appear`,
+    }
+  );
   const clickResult = await execJS(js.visibleClick(selector));
   if (clickResult !== "clicked") {
     throw new Error(

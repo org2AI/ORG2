@@ -37,6 +37,7 @@ pub(super) fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
             completion_requested_at TEXT,
             completion_requested_work_revision INTEGER,
             completion_summary TEXT,
+            completion_candidate_json TEXT CHECK(completion_candidate_json IS NULL OR json_valid(completion_candidate_json)=1),
             updated_at TEXT NOT NULL,
             FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
         );",
@@ -76,6 +77,7 @@ pub(crate) fn bump_work_revision_in_tx(tx: &Connection, org_run_id: &str) -> Res
              completion_requested_at=NULL,
              completion_requested_work_revision=NULL,
              completion_summary=NULL,
+             completion_candidate_json=NULL,
              updated_at=?2
          WHERE org_run_id=?1",
         params![org_run_id, chrono::Utc::now().to_rfc3339()],
@@ -191,7 +193,7 @@ pub(super) fn stage_coordinator_presented_for_turn_with_conn(
     Ok(revision)
 }
 
-pub(super) fn mark_coordinator_observed_revision_with_conn(
+pub(crate) fn mark_coordinator_observed_revision_with_conn(
     conn: &Connection,
     org_run_id: &str,
     presented_work_revision: i64,

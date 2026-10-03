@@ -3,15 +3,19 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use schemars::JsonSchema;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::coordination::agent_org_run_completion::{RunCompletionCandidate, RunCompletionOutcome};
+use crate::coordination::agent_org_run_completion::{
+    CompletionSubmission, RunCompletionCandidate, RunCompletionOutcome,
+};
 use crate::coordination::agent_org_tasks::TaskGraphWriterAdmin;
 use crate::coordination::agent_org_tool_receipts::{
     AgentOrgToolReceiptKey, AgentOrgToolReceiptStore,
 };
 use crate::tools::names as tool_names;
-use crate::tools::traits::{params_schema, parse_params, CallContext, Tool, ToolError};
+use crate::tools::traits::{
+    params_schema, parse_params, CallContext, Tool, ToolError, ToolExecuteResult,
+};
 
 use super::{classify_task_receipt_error, TaskToolsContext};
 
@@ -60,6 +64,21 @@ impl Tool for OrgRunCompleteTool {
         params_schema::<OrgRunCompleteParams>()
     }
 
+    async fn execute(
+        &self,
+        params: Value,
+        call_ctx: &CallContext,
+    ) -> Result<ToolExecuteResult, ToolError> {
+        let text = self.execute_text(params, call_ctx).await?;
+        let submission: CompletionSubmission = serde_json::from_str(&text)
+            .map_err(|error| ToolError::ExecutionFailed(error.to_string()))?;
+        Ok(if submission.ends_turn() {
+            ToolExecuteResult::end_turn(text)
+        } else {
+            ToolExecuteResult::text(text)
+        })
+    }
+
     async fn execute_text(
         &self,
         params_value: Value,
@@ -90,11 +109,10 @@ impl Tool for OrgRunCompleteTool {
         let coordinator_session_id = call_ctx.session_id.clone();
         let coordinator_turn_intent_id = call_ctx.turn_intent_id.clone();
         let projected_inbox_ids = call_ctx.projected_inbox_ids.clone();
-        let (receipt, recorded) = tokio::task::spawn_blocking({
+        let receipt = tokio::task::spawn_blocking({
             let run_id = run_id.clone();
             move || {
-                let mut recorded = false;
-                let receipt = AgentOrgToolReceiptStore::execute(
+                AgentOrgToolReceiptStore::execute(
                     receipt_key,
                     tool_names::ORG_RUN_COMPLETE,
                     "certify_completion",
@@ -106,106 +124,26 @@ impl Tool for OrgRunCompleteTool {
                                 Err(abort) => Err(abort),
                             };
                         }
-                        match crate::coordination::agent_org_run_completion::certify_in_tx(
-                            tx,
-                            &run_id,
-                            RunCompletionCandidate {
-                                request_id: &request_id,
-                                request_digest: &request_digest,
-                                outcome: candidate_outcome,
-                                summary: &summary,
+                        crate::coordination::agent_org_run_completion::submit_in_tx(
+                            tx, &run_id, RunCompletionCandidate {
+                                request_id: &request_id, request_digest: &request_digest,
+                                outcome: candidate_outcome, summary: &summary,
                                 evidence_task_ids: &evidence_task_ids,
                                 coordinator_session_id: &coordinator_session_id,
                                 coordinator_turn_intent_id: &coordinator_turn_intent_id,
                                 projected_inbox_ids: &projected_inbox_ids,
                             },
-                        ) {
-                            Ok(certificate) => {
-                                recorded = true;
-                                serde_json::to_string(&json!({
-                                    "outcome": "certified",
-                                    "org_run_id": run_id,
-                                    "certificate": certificate,
-                                    "guidance": "The candidate passed the database closure check. Finish this coordinator turn normally; only the typed certificate can project the final outcome."
-                                }))
-                                    .map(Ok)
-                                    .map_err(crate::coordination::agent_org_tool_receipts::AgentOrgToolReceiptAbort::storage)
-                            }
-                            Err(error) => {
-                                let quiescence = crate::coordination::agent_org_runs::AgentOrgRunStore::quiescence_assessment_with_connection(
-                                    tx,
-                                    &run_id,
-                                );
-                                let blockers = quiescence.as_ref().map_err(|failure| failure.clone()).and_then(
-                                    |quiescence| {
-                                        if candidate_outcome == RunCompletionOutcome::Delivered {
-                                            let candidate = crate::coordination::agent_org_run_completion::assess_delivered_candidate_from_quiescence_with_connection(
-                                                tx,
-                                                &run_id,
-                                                &coordinator_session_id,
-                                                &coordinator_turn_intent_id,
-                                                &projected_inbox_ids,
-                                                quiescence,
-                                            );
-                                            crate::coordination::agent_org_run_blockers::build_from_candidate_with_connection(
-                                                tx,
-                                                &run_id,
-                                                &candidate,
-                                            )
-                                        } else {
-                                            crate::coordination::agent_org_run_blockers::build_with_connection(
-                                                tx,
-                                                &run_id,
-                                                quiescence,
-                                            )
-                                        }
-                                    },
-                                );
-                                match blockers {
-                                    Ok(mut blockers) => {
-                                        crate::coordination::agent_org_run_blockers::append_completion_failure(
-                                            &mut blockers,
-                                            &error,
-                                        );
-                                        tracing::warn!(
-                                            org_run_id = %run_id,
-                                            reason_code = error.split(':').next().unwrap_or("run_completion_blocked"),
-                                            blocker_kinds = ?blockers.iter().map(|blocker| blocker.kind).collect::<Vec<_>>(),
-                                            "Agent Org completion blocked by canonical typed details"
-                                        );
-                                        serde_json::to_string(&json!({
-                                        "outcome": "blocked",
-                                        "org_run_id": run_id,
-                                        "reason_code": error.split(':').next().unwrap_or("run_completion_blocked"),
-                                        "blockers": blockers,
-                                        "guidance": "Resolve the typed blockers, then submit a new completion candidate."
-                                    }))
-                                    .map(Ok)
-                                    .map_err(crate::coordination::agent_org_tool_receipts::AgentOrgToolReceiptAbort::storage)
-                                    },
-                                    Err(_) => match classify_task_receipt_error(error) {
-                                        Ok(error) => Ok(Err(error)),
-                                        Err(abort) => Err(abort),
-                                    },
-                                }
-                            }
-                        }
+                        ).and_then(|submission| serde_json::to_string(&submission).map_err(|error| error.to_string()))
+                         .map(Ok).map_err(crate::coordination::agent_org_tool_receipts::AgentOrgToolReceiptAbort::storage)
                     },
-                )?;
-                Ok::<_, ToolError>((receipt, recorded))
+                )
             }
         })
         .await
         .map_err(|err| {
             ToolError::ExecutionFailed(format!("org_run_complete worker failed: {err}"))
         })??;
-        if receipt.is_fresh() && recorded {
-            tracing::debug!(
-                org_run_id = %run_id,
-                request_id = %call_ctx.call_id,
-                candidate_outcome = candidate_outcome.as_wire(),
-                "[agent_org_metric] run_completion_certified"
-            );
+        if receipt.is_fresh() {
             crate::coordination::agent_org_run_events::notify_agent_org_run_changed(&run_id);
         }
         receipt.result

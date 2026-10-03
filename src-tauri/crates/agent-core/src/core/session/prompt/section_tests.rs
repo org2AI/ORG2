@@ -408,6 +408,67 @@ fn coordinator_without_active_episode_is_told_idle_team_accepts_new_missions() {
 }
 
 #[test]
+fn coordinator_protocol_requires_action_evidence_and_explicit_rework() {
+    for state in [
+        RunCompletionCandidateState::Ready,
+        RunCompletionCandidateState::Blocked,
+        RunCompletionCandidateState::Certified,
+        RunCompletionCandidateState::NotApplicable,
+    ] {
+        let section = build_agent_org_context_section_with_task_snapshot(
+            &prompt_test_agent_org_context(),
+            "agent-coord",
+            Some(COORDINATOR_MEMBER_ID),
+            Ok(Vec::new()),
+            Some(RunCompletionCandidateAssessment {
+                state,
+                checked_outcome: RunCompletionOutcome::Delivered,
+                activation_generation: Some(5),
+                work_revision: Some(29),
+                blockers: Vec::new(),
+            }),
+        );
+        for required in [
+            "Carry each requested deliverable and acceptance criterion into task descriptions",
+            "A promise to assign, inspect, or fix work is not execution",
+            "call the necessary task tools in this Turn",
+            "cancel_and_replace does not redirect downstream dependencies",
+            "patch_pending` with the complete updated `blocked_by` list",
+            "Completed tests of the old version do not verify the replacement",
+        ] {
+            assert!(
+                section.contains(required),
+                "state={state:?}, missing {required}"
+            );
+        }
+        if state == RunCompletionCandidateState::Certified {
+            assert!(section.contains("only for its closed work episode"));
+            assert!(section.contains("new authorized user request opens a new episode"));
+        }
+    }
+}
+
+#[test]
+fn worker_protocol_requires_actual_verification_without_graph_authority() {
+    let section = build_agent_org_context_section_with_task_snapshot(
+        &prompt_test_agent_org_context(),
+        "agent-worker",
+        Some("member-worker"),
+        Ok(Vec::new()),
+        None,
+    );
+    for required in [
+        "actual checks performed, their observed results, and evidence locations",
+        "Missing tools, zero discovered tests, skipped checks, or static inspection alone",
+        "do not satisfy requested runtime verification",
+        "cannot create, assign, or rewrite the Task graph",
+    ] {
+        assert!(section.contains(required), "missing {required}");
+    }
+    assert!(!section.contains("call the necessary task tools in this Turn"));
+}
+
+#[test]
 fn agent_org_prompt_lists_llm_callable_message_kinds() {
     // `build_agent_org_context_section` loads the Task board through
     // `AgentOrgTaskStore::list_operational` -> `database::db::get_connection()`,

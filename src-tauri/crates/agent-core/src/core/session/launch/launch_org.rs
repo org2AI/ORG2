@@ -345,8 +345,10 @@ pub(super) async fn send_initial_turn(
             None,
             intent_org_run_id,
             source,
+            None,
         )
-        .await?;
+        .await
+        .and_then(|admission| admission.into_ready())?;
         return Ok(());
     }
 
@@ -387,8 +389,10 @@ pub(super) async fn send_initial_turn(
         None,
         intent_org_run_id,
         crate::foundation::session_bridge::TurnIntentBridgeSource::AgentOrg,
+        None,
     )
-    .await?;
+    .await
+    .and_then(|admission| admission.into_ready())?;
     Ok(())
 }
 

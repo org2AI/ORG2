@@ -985,7 +985,7 @@ async fn udw_coordinator_side_quest_uses_root_binding_without_formal_work() {
     )
     .expect("idle Team around the same durable side quest");
     assert!(
-        crate::coordination::agent_org_runs::AgentOrgRunStore::activate_idle_for_task_graph_in_tx(
+        crate::coordination::agent_org_runs::AgentOrgRunStore::activate_for_task_graph_in_tx(
             &conn,
             "run-1",
             "root-1",

@@ -8,6 +8,7 @@
 //! closure that owns the turn's lifecycle from running-status promotion to
 //! finalization.
 
+use crate::coordination::agent_org_turn_contexts::WakeAdmission;
 use std::sync::Arc;
 
 use crate::coordination::agent_member_interventions::{
@@ -43,6 +44,15 @@ pub(super) fn promote_turn_to_running_in_tx(
     intent_run_id: Option<&str>,
     is_user_directed_work: bool,
 ) -> Result<bool, String> {
+    if wake_run_id.is_some()
+        && !crate::coordination::agent_org_turn_contexts::revalidate_wake_in_tx(
+            conn,
+            session_id,
+            turn_intent_id,
+        )?
+    {
+        return Ok(false);
+    }
     let persisted_context = if wake_run_id.is_some() || intent_run_id.is_some() {
         Some(
             crate::coordination::agent_org_turn_contexts::revalidate_context_with_connection(
@@ -161,6 +171,7 @@ async fn preflight_agent_org_turn_before_runtime(
     run_id_hint: Option<&str>,
     has_persisted_agent_org_identity: bool,
     is_direct_member: bool,
+    is_formal_wake: bool,
 ) -> Result<Option<String>, String> {
     if let (Some(explicit), Some(hint)) = (explicit_run_id, run_id_hint) {
         if explicit != hint {
@@ -198,7 +209,9 @@ async fn preflight_agent_org_turn_before_runtime(
     .map_err(|error| format!("Agent Org status worker failed: {error}"))??
     .ok_or_else(|| format!("team_unavailable: Agent Org run {run_id} does not exist"))?;
     let allow_idle_root = run.root_session_id.as_deref() == Some(session_id);
-    ensure_agent_org_turn_is_runnable(&run_id, run.status, allow_idle_root, is_direct_member)?;
+    if !is_formal_wake {
+        ensure_agent_org_turn_is_runnable(&run_id, run.status, allow_idle_root, is_direct_member)?;
+    }
     Ok(Some(run_id))
 }
 
@@ -237,19 +250,6 @@ fn should_record_standalone_goal(
         && !has_agent_org_context
 }
 
-pub(super) fn terminal_intent_status_override(
-    state: crate::session::DialogTurnState,
-) -> Option<crate::foundation::session_bridge::TurnIntentBridgeStatus> {
-    match state {
-        crate::session::DialogTurnState::Cancelled => {
-            Some(crate::foundation::session_bridge::TurnIntentBridgeStatus::Cancelled)
-        }
-        crate::session::DialogTurnState::Running
-        | crate::session::DialogTurnState::Completed
-        | crate::session::DialogTurnState::Failed => None,
-    }
-}
-
 /// Implementation of agent_send_message.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn send_message_impl(
@@ -271,7 +271,8 @@ pub(crate) async fn send_message_impl(
     org_wake_member_id: Option<String>,
     intent_org_run_id: Option<String>,
     source: TurnIntentBridgeSource,
-) -> Result<AgentResponse, String> {
+    wake_reservation: Option<Arc<crate::coordination::agent_org_watchdog::MemberRewakeReservation>>,
+) -> Result<WakeAdmission<AgentResponse>, String> {
     if state.is_shutting_down() {
         return Err("app_shutdown_in_progress: refusing to enqueue a new Agent turn".into());
     }
@@ -357,6 +358,7 @@ pub(crate) async fn send_message_impl(
         identity.agent_org_run_id_hint.as_deref(),
         identity.has_persisted_agent_org_identity,
         is_user_directed_work,
+        org_wake_member_id.is_some(),
     )
     .await?;
 
@@ -446,14 +448,14 @@ pub(crate) async fn send_message_impl(
         let admission_client_message_id = client_message_id.clone();
         let admission_wake_member_id = org_wake_member_id.clone();
         if !is_direct_member {
-            tokio::task::spawn_blocking(move || match admission_wake_member_id {
-            Some(member_id) => crate::coordination::agent_org_turn_contexts::accept_wake(
-                &admission_run_id,
-                &admission_session_id,
-                &admission_turn_intent_id,
-                admission_client_message_id,
-                &member_id,
-            ),
+            let admitted = tokio::task::spawn_blocking(move || {
+                if let Some(member_id) = admission_wake_member_id.as_deref() {
+                    return crate::coordination::agent_org_turn_contexts::accept_wake(
+                        &admission_run_id, &admission_session_id, &admission_turn_intent_id,
+                        admission_client_message_id, member_id,
+                    );
+                }
+                let context = match admission_wake_member_id {
             None if has_preadmitted_user_directed_work => {
                 crate::coordination::agent_org_turn_contexts::require_existing_context(
                     &admission_run_id,
@@ -491,9 +493,15 @@ pub(crate) async fn send_message_impl(
                 );
                 crate::coordination::agent_org_turn_contexts::accept(&admission)
             }
-        })
-            .await
-            .map_err(|error| format!("Agent Org Turn admission worker failed: {error}"))??;
+            Some(_) => unreachable!("wake admission handled above"),
+        }?;
+                Ok(WakeAdmission::Ready(context))
+            }).await.map_err(|error| format!("Agent Org Turn admission worker failed: {error}"))??;
+            match admitted {
+                WakeAdmission::Ready(_) => {}
+                WakeAdmission::NoReadyWork => return Ok(WakeAdmission::NoReadyWork),
+                WakeAdmission::Deferred => return Ok(WakeAdmission::Deferred),
+            }
         }
     } else if is_direct_member || is_group_root {
         return Err(
@@ -664,7 +672,7 @@ pub(crate) async fn send_message_impl(
 
     if let Some(status) = preadmitted_user_directed_work {
         if status != UserDirectedDeliveryStatus::Pending {
-            return Ok(AgentResponse {
+            return Ok(WakeAdmission::Ready(AgentResponse {
                 content: serde_json::json!({
                     "queued": status == UserDirectedDeliveryStatus::Started,
                     "duplicate": true,
@@ -673,7 +681,7 @@ pub(crate) async fn send_message_impl(
                 .to_string(),
                 session_id,
                 model: effective_model,
-            });
+            }));
         }
     }
 
@@ -686,7 +694,7 @@ pub(crate) async fn send_message_impl(
             if let Some(reservation) = direct_runtime_admission.as_ref() {
                 session_handle.release_runtime_admission(reservation).await;
             }
-            return Ok(AgentResponse {
+            return Ok(WakeAdmission::Ready(AgentResponse {
                 content: serde_json::json!({
                     "queued": matches!(admission.turn_status.as_str(), "queued" | "running"),
                     "duplicate": true,
@@ -697,7 +705,7 @@ pub(crate) async fn send_message_impl(
                 .to_string(),
                 session_id,
                 model: effective_model,
-            });
+            }));
         }
     }
 
@@ -769,7 +777,7 @@ pub(crate) async fn send_message_impl(
                 session_id,
                 effective_turn_intent_id
             );
-            return Ok(AgentResponse {
+            return Ok(WakeAdmission::Ready(AgentResponse {
                 content: serde_json::json!({
                     "queued": true,
                     "steered": true,
@@ -780,7 +788,7 @@ pub(crate) async fn send_message_impl(
                 .to_string(),
                 session_id,
                 model: effective_model,
-            });
+            }));
         }
     }
 
@@ -851,7 +859,7 @@ pub(crate) async fn send_message_impl(
                 run_id = %run.id,
                 "queued Project turn through durable WorkItem dispatcher"
             );
-            return Ok(AgentResponse {
+            return Ok(WakeAdmission::Ready(AgentResponse {
                 content: serde_json::json!({
                     "queued": true,
                     "durableRunId": run.id,
@@ -864,7 +872,7 @@ pub(crate) async fn send_message_impl(
                 .to_string(),
                 session_id,
                 model: effective_model,
-            });
+            }));
         }
     }
 
@@ -955,6 +963,31 @@ pub(crate) async fn send_message_impl(
                     "{USER_DIRECTED_CANCELLED_ERROR_PREFIX} exact Turn was stopped before start"
                 ));
             }
+            // Recheck an already queued doorbell against the completion
+            // owner's durable disposition before starting a Provider.
+            if is_resume && intent_org_run_id.is_some() {
+                let check_session = sid.clone();
+                let check_intent = turn_intent_id.clone();
+                let absorbed = tokio::task::spawn_blocking(move || {
+                    crate::coordination::agent_org_run_completion::settle_completion_only_wake(
+                        &check_session,
+                        &check_intent,
+                    )
+                })
+                .await
+                .map_err(|e| e.to_string())??;
+                if absorbed {
+                    super::org_wake::refund_unstarted_wake(
+                        wake_reservation.as_deref(),
+                        &sid,
+                        &turn_intent_id,
+                        app_handle.as_ref(),
+                    )
+                    .await?;
+                    return Ok(crate::session::scheduler::ExecutionCompletion::NotAccepted);
+                }
+            }
+
             // Clear a stale pre-turn cancel signal before the durable
             // Agent Org gate. This must happen before that gate: deletion may
             // establish its cancelled fence immediately after the DB claim
@@ -1018,7 +1051,13 @@ pub(crate) async fn send_message_impl(
             })
             .await
             {
-                Ok(Ok(true)) => {}
+                Ok(Ok(true)) => {
+                    if let Some(reservation) = wake_reservation.as_ref() {
+                        crate::coordination::agent_org_watchdog::commit_member_rewake_reservation(
+                            reservation,
+                        )?;
+                    }
+                }
                 Ok(Ok(false)) if is_user_directed_work_turn => {
                     if let Some(reservation) = direct_runtime_admission.as_ref() {
                         session.release_runtime_admission(reservation).await;
@@ -1033,7 +1072,18 @@ pub(crate) async fn send_message_impl(
                         "{USER_DIRECTED_WAITING_ERROR_PREFIX} intervention handoff is not released"
                     ));
                 }
-                Ok(Ok(false)) => return Ok(String::new()),
+                Ok(Ok(false)) => {
+                    if let Some(reservation) = wake_reservation.as_ref() {
+                        super::org_wake::refund_unstarted_wake(
+                            Some(reservation),
+                            &sid,
+                            &turn_intent_id,
+                            app_handle.as_ref(),
+                        )
+                        .await?;
+                    }
+                    return Ok(crate::session::scheduler::ExecutionCompletion::NotAccepted);
+                }
                 Ok(Err(err)) => {
                     if let Some(reservation) = direct_runtime_admission.as_ref() {
                         session.release_runtime_admission(reservation).await;
@@ -1138,17 +1188,14 @@ pub(crate) async fn send_message_impl(
                 turn_intent_id: turn_intent_id.clone(),
             };
 
-            let response =
-                crate::session::process_message(Arc::clone(&session), input, app_handle.clone())
-                    .await;
-
-            let final_turn_state = if cancel_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                crate::session::DialogTurnState::Cancelled
-            } else if response.is_ok() {
-                crate::session::DialogTurnState::Completed
-            } else {
-                crate::session::DialogTurnState::Failed
-            };
+            let (response, terminal_turn) =
+                crate::session::turn::entry::process_message_with_terminal(
+                    Arc::clone(&session),
+                    input,
+                    app_handle.clone(),
+                )
+                .await;
+            let final_turn_state = terminal_turn.status.dialog_state();
 
             let stats = response
                 .as_ref()
@@ -1175,18 +1222,13 @@ pub(crate) async fn send_message_impl(
                 turn_identity.as_ref(),
             )
             .await;
-            session.end_turn(final_turn_state, stats).await;
-
-            // The turn processor can return Ok with an empty response after a
-            // user stop. Persist the authoritative cancelled terminal before
-            // handing control back to the scheduler; its generic Ok =>
-            // completed write is then rejected by the intent state machine.
-            if let Some(status) = terminal_intent_status_override(final_turn_state) {
-                crate::foundation::session_bridge::update_turn_intent_status(
-                    &sid,
-                    &turn_intent_id,
-                    status,
-                );
+            if !session
+                .end_turn_if_current(&turn_id, turn_identity.as_ref(), final_turn_state, stats)
+                .await
+            {
+                return Ok(crate::session::scheduler::ExecutionCompletion::Turn(
+                    terminal_turn,
+                ));
             }
 
             // A durable WorkItemRun owns exactly this turn, not the whole
@@ -1248,29 +1290,6 @@ pub(crate) async fn send_message_impl(
                 }
             }
 
-            let terminal_turn =
-                response
-                    .as_ref()
-                    .ok()
-                    .map(|r| crate::lifecycle::TerminalTurnSignal {
-                        turn_id: r.turn_id.clone(),
-                        turn_intent_id: Some(turn_intent_id.clone()),
-                        status: match final_turn_state {
-                            crate::session::DialogTurnState::Cancelled => {
-                                crate::lifecycle::TurnTerminalStatus::Cancelled
-                            }
-                            crate::session::DialogTurnState::Failed => {
-                                crate::lifecycle::TurnTerminalStatus::Failed
-                            }
-                            crate::session::DialogTurnState::Running
-                            | crate::session::DialogTurnState::Completed => {
-                                crate::lifecycle::TurnTerminalStatus::Completed
-                            }
-                        },
-                        completed_at: chrono::Utc::now()
-                            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    });
-
             let content_result = response.map(|r| r.content);
 
             // Persist the UserDirectedWork terminal before the ordinary
@@ -1312,7 +1331,7 @@ pub(crate) async fn send_message_impl(
                 app_handle.as_ref(),
                 Some(workspace_root.as_path()),
                 load_workspace_resources,
-                terminal_turn,
+                Some(terminal_turn.clone()),
             )
             .await;
             let user_directed_changed = direct_terminal_result?;
@@ -1401,7 +1420,9 @@ pub(crate) async fn send_message_impl(
 
             cancel_flag.store(false, std::sync::atomic::Ordering::SeqCst);
 
-            content_result
+            Ok(crate::session::scheduler::ExecutionCompletion::Turn(
+                terminal_turn,
+            ))
         })
     });
 
@@ -1487,7 +1508,7 @@ pub(crate) async fn send_message_impl(
         session_id
     );
 
-    Ok(AgentResponse {
+    Ok(WakeAdmission::Ready(AgentResponse {
         content: serde_json::json!({
             "queued": true,
             "messageId": enqueue_result.message_id,
@@ -1501,7 +1522,7 @@ pub(crate) async fn send_message_impl(
         .to_string(),
         session_id,
         model: effective_model,
-    })
+    }))
 }
 
 #[cfg(test)]

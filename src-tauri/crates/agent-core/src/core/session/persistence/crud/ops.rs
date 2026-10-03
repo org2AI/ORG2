@@ -432,7 +432,7 @@ pub fn finalize_terminal_turn_status(
                  last_terminal_turn_id = ?4,
                  last_terminal_turn_status = ?5,
                  last_terminal_turn_at = ?3
-             WHERE session_id = ?1",
+             WHERE session_id = ?1 AND (last_terminal_turn_id IS NULL OR last_terminal_turn_id <> ?4)",
             params![
                 session_id,
                 session_status.as_str(),

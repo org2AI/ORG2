@@ -37,6 +37,7 @@ impl AgentInboxStore {
     /// actually ended.
     pub(crate) fn insert_member_idle_if_run_running(
         params: InsertInboxParams,
+        source_turn_intent_id: Option<&str>,
     ) -> Result<Option<(AgentInboxRecord, bool)>, String> {
         let (member_id, reason, unfinished_task_ids) = match &params.message {
             super::AgentMessage::MemberIdle {
@@ -85,6 +86,13 @@ impl AgentInboxStore {
             // authority, so the generic Inbox metadata inference must not
             // create a second receipt for Failed MemberIdle.
             let record = Self::insert_in_tx_without_formal_trigger(&tx, params)?;
+            // Metadata only: retain the exact caller's execution, never infer
+            // the source from whichever Turn happens to be running now.
+            tx.execute(
+                "UPDATE agent_org_runtime_inbox SET source_turn_intent_id=?2 WHERE id=?1",
+                params![record.id, source_turn_intent_id],
+            )
+            .map_err(|e| e.to_string())?;
             let (task_count, open_task_count): (i64, i64) = tx
                 .query_row(
                     "SELECT COUNT(*),
@@ -395,6 +403,19 @@ impl AgentInboxStore {
                             | crate::coordination::agent_inbox::AgentMessage::TaskTerminal { .. }
                     ) && params.sender_member_id.as_deref()
                         == Some(crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID);
+                    let output_digest = if let super::AgentMessage::TaskCompleted {
+                        task_id, ..
+                    } = &params.message
+                    {
+                        let raw: Option<String> = conn.query_row(
+                            "SELECT output_json FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2",
+                            params![org_run_id, task_id], |row| row.get(0))
+                            .optional().map_err(|e| e.to_string())?.flatten();
+                        raw.map(|raw| serde_json::from_str::<crate::coordination::agent_org_tasks::TaskOutput>(&raw)
+                            .map_err(|e| e.to_string()).and_then(|output| crate::coordination::agent_org_tasks::task_output_digest(&output))).transpose()?
+                    } else {
+                        None
+                    };
                     crate::coordination::agent_org_formal_triggers::record_inbox_trigger_in_tx(
                         conn,
                         org_run_id,
@@ -404,7 +425,7 @@ impl AgentInboxStore {
                             task_id: metadata.task_id,
                             owner_member_id: params.sender_member_id.as_deref(),
                             source_turn_intent_id: None,
-                            task_output_digest: None,
+                            task_output_digest: output_digest.as_deref(),
                             plan_revision_id: metadata.plan_revision_id,
                             suppress_self_wake,
                         },

@@ -300,7 +300,7 @@ fn render_payload_for_transcript(msg: &AgentMessage) -> String {
                 .map(|id| format!("Approved plan revision: {id}"))
                 .unwrap_or_default(),
             format!("Remaining open tasks: {remaining_open_task_count}"),
-            "Use the atomic completion-candidate snapshot in this Turn's system context before deciding the next step. When its state is ready, call org_run_complete directly; do not refresh task_list merely to confirm completion. When it is blocked, handle only the explicit blocker or wait for the next durable Team event.".to_string(),
+            "Use the atomic completion-candidate snapshot in this Turn's system context before deciding the next step. A ready snapshot proves record closure, not acceptance of the user's requested deliverables. Compare actual TaskOutput evidence with acceptance criteria: create missing work or dependent repair/verification when required; otherwise call org_run_complete without refreshing task_list merely to confirm closure. When blocked, act on actionable results and explicit blockers, or wait for the next durable Team event.".to_string(),
         ]),
         AgentMessage::TaskTerminal {
             task_id,

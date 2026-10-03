@@ -299,8 +299,10 @@ pub async fn agent_send_message(
         None,
         None,
         source,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
 }
 
 // ═══════════════════════════════════════════════════════════════

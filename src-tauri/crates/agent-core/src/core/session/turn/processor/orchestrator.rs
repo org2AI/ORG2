@@ -25,7 +25,7 @@ impl UnifiedMessageProcessor {
         session_id: &str,
         content: &str,
         context: ProcessingContext,
-    ) -> Result<ProcessingResult, String> {
+    ) -> Result<(ProcessingResult, crate::lifecycle::TurnTerminalStatus), String> {
         // 0. Use the AgentSession turn id when available so active_turn,
         // live stream broadcasts, and terminal markers describe the same turn.
         let turn_id = context
@@ -319,10 +319,13 @@ impl UnifiedMessageProcessor {
                     // Fail closed before inbox drain/provider invocation. The
                     // unread rows stay durable for a later explicit resume.
                     info!(run_id = %org_context.run_id, session_id = %session_id, "[unified_processor] queued Agent Org wake cancelled because run is no longer running");
-                    return Ok(ProcessingResult {
-                        turn_id,
-                        ..ProcessingResult::default()
-                    });
+                    return Ok((
+                        ProcessingResult {
+                            turn_id,
+                            ..ProcessingResult::default()
+                        },
+                        crate::lifecycle::TurnTerminalStatus::Cancelled,
+                    ));
                 }
             }
         }
@@ -419,16 +422,24 @@ impl UnifiedMessageProcessor {
             }
         }
 
-        // A pause continuation is durable work even when the original Task
+        // An explicit continuation is durable work even when the original Task
         // assignment Inbox was consumed before Pause. Supply its instruction
         // only in the provider request: Resume must not create a fake user
         // transcript row or a second Inbox source.
         if context.is_resume && content.trim().is_empty() && persisted_turn_context.is_some() {
             let continuation_nudge = tokio::task::block_in_place(|| {
-                crate::coordination::agent_org_pause::continuation_nudge_for_turn(
-                    session_id,
-                    &context.turn_intent_id,
-                )
+                let returned =
+                    crate::coordination::agent_member_interventions::continuation_nudge_for_turn(
+                        session_id,
+                        &context.turn_intent_id,
+                    )?;
+                match returned {
+                    Some(_) => Ok(returned),
+                    None => crate::coordination::agent_org_pause::continuation_nudge_for_turn(
+                        session_id,
+                        &context.turn_intent_id,
+                    ),
+                }
             })?;
             if let Some(nudge) = continuation_nudge {
                 messages.push(serde_json::json!({
@@ -438,7 +449,7 @@ impl UnifiedMessageProcessor {
                 info!(
                     session_id = %session_id,
                     turn_intent_id = %context.turn_intent_id,
-                    "[unified_processor] Injected transient Agent Org Pause continuation"
+                    "[unified_processor] Injected transient Agent Org continuation"
                 );
             }
         }
@@ -455,10 +466,13 @@ impl UnifiedMessageProcessor {
             && messages.len() == message_count_before_inbox
         {
             info!(session_id = %session_id, "[unified_processor] Agent Org wake had no durable work; returning WakeNoop");
-            return Ok(ProcessingResult {
-                turn_id,
-                ..ProcessingResult::default()
-            });
+            return Ok((
+                ProcessingResult {
+                    turn_id,
+                    ..ProcessingResult::default()
+                },
+                crate::lifecycle::TurnTerminalStatus::Completed,
+            ));
         }
 
         // 4d. Subagent-wake prefill safety net.
@@ -488,7 +502,7 @@ impl UnifiedMessageProcessor {
                 if let Some(prefetch_hook) = self.turn_prefetch_hook.lock().await.take() {
                     prefetch_hook.abort_pending();
                 }
-                return Ok(redirect);
+                return Ok((redirect, crate::lifecycle::TurnTerminalStatus::Completed));
             }
         }
 
@@ -687,7 +701,11 @@ impl UnifiedMessageProcessor {
 
         // Flush any pending streaming content before completing the turn.
         handler.flush_streaming(session_id);
-        handler.verify_agent_org_completion_publication(session_id);
+        // A stopped attempt need not publish a complete report. Exact terminal
+        // settlement closes its receipt, even when the executor returned Ok.
+        if !self.session.cancel_flag.load(Ordering::SeqCst) {
+            handler.verify_agent_org_completion_publication(session_id);
+        }
         if let Some(error) = handler.take_assistant_persistence_error() {
             if !is_final_summary_turn && self.runtime.agent_org_context.is_some() {
                 let _ = crate::coordination::agent_org_formal_triggers::fail_attempt_for_turn(
@@ -763,45 +781,6 @@ impl UnifiedMessageProcessor {
                     error = %error,
                     "failed to release FormalTriggerReceipt after Stop"
                 );
-            }
-        }
-
-        if matches!(final_turn_state, DialogTurnState::Completed) {
-            if let Some(org_context) = self.runtime.agent_org_context.as_ref() {
-                if self.runtime.agent_org_current_member_id.as_deref()
-                    == Some(crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID)
-                {
-                    let observation_session_id = session_id.to_string();
-                    let observation_turn_intent_id = context.turn_intent_id.clone();
-                    match tokio::task::spawn_blocking(move || {
-                        let Some((run_id, committed_revision)) =
-                            crate::coordination::agent_org_finality::final_coordinator_revision_for_turn(
-                                &observation_session_id,
-                                &observation_turn_intent_id,
-                            )?
-                        else {
-                            return Ok::<_, String>(None);
-                        };
-                        crate::coordination::agent_org_runs::AgentOrgRunStore::mark_coordinator_observed_work_revision(
-                            &run_id,
-                            committed_revision,
-                        )
-                    })
-                    .await
-                    {
-                        Ok(Ok(_)) => {}
-                        Ok(Err(error)) => warn!(
-                            run_id = %org_context.run_id,
-                            error = %error,
-                            "[unified_processor] failed to record the final committed Agent Org work revision observed by coordinator provider turn"
-                        ),
-                        Err(error) => warn!(
-                            run_id = %org_context.run_id,
-                            error = %error,
-                            "[unified_processor] coordinator work-revision observation task failed"
-                        ),
-                    }
-                }
             }
         }
 
@@ -903,7 +882,13 @@ impl UnifiedMessageProcessor {
             };
             member_idle::maybe_emit_member_idle_with_details(
                 self.runtime.agent_org_context.as_ref(),
-                self.runtime.agent_org_current_member_id.as_deref(),
+                self.runtime
+                    .agent_org_current_member_id
+                    .as_deref()
+                    .map(|member_id| member_idle::MemberIdleSource {
+                        member_id,
+                        turn_intent_id: Some(&context.turn_intent_id),
+                    }),
                 idle_reason,
                 self.agent_mode,
                 None,
@@ -912,16 +897,23 @@ impl UnifiedMessageProcessor {
             );
         }
 
-        Ok(ProcessingResult {
-            turn_id,
-            content: response_text,
-            total_tokens: result.total_tokens,
-            prompt_tokens: result.prompt_tokens,
-            completion_tokens: result.completion_tokens,
-            tool_calls_count,
-            truncated: false,
-            turn_summary: None,
-            fork_redirect: None,
-        })
+        Ok((
+            ProcessingResult {
+                turn_id,
+                content: response_text,
+                total_tokens: result.total_tokens,
+                prompt_tokens: result.prompt_tokens,
+                completion_tokens: result.completion_tokens,
+                tool_calls_count,
+                truncated: false,
+                turn_summary: None,
+                fork_redirect: None,
+            },
+            if final_turn_state == DialogTurnState::Cancelled {
+                crate::lifecycle::TurnTerminalStatus::Cancelled
+            } else {
+                crate::lifecycle::TurnTerminalStatus::Completed
+            },
+        ))
     }
 }

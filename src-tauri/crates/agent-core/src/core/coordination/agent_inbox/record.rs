@@ -101,6 +101,7 @@ pub struct AgentInboxPage {
 pub enum AgentInboxDeliveryResolutionKind {
     Cancelled,
     Superseded,
+    SystemReconciled,
 }
 
 impl AgentInboxDeliveryResolutionKind {
@@ -108,6 +109,7 @@ impl AgentInboxDeliveryResolutionKind {
         match self {
             Self::Cancelled => "cancelled",
             Self::Superseded => "superseded",
+            Self::SystemReconciled => "system_reconciled",
         }
     }
 
@@ -115,6 +117,7 @@ impl AgentInboxDeliveryResolutionKind {
         match value {
             "cancelled" => Ok(Self::Cancelled),
             "superseded" => Ok(Self::Superseded),
+            "system_reconciled" => Ok(Self::SystemReconciled),
             other => Err(format!(
                 "unknown Agent Inbox delivery resolution kind: {other:?}"
             )),

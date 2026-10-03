@@ -129,7 +129,10 @@ fn routine_member_idle_persists_without_coordinator_provider_wake() {
     hook.post_member_idle(
         "run-1",
         "coord",
-        "member-worker",
+        crate::session::turn::member_idle::MemberIdleSource {
+            member_id: "member-worker",
+            turn_intent_id: None,
+        },
         "worker-1",
         "Worker",
         MemberIdleReason::Available,
@@ -170,7 +173,10 @@ fn final_member_idle_creates_exact_formal_receipt_and_wakes_coordinator() {
     hook.post_member_idle(
         "run-final",
         "coord",
-        "member-worker",
+        crate::session::turn::member_idle::MemberIdleSource {
+            member_id: "member-worker",
+            turn_intent_id: None,
+        },
         "worker-1",
         "Worker",
         MemberIdleReason::Available,
@@ -227,7 +233,10 @@ fn member_idle_wakes_member_when_post_turn_inbox_is_unread() {
     hook.post_member_idle(
         "run-1",
         "coord",
-        "member-worker",
+        crate::session::turn::member_idle::MemberIdleSource {
+            member_id: "member-worker",
+            turn_intent_id: None,
+        },
         "worker-1",
         "Worker",
         MemberIdleReason::Available,
@@ -254,7 +263,10 @@ fn member_idle_does_not_reopen_terminal_run_inbox() {
     hook.post_member_idle(
         "run-terminal",
         "coord",
-        "member-worker",
+        crate::session::turn::member_idle::MemberIdleSource {
+            member_id: "member-worker",
+            turn_intent_id: None,
+        },
         "worker-1",
         "Worker",
         MemberIdleReason::Available,

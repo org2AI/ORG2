@@ -23,6 +23,8 @@ fn summary_context_contains_bounded_certified_evidence_not_session_transcript() 
     assert!(context.contains("artifact://verification-report"));
     assert!(context.contains(&fixture.certificate.id));
     assert!(!context.contains("SECRET_TRANSCRIPT_TEXT"));
+    assert!(context.contains("Separate implemented, verified, and unverified claims"));
+    assert!(context.contains("A completion certificate proves record closure, not product quality"));
     assert!(context.len() <= 128 * 1024 + 1024);
 }
 

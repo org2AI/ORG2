@@ -275,7 +275,7 @@ impl AgentOrgTaskStore {
             encode_optional_json("task cancel reason", task.cancel_reason.as_ref())?;
 
         tx.execute(
-            "UPDATE agent_org_runtime_tasks SET
+            "UPDATE agent_org_execution_tasks SET
                 subject = ?1,
                 description = ?2,
                 active_form = ?3,

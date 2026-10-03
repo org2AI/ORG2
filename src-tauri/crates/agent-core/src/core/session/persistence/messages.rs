@@ -106,7 +106,7 @@ pub fn load_agent_org_inbox_transcript_materializations(
                     receipt.transcript_message_id,
                     receipt.transcript_intent_id,
                     message.content
-             FROM agent_org_runtime_inbox_materializations receipt
+             FROM agent_org_execution_inbox_materializations receipt
              LEFT JOIN agent_messages message
                ON message.id=receipt.transcript_message_id
               AND message.session_id=receipt.session_id
@@ -213,8 +213,8 @@ fn materialize_agent_org_inbox_transcript_internal(
             let mut stmt = tx
                 .prepare(
                     "SELECT inbox.org_run_id,run.status
-                     FROM agent_org_runtime_inbox inbox
-                     LEFT JOIN agent_org_runtime_runs run ON run.id=inbox.org_run_id
+                     FROM agent_org_execution_inbox inbox
+                     LEFT JOIN agent_org_execution_runs run ON run.id=inbox.org_run_id
                      WHERE inbox.id=?1",
                 )
                 .map_err(|err| err.to_string())?;
@@ -238,7 +238,7 @@ fn materialize_agent_org_inbox_transcript_internal(
             let mut stmt = tx
                 .prepare(
                     "SELECT session_id, transcript_message_id, transcript_intent_id
-                     FROM agent_org_runtime_inbox_materializations WHERE inbox_id=?1",
+                     FROM agent_org_execution_inbox_materializations WHERE inbox_id=?1",
                 )
                 .map_err(|err| err.to_string())?;
             for inbox_id in inbox_ids {
@@ -266,7 +266,7 @@ fn materialize_agent_org_inbox_transcript_internal(
 
         let unread_count = {
             let mut stmt = tx
-                .prepare("SELECT read_at FROM agent_org_runtime_inbox WHERE id=?1")
+                .prepare("SELECT read_at FROM agent_org_execution_inbox WHERE id=?1")
                 .map_err(|err| err.to_string())?;
             let mut count = 0usize;
             for inbox_id in inbox_ids {
@@ -339,7 +339,7 @@ fn materialize_agent_org_inbox_transcript_internal(
         {
             let mut stmt = tx
                 .prepare(
-                    "INSERT INTO agent_org_runtime_inbox_materializations
+                    "INSERT INTO agent_org_execution_inbox_materializations
                      (inbox_id, session_id, transcript_message_id, transcript_intent_id, materialized_at)
                      VALUES (?1, ?2, ?3, ?4, ?5)",
                 )
@@ -1672,6 +1672,7 @@ mod tests {
     fn seed_session_for_message_tests(session_id: &str) {
         let conn = get_connection().expect("get_connection in seed_session_for_message_tests");
         crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+        crate::persistence::test_schema::ensure_session_events_schema(&conn);
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS agent_messages (
                 id TEXT PRIMARY KEY,
@@ -1709,6 +1710,8 @@ mod tests {
         let run_id = "archive-assistant-run";
         let turn_intent_id = "archive-assistant-turn";
         seed_session_for_message_tests(session_id);
+        // Current sessions are created only after startup has completed cutover.
+        crate::coordination::init_agent_org_schemas(&get_connection().unwrap()).unwrap();
         crate::session::persistence::upsert_session(
             &crate::session::persistence::UnifiedSessionRecord {
                 session_id: session_id.to_string(),
@@ -1758,7 +1761,7 @@ mod tests {
         })
         .to_string();
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
                 entry_mode,status,activation_generation,created_at,updated_at
              ) VALUES (?1,'org-archive-assistant','builtin:sde',?2,?3,
@@ -1767,7 +1770,7 @@ mod tests {
         )
         .expect("seed Run");
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations (
+            "INSERT INTO agent_org_execution_member_materializations (
                 org_run_id,member_id,agent_id,generation,session_id,
                 authority_class,status,created_at,updated_at
              ) VALUES (?1,'coordinator','builtin:sde',1,?2,
@@ -1789,7 +1792,7 @@ mod tests {
                         materialization.agent_id,materialization.session_id,
                         materialization.status,session.agent_definition_id,
                         session.org_member_id
-                 FROM agent_org_runtime_member_materializations materialization
+                 FROM agent_org_execution_member_materializations materialization
                  JOIN agent_sessions session
                    ON session.session_id=materialization.session_id
                  WHERE materialization.org_run_id=?1 AND materialization.session_id=?2",
@@ -1827,7 +1830,7 @@ mod tests {
         )
         .expect("seed Turn intent");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                 source_kind,source_id,activation_generation,created_at
              ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,1,?4)",
@@ -1887,6 +1890,7 @@ mod tests {
 
         seed_session_for_message_tests(root_session_id);
         seed_session_for_message_tests(member_session_id);
+        crate::coordination::init_agent_org_schemas(&get_connection().unwrap()).unwrap();
         for (session_id, member_id) in [
             (root_session_id, "coordinator"),
             (member_session_id, "worker"),
@@ -1941,7 +1945,7 @@ mod tests {
         })
         .to_string();
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
                 entry_mode,status,activation_generation,created_at,updated_at
              ) VALUES (?1,'org-completed-assistant','builtin:sde',?2,?3,
@@ -1950,7 +1954,7 @@ mod tests {
         )
         .expect("seed Run");
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations (
+            "INSERT INTO agent_org_execution_member_materializations (
                 org_run_id,member_id,agent_id,generation,session_id,
                 authority_class,status,created_at,updated_at
              ) VALUES (?1,'worker','builtin:sde',1,?2,
@@ -1959,7 +1963,7 @@ mod tests {
         )
         .expect("seed Member materialization");
         conn.execute(
-            "INSERT INTO agent_org_runtime_tasks (
+            "INSERT INTO agent_org_execution_tasks (
                 id,org_run_id,activation_generation,subject,description,owner,status,execution_mode,
                 blocked_by_json,created_by_participant_id,source_turn_intent_id,
                 created_at,updated_at
@@ -1977,7 +1981,7 @@ mod tests {
         )
         .expect("seed running Turn intent");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,task_id,
                 owner_member_id,dispatch_member_id,member_dispatch_sequence,
                 source_kind,source_id,activation_generation,created_at
@@ -2034,7 +2038,7 @@ mod tests {
         )
         .expect("seed historical sibling base Turn");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,task_id,
                 owner_member_id,dispatch_member_id,member_dispatch_sequence,
                 source_kind,source_id,activation_generation,created_at
@@ -2077,7 +2081,7 @@ mod tests {
             .query_row(
                 "SELECT previous_status,next_status,actor_kind,actor_member_id,
                         source_turn_intent_id
-                 FROM agent_org_runtime_task_events
+                 FROM agent_org_execution_task_events
                  WHERE org_run_id=?1 AND task_id=?2
                  ORDER BY rowid DESC LIMIT 1",
                 params![run_id, task_id],

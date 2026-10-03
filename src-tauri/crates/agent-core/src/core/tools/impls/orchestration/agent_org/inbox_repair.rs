@@ -410,7 +410,7 @@ mod tests {
         })
         .expect("seed coordinator session");
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations (
+            "INSERT INTO agent_org_execution_member_materializations (
                  org_run_id,member_id,agent_id,generation,session_id,
                  authority_class,status,created_at,updated_at
              ) VALUES (?1,'coordinator','coordinator-agent',?2,
@@ -430,7 +430,7 @@ mod tests {
         )
         .expect("seed base Turn");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                  session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                  source_kind,source_id,activation_generation,created_at
              ) VALUES ('root-inbox-repair','repair-turn',?1,'coordinator','coordinator',
@@ -448,7 +448,7 @@ mod tests {
             text: "Preserve this original message".into(),
         };
         conn.execute(
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                  recipient_agent_id, recipient_member_id,
                  sender_agent_id, sender_member_id, org_run_id,
                  payload_kind, payload_json, created_at
@@ -521,13 +521,13 @@ mod tests {
         let conn = get_connection().expect("test sqlite connection");
         let generation: i64 = conn
             .query_row(
-                "SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                "SELECT activation_generation FROM agent_org_execution_runs WHERE id=?1",
                 [&fixture.run_id],
                 |row| row.get(0),
             )
             .expect("load run generation");
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations (
+            "INSERT INTO agent_org_execution_member_materializations (
                  org_run_id,member_id,agent_id,generation,session_id,
                  authority_class,status,created_at,updated_at
              ) VALUES (?1,'worker','worker-agent',?2,'repair-worker-session',
@@ -712,7 +712,7 @@ mod tests {
         let fixture = fixture();
         let conn = get_connection().expect("test sqlite connection");
         conn.execute(
-            "UPDATE agent_org_runtime_runs
+            "UPDATE agent_org_execution_runs
              SET status='archived',activation_generation=activation_generation+1,
                  archived_at=?2,archive_receipt_id=?3
              WHERE id=?1",

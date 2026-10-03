@@ -257,7 +257,7 @@ impl AgentMemberInterventionStore {
                 .query_row(
                     "SELECT intervention_receipt_id,member_dispatch_sequence,
                             dispatch_content,display_content,status
-                     FROM agent_org_runtime_member_intervention_turns
+                     FROM agent_org_execution_member_intervention_turns
                      WHERE session_id=?1 AND turn_intent_id=?2",
                     params![&params.session_id, &params.turn_intent_id],
                     |row| {
@@ -277,7 +277,7 @@ impl AgentMemberInterventionStore {
                 let queued_count: i64 = tx
                     .query_row(
                         "SELECT COUNT(*)
-                         FROM agent_org_runtime_turn_contexts context
+                         FROM agent_org_execution_turn_contexts context
                          JOIN session_turn_intents intent
                            ON intent.session_id=context.session_id
                           AND intent.turn_intent_id=context.turn_intent_id
@@ -372,7 +372,7 @@ impl AgentMemberInterventionStore {
                 .query_row(
                     &format!(
                         "SELECT intervention_receipt_id
-                         FROM agent_org_runtime_member_interventions
+                         FROM agent_org_execution_member_interventions
                          WHERE org_run_id=?1 AND member_id=?2
                            AND status IN ({ACTIVE_STATUSES_SQL})"
                     ),
@@ -390,7 +390,7 @@ impl AgentMemberInterventionStore {
                     let agent_id: String = tx
                         .query_row(
                             "SELECT agent_id
-                             FROM agent_org_runtime_member_materializations
+                             FROM agent_org_execution_member_materializations
                              WHERE org_run_id=?1 AND member_id=?2 AND session_id=?3
                                AND status='succeeded'
                              ORDER BY generation DESC LIMIT 1",
@@ -409,7 +409,7 @@ impl AgentMemberInterventionStore {
                         .map(|value| (Some(value.0), Some(value.1), Some(value.2)))
                         .unwrap_or((None, None, None));
                     tx.execute(
-                        "INSERT INTO agent_org_runtime_member_interventions (
+                        "INSERT INTO agent_org_execution_member_interventions (
                             intervention_receipt_id,org_run_id,member_id,agent_id,session_id,
                             status,source_event_id,original_task_id,original_turn_intent_id,
                             original_member_dispatch_sequence,entered_at,last_user_activity_at,
@@ -438,14 +438,14 @@ impl AgentMemberInterventionStore {
             let chain_position: i64 = tx
                 .query_row(
                     "SELECT COALESCE(MAX(chain_position),0)+1
-                     FROM agent_org_runtime_member_intervention_turns
+                     FROM agent_org_execution_member_intervention_turns
                      WHERE intervention_receipt_id=?1",
                     [&receipt_id],
                     |row| row.get(0),
                 )
                 .map_err(|error| error.to_string())?;
             tx.execute(
-                "INSERT INTO agent_org_runtime_member_intervention_turns (
+                "INSERT INTO agent_org_execution_member_intervention_turns (
                     intervention_receipt_id,session_id,turn_intent_id,source_event_id,
                     dispatch_content,display_content,member_dispatch_sequence,
                     chain_position,status,enqueued_at
@@ -464,7 +464,7 @@ impl AgentMemberInterventionStore {
             )
             .map_err(|error| error.to_string())?;
             tx.execute(
-                "UPDATE agent_org_runtime_member_interventions
+                "UPDATE agent_org_execution_member_interventions
                  SET last_user_activity_at=?2,updated_at=?2
                  WHERE intervention_receipt_id=?1",
                 params![&receipt_id, &now],
@@ -500,7 +500,7 @@ impl AgentMemberInterventionStore {
             let conn = get_connection().map_err(|error| error.to_string())?;
             let now = chrono::Utc::now().to_rfc3339();
             conn.execute(
-                "UPDATE agent_org_runtime_member_interventions
+                "UPDATE agent_org_execution_member_interventions
                  SET runtime_lease_id=?3,dialog_turn_generation=?4,
                      yield_requested_at=COALESCE(yield_requested_at,?5),updated_at=?5
                  WHERE intervention_receipt_id=?1
@@ -529,7 +529,7 @@ impl AgentMemberInterventionStore {
         let conn = get_connection().map_err(|error| error.to_string())?;
         conn.query_row(
             "SELECT intervention_receipt_id
-             FROM agent_org_runtime_member_interventions
+             FROM agent_org_execution_member_interventions
              WHERE session_id=?1 AND original_turn_intent_id=?2
                AND runtime_lease_id=?3 AND dialog_turn_generation=?4
                AND status='yield_requested'",
@@ -552,7 +552,7 @@ impl AgentMemberInterventionStore {
         let conn = get_connection().map_err(|error| error.to_string())?;
         conn.query_row(
             "SELECT intervention_receipt_id
-             FROM agent_org_runtime_member_interventions
+             FROM agent_org_execution_member_interventions
              WHERE session_id=?1 AND original_turn_intent_id=?2
                AND status='yield_requested'",
             params![session_id, original_turn_intent_id],
@@ -569,7 +569,7 @@ impl AgentMemberInterventionStore {
         let conn = get_connection().map_err(|error| error.to_string())?;
         conn.query_row(
             "SELECT intervention_receipt_id
-             FROM agent_org_runtime_member_interventions
+             FROM agent_org_execution_member_interventions
              WHERE session_id=?1 AND original_turn_intent_id=?2
                AND status IN ('yield_requested','active','return_requested')",
             params![session_id, original_turn_intent_id],
@@ -588,7 +588,7 @@ impl AgentMemberInterventionStore {
             let conn = get_connection().map_err(|error| error.to_string())?;
             let now = chrono::Utc::now().to_rfc3339();
             conn.execute(
-                "UPDATE agent_org_runtime_member_interventions
+                "UPDATE agent_org_execution_member_interventions
                  SET status='active',yield_released_at=?4,
                      yield_timed_out_at=CASE
                        WHEN yield_requested_at IS NOT NULL
@@ -637,7 +637,7 @@ impl AgentMemberInterventionStore {
             let conn = get_connection().map_err(|error| error.to_string())?;
             let now = chrono::Utc::now().to_rfc3339();
             conn.execute(
-                "UPDATE agent_org_runtime_member_interventions
+                "UPDATE agent_org_execution_member_interventions
                  SET yield_timed_out_at=COALESCE(yield_timed_out_at,?2),updated_at=?2
                  WHERE intervention_receipt_id=?1 AND status='yield_requested'",
                 params![receipt_id, now],
@@ -675,17 +675,17 @@ impl AgentMemberInterventionStore {
         let now = chrono::Utc::now().to_rfc3339();
         let changed = conn
             .execute(
-                "UPDATE agent_org_runtime_member_intervention_turns AS chain
+                "UPDATE agent_org_execution_member_intervention_turns AS chain
                  SET status='running',started_at=COALESCE(started_at,?3)
                  WHERE chain.session_id=?1 AND chain.turn_intent_id=?2
                    AND chain.status='queued'
                    AND EXISTS (
-                       SELECT 1 FROM agent_org_runtime_member_interventions intervention
+                       SELECT 1 FROM agent_org_execution_member_interventions intervention
                        WHERE intervention.intervention_receipt_id=chain.intervention_receipt_id
                          AND intervention.status='active'
                    )
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_member_intervention_turns earlier
+                       SELECT 1 FROM agent_org_execution_member_intervention_turns earlier
                        WHERE earlier.intervention_receipt_id=chain.intervention_receipt_id
                          AND earlier.member_dispatch_sequence<chain.member_dispatch_sequence
                          AND earlier.status IN ('queued','running')
@@ -704,7 +704,7 @@ impl AgentMemberInterventionStore {
         }
         let admission_changed = conn
             .execute(
-                "UPDATE agent_org_member_turn_admissions
+                "UPDATE agent_org_execution_member_turn_admissions
                  SET status='committed',committed_at=?3,updated_at=?3
                  WHERE session_id=?1 AND turn_intent_id=?2 AND status='prepared'",
                 params![session_id, turn_intent_id, &now],
@@ -747,7 +747,7 @@ impl AgentMemberInterventionStore {
             let conn = get_connection().map_err(|error| error.to_string())?;
             let now = chrono::Utc::now().to_rfc3339();
             conn.execute(
-                "UPDATE agent_org_member_turn_admissions
+                "UPDATE agent_org_execution_member_turn_admissions
                  SET status='rejected',reason_code=?3,terminal_at=?4,updated_at=?4
                  WHERE session_id=?1 AND turn_intent_id=?2 AND status='committed'",
                 params![session_id, turn_intent_id, reason_code, now],
@@ -776,22 +776,22 @@ impl AgentMemberInterventionStore {
                 "SELECT chain.rowid,context.org_run_id,chain.session_id,chain.turn_intent_id,
                         chain.source_event_id,chain.dispatch_content,
                         chain.display_content,intent.client_message_id,event.result_json
-                 FROM agent_org_runtime_member_intervention_turns chain
-                 JOIN agent_org_runtime_member_interventions intervention
+                 FROM agent_org_execution_member_intervention_turns chain
+                 JOIN agent_org_execution_member_interventions intervention
                    ON intervention.intervention_receipt_id=chain.intervention_receipt_id
-                 JOIN agent_org_runtime_turn_contexts context
+                 JOIN agent_org_execution_turn_contexts context
                    ON context.session_id=chain.session_id
                   AND context.turn_intent_id=chain.turn_intent_id
                  JOIN session_turn_intents intent
                    ON intent.session_id=chain.session_id
                   AND intent.turn_intent_id=chain.turn_intent_id
-                 JOIN agent_org_member_turn_admissions admission
+                 JOIN agent_org_execution_member_turn_admissions admission
                    ON admission.session_id=chain.session_id
                   AND admission.turn_intent_id=chain.turn_intent_id
                  JOIN events event
                    ON event.id=chain.source_event_id
                   AND event.session_id=chain.session_id
-                 JOIN agent_org_runtime_runs run ON run.id=context.org_run_id
+                 JOIN agent_org_execution_runs run ON run.id=context.org_run_id
                  WHERE chain.status='queued' AND intent.status='queued'
                    AND admission.status='prepared'
                    AND chain.rowid>COALESCE(?1,0)
@@ -866,8 +866,8 @@ impl AgentMemberInterventionStore {
                        AND intent.status='rejected'
                        AND EXISTS (
                            SELECT 1
-                           FROM agent_org_runtime_member_intervention_turns chain
-                           JOIN agent_org_runtime_member_interventions intervention
+                           FROM agent_org_execution_member_intervention_turns chain
+                           JOIN agent_org_execution_member_interventions intervention
                              ON intervention.intervention_receipt_id=chain.intervention_receipt_id
                            WHERE chain.session_id=intent.session_id
                              AND chain.turn_intent_id=intent.turn_intent_id
@@ -896,8 +896,8 @@ impl AgentMemberInterventionStore {
             let turn_intent_id: Option<String> = tx
                 .query_row(
                     "SELECT chain.turn_intent_id
-                     FROM agent_org_runtime_member_intervention_turns chain
-                     JOIN agent_org_runtime_member_interventions intervention
+                     FROM agent_org_execution_member_intervention_turns chain
+                     JOIN agent_org_execution_member_interventions intervention
                        ON intervention.intervention_receipt_id=chain.intervention_receipt_id
                      WHERE chain.session_id=?1 AND chain.status='queued'
                        AND intervention.status IN ('yield_requested','active','return_requested')
@@ -914,7 +914,7 @@ impl AgentMemberInterventionStore {
             let now = chrono::Utc::now().to_rfc3339();
             let changed = tx
                 .execute(
-                    "UPDATE agent_org_runtime_member_intervention_turns
+                    "UPDATE agent_org_execution_member_intervention_turns
                      SET status='cancelled',terminal_at=?3,failure_reason='user_stop'
                      WHERE session_id=?1 AND turn_intent_id=?2 AND status='queued'",
                     params![session_id, &turn_intent_id, &now],
@@ -951,8 +951,8 @@ impl AgentMemberInterventionStore {
             let status: Option<String> = tx
                 .query_row(
                     "SELECT chain.status
-                     FROM agent_org_runtime_member_intervention_turns chain
-                     JOIN agent_org_runtime_member_interventions intervention
+                     FROM agent_org_execution_member_intervention_turns chain
+                     JOIN agent_org_execution_member_interventions intervention
                        ON intervention.intervention_receipt_id=chain.intervention_receipt_id
                      WHERE chain.session_id=?1 AND chain.turn_intent_id=?2
                        AND chain.status IN ('queued','running')
@@ -976,7 +976,7 @@ impl AgentMemberInterventionStore {
             let now = chrono::Utc::now().to_rfc3339();
             let changed = tx
                 .execute(
-                    "UPDATE agent_org_runtime_member_intervention_turns
+                    "UPDATE agent_org_execution_member_intervention_turns
                      SET status='cancelled',terminal_at=?3,failure_reason='user_stop'
                      WHERE session_id=?1 AND turn_intent_id=?2
                        AND status IN ('queued','running')",
@@ -1056,7 +1056,7 @@ impl AgentMemberInterventionStore {
             let active_direct_count: i64 = tx
                 .query_row(
                     "SELECT COUNT(*)
-                     FROM agent_org_runtime_member_intervention_turns
+                     FROM agent_org_execution_member_intervention_turns
                      WHERE intervention_receipt_id=?1 AND status IN ('queued','running')",
                     [receipt_id],
                     |row| row.get(0),
@@ -1077,7 +1077,7 @@ impl AgentMemberInterventionStore {
             let run: Option<(String, i64)> = tx
                 .query_row(
                     "SELECT status,activation_generation
-                     FROM agent_org_runtime_runs WHERE id=?1",
+                     FROM agent_org_execution_runs WHERE id=?1",
                     [&receipt.org_run_id],
                     |row| Ok((row.get(0)?, row.get(1)?)),
                 )
@@ -1090,7 +1090,7 @@ impl AgentMemberInterventionStore {
             })?;
 
             tx.execute(
-                "UPDATE agent_org_runtime_member_interventions
+                "UPDATE agent_org_execution_member_interventions
                  SET status='return_requested',return_request_id=?2,updated_at=?3
                  WHERE intervention_receipt_id=?1
                    AND status IN ('yield_requested','active','return_requested')",
@@ -1114,7 +1114,7 @@ impl AgentMemberInterventionStore {
                             let still_owned_open: bool = tx
                                 .query_row(
                                     "SELECT EXISTS(
-                                         SELECT 1 FROM agent_org_runtime_tasks
+                                         SELECT 1 FROM agent_org_execution_tasks
                                          WHERE org_run_id=?1 AND id=?2 AND owner=?3
                                            AND status IN ('pending','in_progress')
                                      )",
@@ -1155,7 +1155,7 @@ impl AgentMemberInterventionStore {
             let cleared_revision: i64 = tx
                 .query_row(
                     "SELECT COALESCE(MAX(cleared_revision),0)+1
-                     FROM agent_org_runtime_member_interventions WHERE org_run_id=?1",
+                     FROM agent_org_execution_member_interventions WHERE org_run_id=?1",
                     [&receipt.org_run_id],
                     |row| row.get(0),
                 )
@@ -1163,7 +1163,7 @@ impl AgentMemberInterventionStore {
             let now = chrono::Utc::now().to_rfc3339();
             let updated = tx
                 .execute(
-                    "UPDATE agent_org_runtime_member_interventions
+                    "UPDATE agent_org_execution_member_interventions
                      SET status='cleared',return_outcome=?3,
                          continuation_turn_intent_id=?4,cleared_revision=?5,
                          cleared_at=?6,updated_at=?6
@@ -1211,7 +1211,7 @@ impl AgentMemberInterventionStore {
         conn.query_row(
             "SELECT EXISTS(
                  SELECT 1
-                 FROM agent_org_runtime_member_interventions intervention
+                 FROM agent_org_execution_member_interventions intervention
                  JOIN session_turn_intents intent
                    ON intent.session_id=intervention.session_id
                   AND intent.turn_intent_id=intervention.continuation_turn_intent_id
@@ -1270,7 +1270,7 @@ impl AgentMemberInterventionStore {
                      WHERE intent.session_id=?1 AND intent.turn_intent_id=?2
                        AND intent.status='rejected'
                        AND EXISTS (
-                           SELECT 1 FROM agent_org_runtime_member_interventions intervention
+                           SELECT 1 FROM agent_org_execution_member_interventions intervention
                            WHERE intervention.session_id=intent.session_id
                              AND intervention.continuation_turn_intent_id=intent.turn_intent_id
                              AND intervention.status='cleared'
@@ -1386,14 +1386,14 @@ impl AgentMemberInterventionStore {
             let revision: i64 = conn
                 .query_row(
                     "SELECT COALESCE(MAX(cleared_revision),0)+1
-                     FROM agent_org_runtime_member_interventions WHERE org_run_id=?1",
+                     FROM agent_org_execution_member_interventions WHERE org_run_id=?1",
                     [org_run_id],
                     |row| row.get(0),
                 )
                 .map_err(|error| error.to_string())?;
             conn.execute(
                 &format!(
-                    "UPDATE agent_org_runtime_member_interventions
+                    "UPDATE agent_org_execution_member_interventions
                      SET status='cleared',cleared_revision=?3,cleared_at=?4,updated_at=?4
                      WHERE org_run_id=?1 AND member_id=?2
                        AND status IN ({ACTIVE_STATUSES_SQL})"
@@ -1421,7 +1421,7 @@ impl AgentMemberInterventionStore {
             let receipt_id = format!("test_intervention_{}", uuid::Uuid::new_v4());
             let now = chrono::Utc::now().to_rfc3339();
             conn.execute(
-                "INSERT INTO agent_org_runtime_member_interventions (
+                "INSERT INTO agent_org_execution_member_interventions (
                     intervention_receipt_id,org_run_id,member_id,agent_id,session_id,status,
                     source_event_id,entered_at,last_user_activity_at,updated_at
                  ) VALUES (?1,?2,?3,?4,?5,'active',?6,?7,?7,?7)",
@@ -1534,7 +1534,7 @@ fn running_formal_turn(
     let mut statement = conn
         .prepare(
             "SELECT context.task_id,context.turn_intent_id,context.member_dispatch_sequence
-             FROM agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_turn_contexts context
              JOIN session_turn_intents intent
                ON intent.session_id=context.session_id
               AND intent.turn_intent_id=context.turn_intent_id
@@ -1596,7 +1596,7 @@ pub(crate) fn update_chain_status_with_connection(
     let now = chrono::Utc::now().to_rfc3339();
     let changed = conn
         .execute(
-            "UPDATE agent_org_runtime_member_intervention_turns
+            "UPDATE agent_org_execution_member_intervention_turns
              SET status=?4,terminal_at=?3,failure_reason=?5
              WHERE session_id=?1 AND turn_intent_id=?2 AND status IN ('queued','running')",
             params![session_id, turn_intent_id, now, status, failure_reason],
@@ -1618,7 +1618,7 @@ pub(crate) fn update_chain_status_with_connection(
         )
         .map_err(|error| error.to_string())?;
         conn.execute(
-            "UPDATE agent_org_member_turn_admissions
+            "UPDATE agent_org_execution_member_turn_admissions
              SET status='rejected',reason_code=?3,terminal_at=?4,updated_at=?4
              WHERE session_id=?1 AND turn_intent_id=?2 AND status='prepared'",
             params![
@@ -1637,11 +1637,11 @@ pub(crate) fn update_chain_status_with_connection(
             "user_directed_turn_failed"
         };
         conn.execute(
-            "UPDATE agent_org_runtime_member_interventions
+            "UPDATE agent_org_execution_member_interventions
                  SET failure_reason=?3,updated_at=?4
                  WHERE intervention_receipt_id=(
                      SELECT intervention_receipt_id
-                     FROM agent_org_runtime_member_intervention_turns
+                     FROM agent_org_execution_member_intervention_turns
                      WHERE session_id=?1 AND turn_intent_id=?2
                  )",
             params![session_id, turn_intent_id, failure_code, now],
@@ -1658,7 +1658,7 @@ fn prepare_runtime_admission_with_connection(
     let existing: Option<(String, String, String)> = conn
         .query_row(
             "SELECT status,reservation_id,runtime_lease_id
-             FROM agent_org_member_turn_admissions
+             FROM agent_org_execution_member_turn_admissions
              WHERE session_id=?1 AND turn_intent_id=?2",
             params![&params.session_id, &params.turn_intent_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -1669,7 +1669,7 @@ fn prepare_runtime_admission_with_connection(
     match existing {
         None => {
             conn.execute(
-                "INSERT INTO agent_org_member_turn_admissions (
+                "INSERT INTO agent_org_execution_member_turn_admissions (
                     session_id,turn_intent_id,org_run_id,member_id,
                     reservation_id,runtime_lease_id,status,prepared_at,updated_at
                  ) VALUES (?1,?2,?3,?4,?5,?6,'prepared',?7,?7)",
@@ -1691,7 +1691,7 @@ fn prepare_runtime_admission_with_connection(
                 || runtime_lease_id != params.runtime_lease_id
             {
                 conn.execute(
-                    "UPDATE agent_org_member_turn_admissions
+                    "UPDATE agent_org_execution_member_turn_admissions
                      SET reservation_id=?3,runtime_lease_id=?4,updated_at=?5
                      WHERE session_id=?1 AND turn_intent_id=?2 AND status='prepared'",
                     params![
@@ -1720,8 +1720,8 @@ fn notify_run_for_turn(session_id: &str, turn_intent_id: &str) {
     let run_id = get_connection().ok().and_then(|conn| {
         conn.query_row(
             "SELECT intervention.org_run_id
-             FROM agent_org_runtime_member_intervention_turns chain
-             JOIN agent_org_runtime_member_interventions intervention
+             FROM agent_org_execution_member_intervention_turns chain
+             JOIN agent_org_execution_member_interventions intervention
                ON intervention.intervention_receipt_id=chain.intervention_receipt_id
              WHERE chain.session_id=?1 AND chain.turn_intent_id=?2",
             params![session_id, turn_intent_id],

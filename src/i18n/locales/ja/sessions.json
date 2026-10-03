@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "旧バージョンの会話（閲覧のみ）",
+    "savedContent": "保存済みのグループ会話と出力",
+    "unknownMember": "不明なメンバー",
+    "loading": "履歴を読み込み中…",
+    "retry": "再試行",
+    "empty": "保存済みのグループ内容はありません",
+    "nextPage": "次のページ",
+    "firstPage": "最初のページ"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "ユーザーの依頼",

@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "이전 버전 대화, 보기 전용",
+    "savedContent": "저장된 그룹 대화 및 출력",
+    "unknownMember": "알 수 없는 멤버",
+    "loading": "기록 불러오는 중…",
+    "retry": "다시 시도",
+    "empty": "저장된 그룹 내용 없음",
+    "nextPage": "다음 페이지",
+    "firstPage": "첫 페이지"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "사용자 요청",

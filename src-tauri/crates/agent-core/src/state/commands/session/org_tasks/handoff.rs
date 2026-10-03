@@ -96,7 +96,7 @@ pub async fn agent_org_task_handoff_request(
             let tasks = AgentOrgTaskStore::list_with_connection(&tx, &run_id)?;
             let generation: i64 = tx
                 .query_row(
-                    "SELECT activation_generation FROM agent_org_runtime_runs
+                    "SELECT activation_generation FROM agent_org_execution_runs
                      WHERE id=?1 AND status='running'",
                     [&run_id],
                     |row| row.get(0),
@@ -706,8 +706,8 @@ async fn apply_accepted_handoff_resolution(
                         .ok_or_else(|| "task_keep_stopped_no_active_work_episode".to_string())?;
                     let open_task_count: i64 = tx
                         .query_row(
-                            "SELECT COUNT(*) FROM agent_org_runtime_tasks task
-                             JOIN agent_org_runtime_work_episode_tasks episode_task
+                            "SELECT COUNT(*) FROM agent_org_execution_tasks task
+                             JOIN agent_org_execution_work_episode_tasks episode_task
                                ON episode_task.org_run_id=task.org_run_id
                               AND episode_task.task_id=task.id
                              WHERE task.org_run_id=?1 AND episode_task.work_episode_id=?2
@@ -719,8 +719,8 @@ async fn apply_accepted_handoff_resolution(
                     let unresolved_handoff_count: i64 = tx
                         .query_row(
                             "SELECT COUNT(*)
-                             FROM agent_org_runtime_task_execution_handoffs handoff
-                             JOIN agent_org_runtime_work_episode_tasks episode_task
+                             FROM agent_org_execution_task_execution_handoffs handoff
+                             JOIN agent_org_execution_work_episode_tasks episode_task
                                ON episode_task.org_run_id=handoff.org_run_id
                               AND episode_task.task_id=handoff.old_task_id
                              WHERE handoff.org_run_id=?1

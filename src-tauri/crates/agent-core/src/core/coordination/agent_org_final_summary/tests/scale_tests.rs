@@ -21,7 +21,7 @@ fn thousand_task_inbox_and_artifact_rows_do_not_expand_summary_context() {
             "producedAt": &now,
         });
         tx.execute(
-            "INSERT INTO agent_org_runtime_tasks(
+            "INSERT INTO agent_org_execution_tasks(
                 id,org_run_id,activation_generation,subject,description,owner,status,
                 execution_mode,blocked_by_json,output_json,created_by_participant_id,
                 source_turn_intent_id,created_at,updated_at
@@ -38,7 +38,7 @@ fn thousand_task_inbox_and_artifact_rows_do_not_expand_summary_context() {
         )
         .unwrap();
         tx.execute(
-            "INSERT INTO agent_org_runtime_inbox(
+            "INSERT INTO agent_org_execution_inbox(
                 recipient_agent_id,recipient_member_id,sender_agent_id,sender_member_id,
                 org_run_id,payload_kind,payload_json,created_at,display_text
              ) VALUES ('coordinator-agent','coordinator','system','worker',?1,

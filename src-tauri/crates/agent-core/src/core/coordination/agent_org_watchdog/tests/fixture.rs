@@ -102,7 +102,7 @@ impl WatchdogFixture {
         let conn = get_connection().expect("watchdog fixture database");
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations(
+            "INSERT INTO agent_org_execution_member_materializations(
                  org_run_id,member_id,agent_id,generation,session_id,
                  authority_class,status,created_at,updated_at
              ) VALUES (?1,'worker','worker-agent',1,'watchdog-worker-session',
@@ -130,7 +130,7 @@ impl WatchdogFixture {
     pub(super) fn set_run_status(&self, status: AgentOrgRunStatus) {
         let conn = get_connection().expect("watchdog fixture database");
         conn.execute(
-            "UPDATE agent_org_runtime_runs
+            "UPDATE agent_org_execution_runs
              SET status=?2,
                  archived_at=CASE WHEN ?2='archived' THEN ?3 ELSE NULL END,
                  archive_receipt_id=CASE WHEN ?2='archived' THEN 'watchdog-archive-receipt' ELSE NULL END

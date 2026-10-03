@@ -98,7 +98,7 @@ async fn released_pause_records_cancelled_execution_without_finishing_task() {
         TaskStatus::InProgress
     );
     let idle_notices: i64 = conn.query_row(
-        "SELECT count(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1 AND payload_kind='member_idle'",
+        "SELECT count(*) FROM agent_org_execution_inbox WHERE org_run_id=?1 AND payload_kind='member_idle'",
         [&fixture.run_id], |r| r.get(0),
     ).unwrap();
     assert_eq!(
@@ -139,14 +139,14 @@ fn pause_terminal_authority_requires_exact_released_runtime() {
         match invalid {
             "unbound" => {
                 conn.execute(
-                    "UPDATE agent_org_runtime_pause_handoffs SET runtime_lease_id=NULL,dialog_turn_generation=NULL",
+                    "UPDATE agent_org_execution_pause_handoffs SET runtime_lease_id=NULL,dialog_turn_generation=NULL",
                     [],
                 )
                 .unwrap();
             }
             "draining" => {
                 conn.execute(
-                    "UPDATE agent_org_runtime_pause_handoffs SET drain_status='waiting'",
+                    "UPDATE agent_org_execution_pause_handoffs SET drain_status='waiting'",
                     [],
                 )
                 .unwrap();
@@ -223,10 +223,10 @@ fn pause_continuation_rejects_unclaimed_draining_and_obsolete_receipts() {
                 .unwrap();
         }
         if invalid == "draining" {
-            conn.execute("UPDATE agent_org_runtime_pause_handoffs SET drain_status='waiting' WHERE episode_id=?1", [&dispatch.episode_id]).unwrap();
+            conn.execute("UPDATE agent_org_execution_pause_handoffs SET drain_status='waiting' WHERE episode_id=?1", [&dispatch.episode_id]).unwrap();
         }
         if invalid == "obsolete" {
-            conn.execute("UPDATE agent_org_runtime_runs SET activation_generation=activation_generation+1 WHERE id=?1", [&fixture.run_id]).unwrap();
+            conn.execute("UPDATE agent_org_execution_runs SET activation_generation=activation_generation+1 WHERE id=?1", [&fixture.run_id]).unwrap();
         }
         let tx = conn.transaction().unwrap();
         assert!(

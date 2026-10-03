@@ -97,7 +97,7 @@ fn blocked(
         "completion_blocked:{:x}",
         sha2::Sha256::digest(facts.to_string())
     );
-    let repeated:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_tool_call_receipts
+    let repeated:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_tool_call_receipts
         WHERE org_run_id=?1 AND session_id=?2 AND turn_intent_id=?3 AND tool_name='org_run_complete'
           AND CASE WHEN json_valid(result_text) THEN json_extract(result_text,'$.facts_fingerprint')=?4 ELSE 0 END)",
         params![run_id,candidate.coordinator_session_id,candidate.coordinator_turn_intent_id,fingerprint],|r|r.get(0)).map_err(|e|e.to_string())?;
@@ -111,7 +111,7 @@ fn blocked(
 
 fn clear(conn: &Connection, run_id: &str) -> Result<(), String> {
     conn.execute(
-        "UPDATE agent_org_runtime_run_progress SET completion_candidate_json=NULL,
+        "UPDATE agent_org_execution_run_progress SET completion_candidate_json=NULL,
         completion_requested=0,completion_requested_at=NULL,completion_requested_work_revision=NULL,
         completion_summary=NULL WHERE org_run_id=?1 AND completion_candidate_json IS NOT NULL",
         [run_id],
@@ -195,7 +195,7 @@ pub(crate) fn submit_in_tx(
         request_input_in_tx(conn, run_id, &notices)?;
         return Ok(CompletionSubmission::RequiresInput { guidance:"New results or messages require review. End this Turn; the pending input will be delivered once.".into() });
     }
-    let mut statement=conn.prepare("SELECT context.session_id,context.turn_intent_id FROM agent_org_runtime_turn_contexts context
+    let mut statement=conn.prepare("SELECT context.session_id,context.turn_intent_id FROM agent_org_execution_turn_contexts context
         JOIN session_turn_intents intent USING(session_id,turn_intent_id)
         WHERE context.org_run_id=?1 AND context.turn_kind='task_execution' AND intent.status IN ('optimistic','queued','running')").map_err(|e|e.to_string())?;
     let waiting_turns = statement
@@ -228,7 +228,7 @@ pub(crate) fn submit_in_tx(
         .is_some_and(|p| p.turn_intent_id == pending.turn_intent_id && p.work_revision == revision)
     {
         conn.execute(
-            "UPDATE agent_org_runtime_run_progress SET completion_candidate_json=?2,
+            "UPDATE agent_org_execution_run_progress SET completion_candidate_json=?2,
             completion_requested=1,completion_requested_at=?3,completion_requested_work_revision=?4,
             completion_summary=?5,updated_at=?3 WHERE org_run_id=?1",
             params![
@@ -242,7 +242,7 @@ pub(crate) fn submit_in_tx(
         .map_err(|e| e.to_string())?;
     }
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts SET terminal_reason='waiting_for_org_event'
+        "UPDATE agent_org_execution_turn_contexts SET terminal_reason='waiting_for_org_event'
         WHERE session_id=?1 AND turn_intent_id=?2",
         params![pending.session_id, pending.turn_intent_id],
     )
@@ -254,7 +254,7 @@ pub(crate) fn submit_in_tx(
 }
 
 fn load(conn: &Connection, run_id: &str) -> Result<Option<PendingCompletion>, String> {
-    let raw:Option<String>=conn.query_row("SELECT completion_candidate_json FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+    let raw:Option<String>=conn.query_row("SELECT completion_candidate_json FROM agent_org_execution_run_progress WHERE org_run_id=?1",
         [run_id],|r|r.get(0)).optional().map_err(|e|e.to_string())?.flatten();
     raw.map(|raw| serde_json::from_str(&raw).map_err(|e| e.to_string()))
         .transpose()
@@ -269,9 +269,9 @@ pub(crate) fn recheck_pending_in_tx(conn: &Connection, run_id: &str) -> Result<b
     };
     let valid: bool = conn
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs run
-        JOIN agent_org_runtime_run_progress progress ON progress.org_run_id=run.id
-        JOIN agent_org_runtime_work_episodes episode ON episode.org_run_id=run.id
+            "SELECT EXISTS(SELECT 1 FROM agent_org_execution_runs run
+        JOIN agent_org_execution_run_progress progress ON progress.org_run_id=run.id
+        JOIN agent_org_execution_work_episodes episode ON episode.org_run_id=run.id
         WHERE run.id=?1 AND run.status='running' AND run.activation_generation=?2
           AND progress.work_revision=?3 AND episode.id=?4 AND episode.status='active')",
             params![
@@ -295,8 +295,8 @@ pub(crate) fn recheck_pending_in_tx(conn: &Connection, run_id: &str) -> Result<b
         clear(conn, run_id)?;
         return Ok(false);
     }
-    let newer_root:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_turn_contexts newer
-        JOIN agent_org_runtime_turn_contexts original ON original.session_id=?2 AND original.turn_intent_id=?3
+    let newer_root:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_turn_contexts newer
+        JOIN agent_org_execution_turn_contexts original ON original.session_id=?2 AND original.turn_intent_id=?3
         JOIN session_turn_intents intent ON intent.session_id=newer.session_id AND intent.turn_intent_id=newer.turn_intent_id
         WHERE newer.org_run_id=?1 AND newer.source_kind IN ('root_turn','group_root')
           AND newer.context_id>original.context_id AND intent.source<>'resume' AND intent.status NOT IN ('cancelled','rejected','stale','coalesced'))",
@@ -323,7 +323,7 @@ pub(crate) fn recheck_pending_in_tx(conn: &Connection, run_id: &str) -> Result<b
         }
     }
     for expected in &pending.output_refs {
-        let raw:Option<String>=conn.query_row("SELECT output_json FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2 AND status='completed'",params![run_id,expected.task_id],|r|r.get(0)).optional().map_err(|e|e.to_string())?.flatten();
+        let raw:Option<String>=conn.query_row("SELECT output_json FROM agent_org_execution_tasks WHERE org_run_id=?1 AND id=?2 AND status='completed'",params![run_id,expected.task_id],|r|r.get(0)).optional().map_err(|e|e.to_string())?.flatten();
         let output = raw
             .map(|raw| serde_json::from_str::<super::super::agent_org_tasks::TaskOutput>(&raw))
             .transpose()
@@ -364,7 +364,7 @@ pub(crate) fn recheck_pending_in_tx(conn: &Connection, run_id: &str) -> Result<b
         &notices,
     )?;
     certify_in_tx(conn, run_id, pending.candidate())?;
-    conn.execute("UPDATE agent_org_runtime_run_progress SET completion_candidate_json=NULL WHERE org_run_id=?1",[run_id]).map_err(|e|e.to_string())?;
+    conn.execute("UPDATE agent_org_execution_run_progress SET completion_candidate_json=NULL WHERE org_run_id=?1",[run_id]).map_err(|e|e.to_string())?;
     Ok(false)
 }
 
@@ -377,8 +377,8 @@ fn current_authority_certificate(
     };
     let valid: bool = conn
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs run
-        JOIN agent_org_runtime_run_progress progress ON progress.org_run_id=run.id
+            "SELECT EXISTS(SELECT 1 FROM agent_org_execution_runs run
+        JOIN agent_org_execution_run_progress progress ON progress.org_run_id=run.id
         JOIN session_turn_intents intent ON intent.session_id=?4 AND intent.turn_intent_id=?5
         WHERE run.id=?1 AND run.status IN ('running','idle') AND run.activation_generation=?2
           AND progress.work_revision=?3 AND intent.status='completed')",
@@ -428,10 +428,10 @@ pub(crate) fn completion_handles_wake(run_id: &str) -> Result<bool, String> {
         let tx = database::db::begin_immediate(&conn).map_err(|e| e.to_string())?;
         let waiting = recheck_pending_in_tx(&tx, run_id)?;
         let certified = current_authority_certificate(&tx, run_id)?.is_some();
-        let pending:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_formal_trigger_receipts WHERE org_run_id=?1 AND status IN ('pending','materialized'))",[run_id],|r|r.get(0)).map_err(|e|e.to_string())?;
-        let unread: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_inbox inbox
+        let pending:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_formal_trigger_receipts WHERE org_run_id=?1 AND status IN ('pending','materialized'))",[run_id],|r|r.get(0)).map_err(|e|e.to_string())?;
+        let unread: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_inbox inbox
             WHERE inbox.org_run_id=?1 AND inbox.recipient_member_id='coordinator' AND inbox.read_at IS NULL
-              AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id))",
+              AND NOT EXISTS(SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id))",
             [run_id], |r|r.get(0)).map_err(|e|e.to_string())?;
         tx.commit().map_err(|e| e.to_string())?;
         Ok(waiting || (certified && !pending && !unread))
@@ -464,9 +464,9 @@ pub(crate) fn recheck_after_turn(
             )?;
         recheck_pending_in_tx(&tx, &context.org_run_id)?;
         let ids = {
-            let mut stmt=tx.prepare("SELECT receipt_id FROM agent_org_runtime_formal_trigger_receipts
+            let mut stmt=tx.prepare("SELECT receipt_id FROM agent_org_execution_formal_trigger_receipts
                 WHERE org_run_id=?1 AND status='pending' AND doorbell_status='missing'
-                  AND (trigger_kind='final_summary' OR EXISTS(SELECT 1 FROM agent_org_runtime_inbox inbox WHERE inbox.id=agent_org_runtime_formal_trigger_receipts.inbox_id AND inbox.recipient_member_id='coordinator'))
+                  AND (trigger_kind='final_summary' OR EXISTS(SELECT 1 FROM agent_org_execution_inbox inbox WHERE inbox.id=agent_org_execution_formal_trigger_receipts.inbox_id AND inbox.recipient_member_id='coordinator'))
                 ORDER BY created_at,receipt_id LIMIT 100").map_err(|e|e.to_string())?;
             let ids = stmt
                 .query_map([&context.org_run_id], |r| r.get(0))
@@ -483,7 +483,7 @@ pub(crate) fn recheck_after_turn(
 /// Startup already reconciled interrupted Turns and paused absent runtimes.
 /// Revisit only saved candidates; stale authority must not survive recovery.
 pub(crate) fn reconcile_after_restart(conn: &Connection) -> Result<usize, String> {
-    let mut stmt=conn.prepare("SELECT org_run_id FROM agent_org_runtime_run_progress WHERE completion_candidate_json IS NOT NULL").map_err(|e|e.to_string())?;
+    let mut stmt=conn.prepare("SELECT org_run_id FROM agent_org_execution_run_progress WHERE completion_candidate_json IS NOT NULL").map_err(|e|e.to_string())?;
     let run_ids = stmt
         .query_map([], |r| r.get::<_, String>(0))
         .map_err(|e| e.to_string())?
@@ -508,12 +508,12 @@ pub(crate) fn settle_completion_only_wake(
         let conn = database::db::get_connection().map_err(|e| e.to_string())?;
         let tx = database::db::begin_immediate(&conn).map_err(|e| e.to_string())?;
         let identity:Option<(String,String)>=tx.query_row("SELECT context.org_run_id,intent.status
-            FROM agent_org_runtime_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id)
-            JOIN agent_org_runtime_runs run ON run.id=context.org_run_id
+            FROM agent_org_execution_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id)
+            JOIN agent_org_execution_runs run ON run.id=context.org_run_id
             WHERE context.session_id=?1 AND context.turn_intent_id=?2 AND context.participant_id='coordinator'
               AND context.source_kind='root_turn' AND intent.source='resume' AND intent.status IN ('queued','running')
               AND context.activation_generation=run.activation_generation AND run.status='running'
-              AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_final_summary_receipts summary
+              AND NOT EXISTS(SELECT 1 FROM agent_org_execution_final_summary_receipts summary
                 WHERE summary.coordinator_session_id=?1 AND summary.turn_intent_id=?2)",
             params![session_id,turn_intent_id],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(|e|e.to_string())?;
         let Some((run_id, _status)) = identity else {
@@ -539,8 +539,8 @@ pub(crate) fn settle_completion_only_wake(
         )?;
         let waiting = recheck_pending_in_tx(&tx, &run_id)?;
         let certified = current_authority_certificate(&tx, &run_id)?.is_some();
-        let needs_input:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_inbox inbox WHERE inbox.org_run_id=?1 AND inbox.recipient_member_id='coordinator' AND inbox.read_at IS NULL
-            AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id))",[&run_id],|r|r.get(0)).map_err(|e|e.to_string())?;
+        let needs_input:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_inbox inbox WHERE inbox.org_run_id=?1 AND inbox.recipient_member_id='coordinator' AND inbox.read_at IS NULL
+            AND NOT EXISTS(SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id))",[&run_id],|r|r.get(0)).map_err(|e|e.to_string())?;
         let handled = waiting || (certified && !needs_input);
         if !handled {
             tx.execute_batch("ROLLBACK TO completion_wake")
@@ -565,8 +565,8 @@ pub(crate) fn recheck_after_wake(run_id: &str) -> Result<Vec<String>, String> {
         }
         recheck_pending_in_tx(&tx, run_id)?;
         let ids = if let Some(certificate) = current_authority_certificate(&tx, run_id)? {
-            let mut stmt=tx.prepare("SELECT trigger.receipt_id FROM agent_org_runtime_formal_trigger_receipts trigger
-                JOIN agent_org_runtime_final_summary_receipts summary ON trigger.trigger_id=summary.receipt_id
+            let mut stmt=tx.prepare("SELECT trigger.receipt_id FROM agent_org_execution_formal_trigger_receipts trigger
+                JOIN agent_org_execution_final_summary_receipts summary ON trigger.trigger_id=summary.receipt_id
                 WHERE trigger.org_run_id=?1 AND trigger.trigger_kind='final_summary' AND trigger.status='pending'
                   AND trigger.doorbell_status='missing' AND summary.certificate_id=?2 LIMIT 1").map_err(|e|e.to_string())?;
             let ids = stmt

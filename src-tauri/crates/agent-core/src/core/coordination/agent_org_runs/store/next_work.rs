@@ -13,9 +13,9 @@ pub(super) fn accepted_user_turns(
 ) -> Result<Vec<String>, String> {
     let mut statement = conn
         .prepare(
-            "SELECT context.turn_intent_id FROM agent_org_runtime_turn_contexts context
+            "SELECT context.turn_intent_id FROM agent_org_execution_turn_contexts context
          JOIN session_turn_intents intent USING(session_id,turn_intent_id)
-         JOIN agent_org_runtime_runs run ON run.id=context.org_run_id
+         JOIN agent_org_execution_runs run ON run.id=context.org_run_id
          WHERE run.id=?1 AND run.root_session_id=?2 AND context.session_id=?2
            AND context.activation_generation=?4 AND intent.org_run_id=?1
            AND context.participant_id='coordinator' AND context.turn_kind='coordinator'

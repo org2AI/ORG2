@@ -136,7 +136,7 @@ pub struct HandoffResolutionAcceptance {
 
 pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_task_execution_handoffs (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_task_execution_handoffs (
             id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             activation_generation INTEGER NOT NULL CHECK(activation_generation >= 1),
@@ -167,9 +167,9 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             UNIQUE(org_run_id, activation_generation, resolution_request_id),
             UNIQUE(org_run_id, activation_generation, old_task_id, old_turn_intent_id),
             FOREIGN KEY (org_run_id, old_task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id, id),
+                REFERENCES agent_org_execution_tasks(org_run_id, id),
             FOREIGN KEY (org_run_id, replacement_task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id, id),
+                REFERENCES agent_org_execution_tasks(org_run_id, id),
             CHECK((old_session_id IS NULL) = (old_turn_intent_id IS NULL)),
             CHECK((runtime_lease_id IS NULL) = (dialog_turn_generation IS NULL)),
             CHECK(runtime_lease_id IS NULL OR old_session_id IS NOT NULL),
@@ -187,10 +187,10 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 resolved_at IS NOT NULL AND resolution=requested_resolution
             ))
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_task_execution_handoffs_run
-            ON agent_org_runtime_task_execution_handoffs(org_run_id, activation_generation, state, requested_at, id);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_runtime_task_execution_handoffs_replacement
-            ON agent_org_runtime_task_execution_handoffs(org_run_id, replacement_task_id)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_task_execution_handoffs_run
+            ON agent_org_execution_task_execution_handoffs(org_run_id, activation_generation, state, requested_at, id);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_task_execution_handoffs_replacement
+            ON agent_org_execution_task_execution_handoffs(org_run_id, replacement_task_id)
             WHERE replacement_task_id IS NOT NULL;",
     )
 }
@@ -211,7 +211,7 @@ pub fn running_target(
         .prepare(
             "SELECT context.session_id,context.turn_intent_id,
                     context.owner_member_id,context.activation_generation
-             FROM agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_turn_contexts context
              JOIN session_turn_intents base
                ON base.session_id=context.session_id
               AND base.turn_intent_id=context.turn_intent_id
@@ -254,7 +254,7 @@ pub fn terminal_task_is_quiesced_with_connection(
     let task_state = conn
         .query_row(
             "SELECT status,external_effect_unknown
-             FROM agent_org_runtime_tasks
+             FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND id=?2",
             params![org_run_id, task_id],
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)? != 0)),
@@ -295,7 +295,7 @@ pub fn create_in_tx(
         .ok_or_else(|| "task_execution_handoff_requires_old_owner".to_string())?;
     let generation: i64 = conn
         .query_row(
-            "SELECT activation_generation FROM agent_org_runtime_runs
+            "SELECT activation_generation FROM agent_org_execution_runs
              WHERE id=?1 AND status='running'",
             [&request.old_task.org_run_id],
             |row| row.get(0),
@@ -346,7 +346,7 @@ pub fn create_in_tx(
         TaskExecutionHandoffState::Unknown
     };
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_execution_handoffs (
+        "INSERT INTO agent_org_execution_task_execution_handoffs (
             id,org_run_id,activation_generation,request_id,request_digest,
             old_task_id,old_owner_member_id,old_session_id,old_turn_intent_id,
             runtime_lease_id,dialog_turn_generation,replacement_task_id,state,
@@ -400,8 +400,8 @@ pub fn load_current_by_request(
     conn.query_row(
         &format!(
             "SELECT {handoff_columns}
-             FROM agent_org_runtime_task_execution_handoffs handoff
-             JOIN agent_org_runtime_runs run ON run.id=handoff.org_run_id
+             FROM agent_org_execution_task_execution_handoffs handoff
+             JOIN agent_org_execution_runs run ON run.id=handoff.org_run_id
              WHERE handoff.org_run_id=?1 AND handoff.request_id=?2
                AND handoff.activation_generation=run.activation_generation"
         ),
@@ -421,7 +421,7 @@ pub fn load_current_for_task_with_connection(
     conn.query_row(
         &format!(
             "SELECT {HANDOFF_COLUMNS}
-             FROM agent_org_runtime_task_execution_handoffs
+             FROM agent_org_execution_task_execution_handoffs
              WHERE org_run_id=?1 AND activation_generation=?2 AND old_task_id=?3
              ORDER BY requested_at DESC,id DESC LIMIT 1"
         ),
@@ -440,7 +440,7 @@ pub fn list_current_with_connection(
     let mut statement = conn
         .prepare(&format!(
             "SELECT {HANDOFF_COLUMNS}
-             FROM agent_org_runtime_task_execution_handoffs
+             FROM agent_org_execution_task_execution_handoffs
              WHERE org_run_id=?1 AND activation_generation=?2
              ORDER BY requested_at ASC,id ASC"
         ))
@@ -465,8 +465,8 @@ pub(crate) fn blocked_replacement_task_ids_with_connection(
     let mut statement = conn
         .prepare(
             "SELECT handoff.replacement_task_id
-             FROM agent_org_runtime_task_execution_handoffs handoff
-             JOIN agent_org_runtime_runs run ON run.id=handoff.org_run_id
+             FROM agent_org_execution_task_execution_handoffs handoff
+             JOIN agent_org_execution_runs run ON run.id=handoff.org_run_id
              WHERE handoff.org_run_id=?1
                AND handoff.activation_generation=run.activation_generation
                AND handoff.replacement_task_id IS NOT NULL
@@ -499,7 +499,7 @@ pub(crate) fn reconcile_after_restart(conn: &Connection) -> Result<usize, String
     let mut statement = conn
         .prepare(&format!(
             "SELECT {HANDOFF_COLUMNS}
-             FROM agent_org_runtime_task_execution_handoffs
+             FROM agent_org_execution_task_execution_handoffs
              WHERE resolution IS NULL AND state IN ('requested','yielding')
              ORDER BY requested_at ASC,id ASC"
         ))
@@ -564,7 +564,7 @@ pub(crate) fn reconcile_after_restart(conn: &Connection) -> Result<usize, String
         let released = persisted_terminal && owned_jobs_terminal && local_effect_count == 0;
         changed += tx
             .execute(
-                "UPDATE agent_org_runtime_task_execution_handoffs
+                "UPDATE agent_org_execution_task_execution_handoffs
                  SET state=?2,local_effect_count=?3,
                      released_at=CASE WHEN ?2='released' THEN COALESCE(released_at,?4)
                                       ELSE released_at END,
@@ -591,7 +591,7 @@ pub fn load_with_connection(
     conn.query_row(
         &format!(
             "SELECT {HANDOFF_COLUMNS}
-             FROM agent_org_runtime_task_execution_handoffs WHERE id=?1"
+             FROM agent_org_execution_task_execution_handoffs WHERE id=?1"
         ),
         [receipt_id],
         decode_receipt,
@@ -609,7 +609,7 @@ pub(crate) fn load_by_request_with_connection(
     conn.query_row(
         &format!(
             "SELECT {HANDOFF_COLUMNS}
-             FROM agent_org_runtime_task_execution_handoffs
+             FROM agent_org_execution_task_execution_handoffs
              WHERE org_run_id=?1 AND activation_generation=?2 AND request_id=?3"
         ),
         params![org_run_id, generation, request_id],
@@ -648,7 +648,7 @@ pub(crate) fn mark_released_in_tx(
     let now = chrono::Utc::now().to_rfc3339();
     let changed = conn
         .execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs
+            "UPDATE agent_org_execution_task_execution_handoffs
              SET state='released',local_effect_count=?2,released_at=?3,updated_at=?3
              WHERE id=?1 AND state='yielding'",
             params![receipt_id, local_effect_count as i64, &now],
@@ -674,7 +674,7 @@ pub fn mark_slo_missed(receipt_id: &str) -> Result<TaskExecutionHandoffReceipt, 
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs
+            "UPDATE agent_org_execution_task_execution_handoffs
              SET slo_missed=1,updated_at=?2
              WHERE id=?1 AND state='yielding'",
             params![receipt_id, &now],
@@ -704,7 +704,7 @@ pub fn mark_unknown(
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs
+            "UPDATE agent_org_execution_task_execution_handoffs
              SET state='unknown',local_effect_count=?2,updated_at=?3
              WHERE id=?1 AND state IN ('requested','yielding','timeout')",
             params![receipt_id, local_effect_count as i64, &now],
@@ -725,7 +725,7 @@ pub fn mark_drive_failed(
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs
+            "UPDATE agent_org_execution_task_execution_handoffs
              SET state='failed',slo_missed=1,local_effect_count=?2,updated_at=?3
              WHERE id=?1 AND resolution IS NULL AND requested_resolution IS NULL
                AND state IN ('requested','yielding')",
@@ -813,7 +813,7 @@ pub(crate) fn request_resolution_with_connection(
         .checked_add(1)
         .ok_or_else(|| "task_execution_handoff_resolution_attempt_overflow".to_string())?;
     conn.execute(
-        "UPDATE agent_org_runtime_task_execution_handoffs
+        "UPDATE agent_org_execution_task_execution_handoffs
          SET resolution_request_id=?2,resolution_session_id=?3,
              requested_resolution=?4,resolution_attempt=?5,
              resolution_requested_at=?6,
@@ -846,7 +846,7 @@ pub fn list_pending_resolutions(limit: usize) -> Result<Vec<TaskExecutionHandoff
     let mut statement = conn
         .prepare(&format!(
             "SELECT {HANDOFF_COLUMNS}
-             FROM agent_org_runtime_task_execution_handoffs
+             FROM agent_org_execution_task_execution_handoffs
              WHERE requested_resolution IS NOT NULL AND resolution IS NULL
              ORDER BY resolution_requested_at ASC,id ASC LIMIT ?1"
         ))
@@ -868,7 +868,7 @@ pub fn mark_resolution_failed(
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs
+            "UPDATE agent_org_execution_task_execution_handoffs
              SET state='failed',slo_missed=1,local_effect_count=?3,updated_at=?4
              WHERE id=?1 AND resolution_attempt=?2
                AND requested_resolution IS NOT NULL AND resolution IS NULL",
@@ -958,7 +958,7 @@ pub(crate) fn resolve_in_tx(
         current.state
     };
     conn.execute(
-        "UPDATE agent_org_runtime_task_execution_handoffs
+        "UPDATE agent_org_execution_task_execution_handoffs
          SET resolution=?2,resolved_at=?3,state=?4,
              released_at=CASE WHEN ?5=1 THEN COALESCE(released_at,?3) ELSE released_at END,
              local_effect_count=CASE WHEN ?5=1 THEN 0 ELSE local_effect_count END,
@@ -990,7 +990,7 @@ fn transition(
         let now = chrono::Utc::now().to_rfc3339();
         let changed = conn
             .execute(
-                "UPDATE agent_org_runtime_task_execution_handoffs
+                "UPDATE agent_org_execution_task_execution_handoffs
                  SET state=?3,slo_missed=MAX(slo_missed,?4),local_effect_count=?5,
                      released_at=CASE WHEN ?3='released' THEN ?6 ELSE released_at END,
                      updated_at=?6
@@ -1091,10 +1091,10 @@ mod tests {
     fn fixture(with_running_turn: bool) -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
-            "CREATE TABLE agent_org_runtime_runs(
+            "CREATE TABLE agent_org_execution_runs(
                  id TEXT PRIMARY KEY,status TEXT,activation_generation INTEGER
              );
-             CREATE TABLE agent_org_runtime_tasks(
+             CREATE TABLE agent_org_execution_tasks(
                  org_run_id TEXT,id TEXT,status TEXT NOT NULL DEFAULT 'in_progress',
                  external_effect_unknown INTEGER NOT NULL DEFAULT 0,
                  PRIMARY KEY(org_run_id,id)
@@ -1103,15 +1103,15 @@ mod tests {
                  session_id TEXT,turn_intent_id TEXT,org_run_id TEXT,status TEXT,
                  PRIMARY KEY(session_id,turn_intent_id)
              );
-             CREATE TABLE agent_org_runtime_turn_contexts(
+             CREATE TABLE agent_org_execution_turn_contexts(
                  context_id INTEGER PRIMARY KEY AUTOINCREMENT,
                  session_id TEXT,turn_intent_id TEXT,org_run_id TEXT,
                  task_id TEXT,turn_kind TEXT,owner_member_id TEXT,
                  activation_generation INTEGER
              );
-             INSERT INTO agent_org_runtime_runs VALUES ('run','running',1);
-             INSERT INTO agent_org_runtime_tasks(org_run_id,id) VALUES ('run','old');
-             INSERT INTO agent_org_runtime_tasks(org_run_id,id,status)
+             INSERT INTO agent_org_execution_runs VALUES ('run','running',1);
+             INSERT INTO agent_org_execution_tasks(org_run_id,id) VALUES ('run','old');
+             INSERT INTO agent_org_execution_tasks(org_run_id,id,status)
                  VALUES ('run','replacement','pending');",
         )
         .unwrap();
@@ -1119,7 +1119,7 @@ mod tests {
             conn.execute_batch(
                 "INSERT INTO session_turn_intents
                      VALUES ('session','turn','run','running');
-                 INSERT INTO agent_org_runtime_turn_contexts(
+                 INSERT INTO agent_org_execution_turn_contexts(
                      session_id,turn_intent_id,org_run_id,task_id,turn_kind,
                      owner_member_id,activation_generation
                  ) VALUES ('session','turn','run','old','task_execution','member',1);",
@@ -1225,7 +1225,7 @@ mod tests {
         assert_eq!(receipt.state, TaskExecutionHandoffState::Requested);
 
         conn.execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs SET state='yielding' WHERE id=?1",
+            "UPDATE agent_org_execution_task_execution_handoffs SET state='yielding' WHERE id=?1",
             [&receipt.id],
         )
         .unwrap();
@@ -1238,14 +1238,14 @@ mod tests {
     fn terminal_task_quiescence_requires_no_running_turn_or_external_uncertainty() {
         let conn = fixture(false);
         conn.execute(
-            "UPDATE agent_org_runtime_tasks SET status='cancelled' WHERE id='old'",
+            "UPDATE agent_org_execution_tasks SET status='cancelled' WHERE id='old'",
             [],
         )
         .unwrap();
         assert!(terminal_task_is_quiesced_with_connection(&conn, "run", "old").unwrap());
 
         conn.execute(
-            "UPDATE agent_org_runtime_tasks SET external_effect_unknown=1 WHERE id='old'",
+            "UPDATE agent_org_execution_tasks SET external_effect_unknown=1 WHERE id='old'",
             [],
         )
         .unwrap();
@@ -1254,7 +1254,7 @@ mod tests {
         let running = fixture(true);
         running
             .execute(
-                "UPDATE agent_org_runtime_tasks SET status='cancelled' WHERE id='old'",
+                "UPDATE agent_org_execution_tasks SET status='cancelled' WHERE id='old'",
                 [],
             )
             .unwrap();
@@ -1399,7 +1399,7 @@ mod tests {
         )
         .unwrap();
         conn.execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs SET state='failed' WHERE id=?1",
+            "UPDATE agent_org_execution_task_execution_handoffs SET state='failed' WHERE id=?1",
             [&receipt.id],
         )
         .unwrap();
@@ -1464,7 +1464,7 @@ mod tests {
         )
         .unwrap();
         conn.execute(
-            "UPDATE agent_org_runtime_task_execution_handoffs SET state='failed' WHERE id=?1",
+            "UPDATE agent_org_execution_task_execution_handoffs SET state='failed' WHERE id=?1",
             [&receipt.id],
         )
         .unwrap();
@@ -1518,7 +1518,7 @@ mod tests {
         );
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_task_execution_handoffs",
+                "SELECT COUNT(*) FROM agent_org_execution_task_execution_handoffs",
                 [],
                 |row| row.get(0),
             )

@@ -52,12 +52,12 @@ pub(crate) fn preflight_coordinator_task_message_in_tx(
         .query_row(
             "SELECT EXISTS(
                  SELECT 1
-                 FROM agent_org_runtime_tasks task
-                 JOIN agent_org_runtime_runs run
+                 FROM agent_org_execution_tasks task
+                 JOIN agent_org_execution_runs run
                    ON run.id=task.org_run_id
                   AND run.status='running'
                   AND run.activation_generation=task.activation_generation
-                 JOIN agent_org_runtime_turn_contexts source_context
+                 JOIN agent_org_execution_turn_contexts source_context
                    ON source_context.org_run_id=task.org_run_id
                   AND source_context.turn_intent_id=?4
                   AND source_context.participant_id='coordinator'
@@ -74,7 +74,7 @@ pub(crate) fn preflight_coordinator_task_message_in_tx(
                            CASE WHEN json_valid(task.blocked_by_json)
                                 THEN task.blocked_by_json ELSE '[]' END
                        ) edge
-                       LEFT JOIN agent_org_runtime_tasks dependency
+                       LEFT JOIN agent_org_execution_tasks dependency
                          ON dependency.org_run_id=task.org_run_id
                         AND dependency.id=CAST(edge.value AS TEXT)
                        WHERE edge.type<>'text'
@@ -107,7 +107,7 @@ pub(crate) fn preflight_coordinator_task_message_in_tx(
 
 pub(crate) fn create_task_message_binding_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_inbox_task_bindings (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_inbox_task_bindings (
             inbox_id INTEGER PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             task_id TEXT NOT NULL,
@@ -116,12 +116,12 @@ pub(crate) fn create_task_message_binding_schema(conn: &Connection) -> rusqlite:
             source_turn_intent_id TEXT NOT NULL,
             created_at TEXT NOT NULL,
             FOREIGN KEY(inbox_id)
-                REFERENCES agent_org_runtime_inbox(id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_inbox(id) ON DELETE CASCADE,
             FOREIGN KEY(org_run_id,task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id,id) ON DELETE CASCADE
+                REFERENCES agent_org_execution_tasks(org_run_id,id) ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_inbox_task_bindings_wake
-            ON agent_org_runtime_inbox_task_bindings(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_inbox_task_bindings_wake
+            ON agent_org_execution_inbox_task_bindings(
                 org_run_id,recipient_member_id,task_id,inbox_id
             );",
     )
@@ -143,23 +143,23 @@ impl AgentInboxStore {
         let now = chrono::Utc::now().to_rfc3339();
         let inserted = conn
             .execute(
-                "INSERT INTO agent_org_runtime_inbox_task_bindings (
+                "INSERT INTO agent_org_execution_inbox_task_bindings (
                      inbox_id,org_run_id,task_id,recipient_member_id,binding_kind,
                      source_turn_intent_id,created_at
                  )
                  SELECT inbox.id,inbox.org_run_id,task.id,inbox.recipient_member_id,
                         ?7,source_context.turn_intent_id,?6
-                 FROM agent_org_runtime_inbox inbox
-                 JOIN agent_org_runtime_tasks task
+                 FROM agent_org_execution_inbox inbox
+                 JOIN agent_org_execution_tasks task
                    ON task.org_run_id=inbox.org_run_id
                   AND task.id=?3
                   AND task.owner=?4
                   AND task.status IN ('pending','in_progress')
-                 JOIN agent_org_runtime_runs run
+                 JOIN agent_org_execution_runs run
                    ON run.id=task.org_run_id
                   AND run.status='running'
                   AND run.activation_generation=task.activation_generation
-                 JOIN agent_org_runtime_turn_contexts source_context
+                 JOIN agent_org_execution_turn_contexts source_context
                    ON source_context.org_run_id=inbox.org_run_id
                   AND source_context.turn_intent_id=?5
                   AND source_context.participant_id='coordinator'
@@ -204,18 +204,18 @@ pub(crate) fn oldest_unread_task_message_binding_with_connection(
 ) -> Result<Option<(i64, String)>, String> {
     conn.query_row(
         "SELECT inbox.id,binding.task_id
-         FROM agent_org_runtime_inbox_task_bindings binding
-         JOIN agent_org_runtime_inbox inbox ON inbox.id=binding.inbox_id
-         JOIN agent_org_runtime_tasks task
+         FROM agent_org_execution_inbox_task_bindings binding
+         JOIN agent_org_execution_inbox inbox ON inbox.id=binding.inbox_id
+         JOIN agent_org_execution_tasks task
            ON task.org_run_id=binding.org_run_id
           AND task.id=binding.task_id
           AND task.owner=binding.recipient_member_id
           AND task.status='in_progress'
-         JOIN agent_org_runtime_runs run
+         JOIN agent_org_execution_runs run
            ON run.id=task.org_run_id
           AND run.status='running'
           AND run.activation_generation=task.activation_generation
-         JOIN agent_org_runtime_turn_contexts source_context
+         JOIN agent_org_execution_turn_contexts source_context
            ON source_context.org_run_id=binding.org_run_id
           AND source_context.turn_intent_id=binding.source_turn_intent_id
           AND source_context.participant_id='coordinator'
@@ -233,17 +233,17 @@ pub(crate) fn oldest_unread_task_message_binding_with_connection(
            AND inbox.payload_kind='plain'
            AND inbox.read_at IS NULL
            AND NOT EXISTS (
-               SELECT 1 FROM agent_org_task_execution_leases lease
+               SELECT 1 FROM agent_org_execution_task_execution_leases lease
                JOIN session_turn_intents intent USING(session_id,turn_intent_id)
                WHERE lease.continuation_receipt_id='inbox:' || inbox.id
                  AND intent.status NOT IN ('queued','running','optimistic')
            )
            AND NOT EXISTS (
-               SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+               SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
                WHERE resolution.inbox_id=inbox.id
            )
            AND EXISTS (
-               SELECT 1 FROM agent_org_runtime_turn_contexts task_context
+               SELECT 1 FROM agent_org_execution_turn_contexts task_context
                WHERE task_context.org_run_id=task.org_run_id
                  AND task_context.participant_id=task.owner
                  AND task_context.turn_kind='task_execution'
@@ -269,8 +269,8 @@ mod tests {
         let conn = Connection::open_in_memory().expect("open SQLite");
         conn.execute_batch(
             "PRAGMA foreign_keys=ON;
-             CREATE TABLE agent_org_runtime_inbox(id INTEGER PRIMARY KEY);
-             CREATE TABLE agent_org_runtime_tasks(
+             CREATE TABLE agent_org_execution_inbox(id INTEGER PRIMARY KEY);
+             CREATE TABLE agent_org_execution_tasks(
                  org_run_id TEXT NOT NULL,id TEXT NOT NULL,
                  PRIMARY KEY(org_run_id,id)
              );",

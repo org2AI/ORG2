@@ -589,3 +589,6 @@ fn activity_probe_is_scoped_read_only_and_stops_at_first_match() {
 
 #[path = "execution_history_tests.rs"]
 mod execution_history_tests;
+
+#[path = "history_compatibility_tests.rs"]
+mod history_compatibility_tests;

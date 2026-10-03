@@ -78,7 +78,7 @@ pub(crate) struct ContinuationDispatch {
 
 pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_pause_episodes (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_pause_episodes (
             episode_id TEXT PRIMARY KEY CHECK(length(trim(episode_id)) > 0),
             org_run_id TEXT NOT NULL,
             pause_request_id TEXT NOT NULL CHECK(length(trim(pause_request_id)) > 0),
@@ -92,7 +92,7 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             resumed_at TEXT,
             UNIQUE(org_run_id, pause_request_id),
             UNIQUE(resume_request_id),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             CHECK(
                 (status='active' AND resume_request_id IS NULL
                  AND resume_generation IS NULL AND resumed_at IS NULL)
@@ -102,18 +102,18 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                  AND resumed_at IS NOT NULL)
             )
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_runtime_pause_one_active
-            ON agent_org_runtime_pause_episodes(org_run_id)
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_pause_one_active
+            ON agent_org_execution_pause_episodes(org_run_id)
             WHERE status='active';
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_pause_request
-            ON agent_org_runtime_pause_episodes(org_run_id, pause_request_id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_pause_public_timeline
-            ON agent_org_runtime_pause_episodes(org_run_id, created_at, episode_id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_resume_public_timeline
-            ON agent_org_runtime_pause_episodes(org_run_id, resumed_at, episode_id)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_pause_request
+            ON agent_org_execution_pause_episodes(org_run_id, pause_request_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_pause_public_timeline
+            ON agent_org_execution_pause_episodes(org_run_id, created_at, episode_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_resume_public_timeline
+            ON agent_org_execution_pause_episodes(org_run_id, resumed_at, episode_id)
             WHERE resumed_at IS NOT NULL;
 
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_pause_handoffs (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_pause_handoffs (
             handoff_id TEXT PRIMARY KEY CHECK(length(trim(handoff_id)) > 0),
             episode_id TEXT NOT NULL,
             org_run_id TEXT NOT NULL,
@@ -141,10 +141,10 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             updated_at TEXT NOT NULL,
             UNIQUE(episode_id, session_id, original_turn_intent_id),
             UNIQUE(continuation_turn_intent_id),
-            FOREIGN KEY(episode_id) REFERENCES agent_org_runtime_pause_episodes(episode_id) ON DELETE CASCADE,
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+            FOREIGN KEY(episode_id) REFERENCES agent_org_execution_pause_episodes(episode_id) ON DELETE CASCADE,
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             FOREIGN KEY(session_id, original_turn_intent_id)
-                REFERENCES agent_org_runtime_turn_contexts(session_id, turn_intent_id)
+                REFERENCES agent_org_execution_turn_contexts(session_id, turn_intent_id)
                 ON DELETE CASCADE,
             CHECK(
                 (turn_kind='coordinator' AND task_id IS NULL AND original_owner_member_id IS NULL)
@@ -166,15 +166,15 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 (continuation_status='skipped' AND skip_reason IS NOT NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_pause_capture
-            ON agent_org_runtime_turn_contexts(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_pause_capture
+            ON agent_org_execution_turn_contexts(
                 org_run_id, activation_generation, turn_kind, session_id, turn_intent_id
             )
             WHERE turn_kind IN ('coordinator','task_execution');
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_pause_drain
-            ON agent_org_runtime_pause_handoffs(episode_id, drain_status, session_id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_pause_dispatch
-            ON agent_org_runtime_pause_handoffs(continuation_status, org_run_id, session_id);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_pause_drain
+            ON agent_org_execution_pause_handoffs(episode_id, drain_status, session_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_pause_dispatch
+            ON agent_org_execution_pause_handoffs(continuation_status, org_run_id, session_id);",
     )
 }
 
@@ -200,7 +200,7 @@ pub(crate) fn pause_run_commit(run_id: &str, request_id: &str) -> Result<PauseCo
 
         let run: Option<(String, i64)> = tx
             .query_row(
-                "SELECT status, activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                "SELECT status, activation_generation FROM agent_org_execution_runs WHERE id=?1",
                 [run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -240,7 +240,7 @@ pub(crate) fn pause_run_commit(run_id: &str, request_id: &str) -> Result<PauseCo
 
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_runs
+                "UPDATE agent_org_execution_runs
                  SET status='paused', activation_generation=?2, updated_at=?3
                  WHERE id=?1 AND status='running' AND activation_generation=?4",
                 params![run_id, pause_generation, &now, generation],
@@ -252,7 +252,7 @@ pub(crate) fn pause_run_commit(run_id: &str, request_id: &str) -> Result<PauseCo
             ));
         }
         tx.execute(
-            "INSERT INTO agent_org_runtime_pause_episodes (
+            "INSERT INTO agent_org_execution_pause_episodes (
                 episode_id,org_run_id,pause_request_id,pause_generation,status,
                 teardown_owner_id,created_at,updated_at
              ) VALUES (?1,?2,?3,?4,'active',?5,?6,?6)",
@@ -272,7 +272,7 @@ pub(crate) fn pause_run_commit(run_id: &str, request_id: &str) -> Result<PauseCo
                 "SELECT context.session_id,context.turn_intent_id,context.turn_kind,
                         context.participant_id,context.task_id,context.owner_member_id,
                         context.activation_generation,intent.status
-                 FROM agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_turn_contexts context
                  JOIN session_turn_intents intent
                    ON intent.session_id=context.session_id
                   AND intent.turn_intent_id=context.turn_intent_id
@@ -328,7 +328,7 @@ pub(crate) fn pause_run_commit(run_id: &str, request_id: &str) -> Result<PauseCo
             };
             let released_at = (drain_status == "runtime_absent").then_some(now.as_str());
             tx.execute(
-                "INSERT INTO agent_org_runtime_pause_handoffs (
+                "INSERT INTO agent_org_execution_pause_handoffs (
                     handoff_id,episode_id,org_run_id,session_id,original_turn_intent_id,
                     turn_kind,participant_id,task_id,original_owner_member_id,
                     original_activation_generation,original_intent_status,drain_status,
@@ -359,7 +359,7 @@ pub(crate) fn pause_run_commit(run_id: &str, request_id: &str) -> Result<PauseCo
              SET status='stale', updated_at=?2
              WHERE org_run_id=?1 AND status='queued'
                AND EXISTS (
-                 SELECT 1 FROM agent_org_runtime_pause_handoffs handoff
+                 SELECT 1 FROM agent_org_execution_pause_handoffs handoff
                  WHERE handoff.episode_id=?3
                    AND handoff.session_id=session_turn_intents.session_id
                    AND handoff.original_turn_intent_id=session_turn_intents.turn_intent_id
@@ -408,7 +408,7 @@ pub fn resume_run(run_id: &str, request_id: &str) -> Result<ResumeRunOutcome, St
         let run: Option<(String, i64, Option<String>)> = tx
             .query_row(
                 "SELECT status,activation_generation,root_session_id
-                 FROM agent_org_runtime_runs WHERE id=?1",
+                 FROM agent_org_execution_runs WHERE id=?1",
                 [run_id],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
@@ -430,7 +430,7 @@ pub fn resume_run(run_id: &str, request_id: &str) -> Result<ResumeRunOutcome, St
         let episode: Option<(String, i64)> = tx
             .query_row(
                 "SELECT episode_id,pause_generation
-                 FROM agent_org_runtime_pause_episodes
+                 FROM agent_org_execution_pause_episodes
                  WHERE org_run_id=?1 AND status='active'",
                 [run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
@@ -453,7 +453,7 @@ pub fn resume_run(run_id: &str, request_id: &str) -> Result<ResumeRunOutcome, St
         let now = chrono::Utc::now().to_rfc3339();
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_runs
+                "UPDATE agent_org_execution_runs
                  SET status='running',activation_generation=?2,updated_at=?3
                  WHERE id=?1 AND status='paused' AND activation_generation=?4",
                 params![run_id, resume_generation, &now, generation],
@@ -473,7 +473,7 @@ pub fn resume_run(run_id: &str, request_id: &str) -> Result<ResumeRunOutcome, St
                 continuation_skip_reason(&tx, run_id, root_session_id.as_deref(), &handoff)?;
             if let Some(reason) = skip_reason {
                 tx.execute(
-                    "UPDATE agent_org_runtime_pause_handoffs
+                    "UPDATE agent_org_execution_pause_handoffs
                      SET continuation_status='skipped',skip_reason=?2,updated_at=?3
                      WHERE handoff_id=?1 AND continuation_status IS NULL",
                     params![&handoff.handoff_id, reason, &now],
@@ -520,7 +520,7 @@ pub fn resume_run(run_id: &str, request_id: &str) -> Result<ResumeRunOutcome, St
             };
             accept_with_connection(&tx, &admission)?;
             tx.execute(
-                "UPDATE agent_org_runtime_pause_handoffs
+                "UPDATE agent_org_execution_pause_handoffs
                  SET continuation_turn_intent_id=?2,continuation_status='queued',updated_at=?3
                  WHERE handoff_id=?1 AND continuation_status IS NULL",
                 params![&handoff.handoff_id, &continuation_turn_intent_id, &now],
@@ -530,7 +530,7 @@ pub fn resume_run(run_id: &str, request_id: &str) -> Result<ResumeRunOutcome, St
         }
 
         tx.execute(
-            "UPDATE agent_org_runtime_pause_episodes
+            "UPDATE agent_org_execution_pause_episodes
              SET status='consumed',resume_request_id=?2,resume_generation=?3,
                  resumed_at=?4,updated_at=?4
              WHERE episode_id=?1 AND status='active'",
@@ -568,7 +568,7 @@ fn load_handoffs_for_resume(
         .prepare(
             "SELECT handoff_id,session_id,turn_kind,task_id,original_owner_member_id,
                     original_intent_status
-             FROM agent_org_runtime_pause_handoffs
+             FROM agent_org_execution_pause_handoffs
              WHERE episode_id=?1 ORDER BY created_at ASC,handoff_id ASC",
         )
         .map_err(|error| error.to_string())?;
@@ -599,7 +599,7 @@ fn continuation_skip_reason(
     let materialized = |member_id: &str| -> Result<bool, String> {
         conn.query_row(
             "SELECT EXISTS(
-                SELECT 1 FROM agent_org_runtime_member_materializations materialization
+                SELECT 1 FROM agent_org_execution_member_materializations materialization
                 JOIN agent_sessions session
                   ON session.session_id=materialization.session_id
                 WHERE materialization.org_run_id=?1
@@ -609,7 +609,7 @@ fn continuation_skip_reason(
                   AND session.agent_definition_id=materialization.agent_id
                   AND session.org_member_id=materialization.member_id
                   AND NOT EXISTS (
-                    SELECT 1 FROM agent_org_runtime_member_materializations newer
+                    SELECT 1 FROM agent_org_execution_member_materializations newer
                     WHERE newer.org_run_id=materialization.org_run_id
                       AND newer.member_id=materialization.member_id
                       AND newer.status='succeeded'
@@ -642,7 +642,7 @@ fn continuation_skip_reason(
         .ok_or_else(|| "Task handoff has no owner".to_string())?;
     let task: Option<(String, Option<String>)> = conn
         .query_row(
-            "SELECT status,owner FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2",
+            "SELECT status,owner FROM agent_org_execution_tasks WHERE org_run_id=?1 AND id=?2",
             params![run_id, task_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -694,12 +694,12 @@ fn resolve_terminal_task_assignment_after_resume_skip(
         .ok_or_else(|| "terminal Task handoff has no owner".to_string())?;
     let resolution_reason = format!("pause_resume_{skip_reason}");
     conn.execute(
-        "INSERT OR IGNORE INTO agent_org_runtime_inbox_delivery_resolutions (
+        "INSERT OR IGNORE INTO agent_org_execution_inbox_delivery_resolutions (
              inbox_id,org_run_id,resolution_kind,resolved_by_member_id,reason,
              replacement_inbox_id,replacement_task_id,created_at
          )
          SELECT inbox.id,inbox.org_run_id,'cancelled','coordinator',?4,NULL,NULL,?5
-         FROM agent_org_runtime_inbox inbox
+         FROM agent_org_execution_inbox inbox
          WHERE inbox.org_run_id=?1
            AND inbox.recipient_member_id=?2
            AND inbox.delivery_class='formal_work'
@@ -710,10 +710,10 @@ fn resolve_terminal_task_assignment_after_resume_skip(
     )
     .map_err(|error| error.to_string())?;
     conn.execute(
-        "DELETE FROM agent_org_runtime_inbox_materializations
+        "DELETE FROM agent_org_execution_inbox_materializations
          WHERE inbox_id IN (
              SELECT resolution.inbox_id
-             FROM agent_org_runtime_inbox_delivery_resolutions resolution
+             FROM agent_org_execution_inbox_delivery_resolutions resolution
              WHERE resolution.org_run_id=?1
                AND resolution.resolution_kind='cancelled'
                AND resolution.reason=?2
@@ -733,8 +733,8 @@ pub(crate) fn list_running_handoffs(
         .prepare(
             "SELECT handoff.episode_id,handoff.org_run_id,handoff.session_id,
                     handoff.original_turn_intent_id
-             FROM agent_org_runtime_pause_handoffs handoff
-             JOIN agent_org_runtime_pause_episodes episode
+             FROM agent_org_execution_pause_handoffs handoff
+             JOIN agent_org_execution_pause_episodes episode
                ON episode.episode_id=handoff.episode_id
              WHERE handoff.episode_id=?1 AND episode.teardown_owner_id=?2
                AND handoff.original_intent_status='running'
@@ -769,7 +769,7 @@ pub(crate) fn bind_runtime_and_request_yield(
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         conn.execute(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
              SET runtime_lease_id=?4,dialog_turn_generation=?5,yield_requested_at=?6,updated_at=?6
              WHERE episode_id=?1 AND session_id=?2 AND original_turn_intent_id=?3
                AND drain_status='waiting' AND runtime_lease_id IS NULL",
@@ -796,7 +796,7 @@ pub(crate) fn mark_runtime_absent(
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         conn.execute(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
              SET drain_status='runtime_absent',released_at=?4,updated_at=?4
              WHERE episode_id=?1 AND session_id=?2 AND original_turn_intent_id=?3
                AND drain_status IN ('waiting','timed_out') AND runtime_lease_id IS NULL",
@@ -817,7 +817,7 @@ pub(crate) fn mark_released(
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         conn.query_row(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
                  SET drain_status='released',released_at=?5,updated_at=?5
                  WHERE session_id=?1 AND original_turn_intent_id=?2
                    AND runtime_lease_id=?3 AND dialog_turn_generation=?4
@@ -845,7 +845,7 @@ pub(crate) fn bound_episode_for_runtime(
 ) -> Result<Option<String>, String> {
     let conn = database::db::get_connection().map_err(|error| error.to_string())?;
     conn.query_row(
-        "SELECT episode_id FROM agent_org_runtime_pause_handoffs
+        "SELECT episode_id FROM agent_org_execution_pause_handoffs
          WHERE session_id=?1 AND original_turn_intent_id=?2
            AND runtime_lease_id=?3 AND dialog_turn_generation=?4
            AND drain_status IN ('waiting','timed_out')
@@ -867,7 +867,7 @@ pub(crate) fn mark_unresolved_timed_out(episode_id: &str) -> Result<usize, Strin
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         conn.execute(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
              SET drain_status='timed_out',drain_timeout_at=?2,
                  drain_error='runtime did not yield within 10 seconds',updated_at=?2
              WHERE episode_id=?1 AND drain_status='waiting'",
@@ -891,8 +891,8 @@ pub fn pause_summary_with_connection(
                 COUNT(handoff.handoff_id),
                 COALESCE(SUM(CASE WHEN handoff.drain_status IN ('waiting','timed_out') THEN 1 ELSE 0 END),0),
                 COALESCE(SUM(CASE WHEN handoff.drain_timeout_at IS NOT NULL THEN 1 ELSE 0 END),0)
-         FROM agent_org_runtime_pause_episodes episode
-         LEFT JOIN agent_org_runtime_pause_handoffs handoff ON handoff.episode_id=episode.episode_id
+         FROM agent_org_execution_pause_episodes episode
+         LEFT JOIN agent_org_execution_pause_handoffs handoff ON handoff.episode_id=episode.episode_id
          WHERE episode.org_run_id=?1
          GROUP BY episode.episode_id,episode.pause_generation,episode.created_at
          ORDER BY episode.created_at DESC LIMIT 1",
@@ -920,10 +920,10 @@ pub(crate) fn list_dispatchable_continuations(
             "SELECT handoff.episode_id,handoff.org_run_id,handoff.session_id,
                     handoff.continuation_turn_intent_id,handoff.turn_kind,handoff.task_id,
                     context.member_dispatch_sequence
-             FROM agent_org_runtime_pause_handoffs handoff
-             JOIN agent_org_runtime_pause_episodes episode ON episode.episode_id=handoff.episode_id
-             JOIN agent_org_runtime_runs run ON run.id=handoff.org_run_id
-             JOIN agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_pause_handoffs handoff
+             JOIN agent_org_execution_pause_episodes episode ON episode.episode_id=handoff.episode_id
+             JOIN agent_org_execution_runs run ON run.id=handoff.org_run_id
+             JOIN agent_org_execution_turn_contexts context
                ON context.session_id=handoff.session_id
               AND context.turn_intent_id=handoff.continuation_turn_intent_id
              JOIN session_turn_intents intent
@@ -962,7 +962,7 @@ pub(crate) fn continuation_participant_ids(episode_id: &str) -> Result<Vec<Strin
     let mut statement = conn
         .prepare(
             "SELECT DISTINCT participant_id
-             FROM agent_org_runtime_pause_handoffs
+             FROM agent_org_execution_pause_handoffs
              WHERE episode_id=?1 AND continuation_status IN ('queued','dispatched')
              ORDER BY participant_id ASC",
         )
@@ -987,10 +987,10 @@ pub(crate) fn continuation_nudge_for_turn(
     let continuation: Option<(String, Option<String>)> = conn
         .query_row(
             "SELECT handoff.turn_kind,handoff.task_id
-             FROM agent_org_runtime_pause_handoffs handoff
-             JOIN agent_org_runtime_pause_episodes episode
+             FROM agent_org_execution_pause_handoffs handoff
+             JOIN agent_org_execution_pause_episodes episode
                ON episode.episode_id=handoff.episode_id
-             JOIN agent_org_runtime_runs run ON run.id=handoff.org_run_id
+             JOIN agent_org_execution_runs run ON run.id=handoff.org_run_id
              JOIN session_turn_intents intent
                ON intent.session_id=handoff.session_id
               AND intent.turn_intent_id=handoff.continuation_turn_intent_id
@@ -1028,7 +1028,7 @@ pub(crate) fn claim_continuation_dispatch(
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         conn.execute(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
              SET continuation_status='dispatched',updated_at=?3
              WHERE episode_id=?1 AND continuation_turn_intent_id=?2
                AND continuation_status='queued'",
@@ -1049,13 +1049,13 @@ pub(crate) fn requeue_continuation_dispatch(
     database::db::with_sessions_writer(|| {
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         conn.execute(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
              SET continuation_status='queued',updated_at=?3
              WHERE episode_id=?1 AND continuation_turn_intent_id=?2
                AND continuation_status='dispatched'
                AND EXISTS (
                  SELECT 1 FROM session_turn_intents intent
-                 WHERE intent.session_id=agent_org_runtime_pause_handoffs.session_id
+                 WHERE intent.session_id=agent_org_execution_pause_handoffs.session_id
                    AND intent.turn_intent_id=?2 AND intent.status='queued'
                )",
             params![episode_id, turn_intent_id, chrono::Utc::now().to_rfc3339()],
@@ -1073,7 +1073,7 @@ pub(crate) fn reconcile_runtime_absence_after_restart(conn: &Connection) -> Resu
     let tx = database::db::begin_immediate(conn).map_err(|error| error.to_string())?;
     let runtime_rows = tx
         .execute(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
          SET drain_status='runtime_absent',released_at=COALESCE(released_at,?1),updated_at=?1
          WHERE drain_status IN ('waiting','timed_out')",
             [&now],
@@ -1089,10 +1089,10 @@ pub(crate) fn reconcile_runtime_absence_after_restart(conn: &Connection) -> Resu
              SET status='queued',updated_at=?1
              WHERE intent.status='running'
                AND EXISTS (
-                 SELECT 1 FROM agent_org_runtime_pause_handoffs handoff
-                 JOIN agent_org_runtime_pause_episodes episode
+                 SELECT 1 FROM agent_org_execution_pause_handoffs handoff
+                 JOIN agent_org_execution_pause_episodes episode
                    ON episode.episode_id=handoff.episode_id
-                 JOIN agent_org_runtime_runs run ON run.id=handoff.org_run_id
+                 JOIN agent_org_execution_runs run ON run.id=handoff.org_run_id
                  WHERE handoff.session_id=intent.session_id
                    AND handoff.continuation_turn_intent_id=intent.turn_intent_id
                    AND handoff.continuation_status='dispatched'
@@ -1104,13 +1104,13 @@ pub(crate) fn reconcile_runtime_absence_after_restart(conn: &Connection) -> Resu
         .map_err(|error| error.to_string())?;
     let dispatch_rows = tx
         .execute(
-            "UPDATE agent_org_runtime_pause_handoffs
+            "UPDATE agent_org_execution_pause_handoffs
              SET continuation_status='queued',updated_at=?1
              WHERE continuation_status='dispatched'
                AND EXISTS (
                  SELECT 1 FROM session_turn_intents intent
-                 WHERE intent.session_id=agent_org_runtime_pause_handoffs.session_id
-                   AND intent.turn_intent_id=agent_org_runtime_pause_handoffs.continuation_turn_intent_id
+                 WHERE intent.session_id=agent_org_execution_pause_handoffs.session_id
+                   AND intent.turn_intent_id=agent_org_execution_pause_handoffs.continuation_turn_intent_id
                    AND intent.status='queued'
                )",
             [&now],
@@ -1132,7 +1132,7 @@ fn active_pause_outcome(
 ) -> Result<Option<PauseRunOutcome>, String> {
     let request_id: Option<String> = conn
         .query_row(
-            "SELECT pause_request_id FROM agent_org_runtime_pause_episodes
+            "SELECT pause_request_id FROM agent_org_execution_pause_episodes
              WHERE org_run_id=?1 AND status='active'",
             [run_id],
             |row| row.get(0),
@@ -1156,8 +1156,8 @@ fn pause_outcome_for_request(
                 COUNT(handoff.handoff_id),
                 COALESCE(SUM(CASE WHEN handoff.drain_status IN ('waiting','timed_out') THEN 1 ELSE 0 END),0),
                 COALESCE(SUM(CASE WHEN handoff.drain_timeout_at IS NOT NULL THEN 1 ELSE 0 END),0)
-         FROM agent_org_runtime_pause_episodes episode
-         LEFT JOIN agent_org_runtime_pause_handoffs handoff ON handoff.episode_id=episode.episode_id
+         FROM agent_org_execution_pause_episodes episode
+         LEFT JOIN agent_org_execution_pause_handoffs handoff ON handoff.episode_id=episode.episode_id
          WHERE episode.org_run_id=?1 AND episode.pause_request_id=?2
          GROUP BY episode.episode_id,episode.pause_generation",
         params![run_id, request_id],
@@ -1188,8 +1188,8 @@ fn resume_outcome_for_request(
         "SELECT episode.episode_id,episode.resume_generation,
                 COALESCE(SUM(CASE WHEN handoff.continuation_status IN ('queued','dispatched') THEN 1 ELSE 0 END),0),
                 COALESCE(SUM(CASE WHEN handoff.continuation_status='skipped' THEN 1 ELSE 0 END),0)
-         FROM agent_org_runtime_pause_episodes episode
-         LEFT JOIN agent_org_runtime_pause_handoffs handoff ON handoff.episode_id=episode.episode_id
+         FROM agent_org_execution_pause_episodes episode
+         LEFT JOIN agent_org_execution_pause_handoffs handoff ON handoff.episode_id=episode.episode_id
          WHERE episode.org_run_id=?1 AND episode.resume_request_id=?2
          GROUP BY episode.episode_id,episode.resume_generation",
         params![run_id, request_id],

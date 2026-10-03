@@ -30,10 +30,10 @@ pub(super) fn assess_notifications(
         "SELECT inbox.id,CASE WHEN length(CAST(inbox.payload_json AS BLOB))<=?2 THEN inbox.payload_json ELSE 'null' END,inbox.sender_agent_id,inbox.payload_kind,
                 receipt.source_kind,COALESCE(inbox.source_turn_intent_id,receipt.source_turn_intent_id),receipt.task_output_digest,
                 COALESCE(receipt.status IN ('pending','materialized'),0)
-         FROM agent_org_runtime_inbox inbox
-         LEFT JOIN agent_org_runtime_formal_trigger_receipts receipt ON receipt.inbox_id=inbox.id
+         FROM agent_org_execution_inbox inbox
+         LEFT JOIN agent_org_execution_formal_trigger_receipts receipt ON receipt.inbox_id=inbox.id
          WHERE inbox.org_run_id=?1 AND inbox.recipient_member_id='coordinator' AND inbox.read_at IS NULL
-           AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id)
+           AND NOT EXISTS(SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id)
          ORDER BY inbox.id").map_err(|e| e.to_string())?;
     // Stream only this run's unresolved input, one bounded payload at a time.
     // A row-count cutoff must not manufacture model work or hide a later
@@ -72,9 +72,9 @@ pub(super) fn assess_notifications(
         if candidate.projected_inbox_ids.contains(&id) {
             let exact: bool = conn
                 .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_inbox_materializations materialization
-                     LEFT JOIN agent_org_runtime_formal_trigger_receipts receipt ON receipt.inbox_id=materialization.inbox_id
-                     LEFT JOIN agent_org_runtime_formal_trigger_attempts attempt ON attempt.receipt_id=receipt.receipt_id AND attempt.attempt=receipt.current_attempt
+                    "SELECT EXISTS(SELECT 1 FROM agent_org_execution_inbox_materializations materialization
+                     LEFT JOIN agent_org_execution_formal_trigger_receipts receipt ON receipt.inbox_id=materialization.inbox_id
+                     LEFT JOIN agent_org_execution_formal_trigger_attempts attempt ON attempt.receipt_id=receipt.receipt_id AND attempt.attempt=receipt.current_attempt
                      WHERE materialization.inbox_id=?1 AND materialization.session_id=?2
                        AND (receipt.receipt_id IS NULL OR (attempt.session_id=?2 AND attempt.turn_intent_id=?3 AND attempt.status IN ('running','queued'))))",
                     params![
@@ -136,7 +136,7 @@ pub(super) fn request_input_in_tx(
     assessment: &NotificationAssessment,
 ) -> Result<(), String> {
     for inbox_id in &assessment.needs_model_ids {
-        let exists:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_formal_trigger_receipts WHERE inbox_id=?1)",
+        let exists:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_formal_trigger_receipts WHERE inbox_id=?1)",
             [inbox_id],|r|r.get(0)).map_err(|e|e.to_string())?;
         if exists {
             continue;
@@ -193,15 +193,15 @@ fn classify(
             // Exact producer Turn, completed task in this episode, and no newer
             // work for that member. An old idle can never settle a new execution.
             let status: Option<String> = conn.query_row(
-                "SELECT intent.status FROM agent_org_runtime_turn_contexts context
+                "SELECT intent.status FROM agent_org_execution_turn_contexts context
                  JOIN session_turn_intents intent USING(session_id,turn_intent_id)
-                 JOIN agent_org_runtime_runs run ON run.id=context.org_run_id
-                 JOIN agent_org_runtime_tasks task ON task.org_run_id=context.org_run_id AND task.id=context.task_id
-                 JOIN agent_org_runtime_work_episode_tasks episode_task ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
+                 JOIN agent_org_execution_runs run ON run.id=context.org_run_id
+                 JOIN agent_org_execution_tasks task ON task.org_run_id=context.org_run_id AND task.id=context.task_id
+                 JOIN agent_org_execution_work_episode_tasks episode_task ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
                  WHERE context.org_run_id=?1 AND context.turn_intent_id=?2 AND context.participant_id=?3
                    AND context.turn_kind='task_execution'
                    AND task.status='completed' AND episode_task.work_episode_id=?4
-                   AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_turn_contexts newer
+                   AND NOT EXISTS(SELECT 1 FROM agent_org_execution_turn_contexts newer
                      JOIN session_turn_intents next USING(session_id,turn_intent_id)
                      WHERE newer.org_run_id=context.org_run_id AND newer.participant_id=context.participant_id
                        AND newer.context_id>context.context_id
@@ -225,7 +225,7 @@ fn classify(
                 return Ok(NotificationDecision::NeedsModel);
             };
             let raw: Option<String> = conn.query_row(
-                "SELECT output_json FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2 AND status='completed'",
+                "SELECT output_json FROM agent_org_execution_tasks WHERE org_run_id=?1 AND id=?2 AND status='completed'",
                 params![run_id,task_id],|r|r.get(0)).optional().map_err(|e|e.to_string())?.flatten();
             let Some(raw) = raw else {
                 return Ok(NotificationDecision::Invalid);
@@ -277,21 +277,21 @@ pub(super) fn reconcile_in_tx(
             "coordinatorSessionId":candidate.coordinator_session_id,"coordinatorTurnIntentId":candidate.coordinator_turn_intent_id,
             "evidence":evidence}).to_string();
         conn.execute(
-            "INSERT INTO agent_org_runtime_inbox_delivery_resolutions
+            "INSERT INTO agent_org_execution_inbox_delivery_resolutions
             (inbox_id,org_run_id,resolution_kind,resolved_by_member_id,reason,created_at)
             SELECT id,org_run_id,'system_reconciled','system:completion',?3,?4
-            FROM agent_org_runtime_inbox WHERE id=?1 AND org_run_id=?2 AND read_at IS NULL
+            FROM agent_org_execution_inbox WHERE id=?1 AND org_run_id=?2 AND read_at IS NULL
             ON CONFLICT(inbox_id) DO NOTHING",
             params![inbox_id, run_id, reason, now],
         )
         .map_err(|e| e.to_string())?;
-        conn.execute("UPDATE agent_org_runtime_formal_trigger_attempts SET status='resolved',terminal_at=?2,updated_at=?2
-            WHERE receipt_id IN(SELECT receipt_id FROM agent_org_runtime_formal_trigger_receipts WHERE inbox_id=?1)
+        conn.execute("UPDATE agent_org_execution_formal_trigger_attempts SET status='resolved',terminal_at=?2,updated_at=?2
+            WHERE receipt_id IN(SELECT receipt_id FROM agent_org_execution_formal_trigger_receipts WHERE inbox_id=?1)
               AND status IN ('queued','running')",params![inbox_id,now]).map_err(|e|e.to_string())?;
-        conn.execute("UPDATE agent_org_runtime_formal_trigger_receipts SET status='resolved',doorbell_status='suppressed',resolved_at=?2,updated_at=?2
+        conn.execute("UPDATE agent_org_execution_formal_trigger_receipts SET status='resolved',doorbell_status='suppressed',resolved_at=?2,updated_at=?2
             WHERE inbox_id=?1 AND status<>'resolved'",params![inbox_id,now]).map_err(|e|e.to_string())?;
         conn.execute(
-            "DELETE FROM agent_org_runtime_inbox_materializations WHERE inbox_id=?1",
+            "DELETE FROM agent_org_execution_inbox_materializations WHERE inbox_id=?1",
             [inbox_id],
         )
         .map_err(|e| e.to_string())?;
@@ -319,39 +319,39 @@ mod tests {
     fn fixture() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory database");
         conn.execute_batch(
-            "CREATE TABLE agent_org_runtime_runs(
+            "CREATE TABLE agent_org_execution_runs(
                  id TEXT PRIMARY KEY,activation_generation INTEGER NOT NULL
              );
              CREATE TABLE session_turn_intents(
                  session_id TEXT NOT NULL,turn_intent_id TEXT NOT NULL,status TEXT NOT NULL,
                  PRIMARY KEY(session_id,turn_intent_id)
              );
-             CREATE TABLE agent_org_runtime_turn_contexts(
+             CREATE TABLE agent_org_execution_turn_contexts(
                  context_id INTEGER PRIMARY KEY AUTOINCREMENT,
                  session_id TEXT NOT NULL,turn_intent_id TEXT NOT NULL,
                  org_run_id TEXT NOT NULL,participant_id TEXT NOT NULL,
                  turn_kind TEXT NOT NULL,task_id TEXT,activation_generation INTEGER
              );
-             CREATE TABLE agent_org_runtime_tasks(
+             CREATE TABLE agent_org_execution_tasks(
                  org_run_id TEXT NOT NULL,id TEXT NOT NULL,status TEXT NOT NULL,
                  activation_generation INTEGER NOT NULL,PRIMARY KEY(org_run_id,id)
              );
-             CREATE TABLE agent_org_runtime_work_episode_tasks(
+             CREATE TABLE agent_org_execution_work_episode_tasks(
                  org_run_id TEXT NOT NULL,work_episode_id TEXT NOT NULL,task_id TEXT NOT NULL
              );
-             INSERT INTO agent_org_runtime_runs VALUES('run',4);
+             INSERT INTO agent_org_execution_runs VALUES('run',4);
              INSERT INTO session_turn_intents VALUES(
                  'member-session','turn-before-pause','completed'
              );
-             INSERT INTO agent_org_runtime_turn_contexts(
+             INSERT INTO agent_org_execution_turn_contexts(
                  session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                  task_id,activation_generation
              ) VALUES(
                  'member-session','turn-before-pause','run','member','task_execution',
                  'task',2
              );
-             INSERT INTO agent_org_runtime_tasks VALUES('run','task','completed',2);
-             INSERT INTO agent_org_runtime_work_episode_tasks VALUES(
+             INSERT INTO agent_org_execution_tasks VALUES('run','task','completed',2);
+             INSERT INTO agent_org_execution_work_episode_tasks VALUES(
                  'run','episode','task'
              );",
         )
@@ -396,7 +396,7 @@ mod tests {
             "INSERT INTO session_turn_intents VALUES(
                  'member-session','turn-after-resume','running'
              );
-             INSERT INTO agent_org_runtime_turn_contexts(
+             INSERT INTO agent_org_execution_turn_contexts(
                  session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                  task_id,activation_generation
              ) VALUES(

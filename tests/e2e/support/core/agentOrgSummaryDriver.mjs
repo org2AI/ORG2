@@ -127,7 +127,7 @@ export async function runSummaryStopScenario(window, { postJson }) {
   const runId = started.context.runId;
   const first = started.finalSummary;
   const certificates = rows(
-    `SELECT id FROM agent_org_runtime_run_completion_certificates WHERE org_run_id=${literal(runId)} AND id=${literal(first.certificateId)}`
+    `SELECT id FROM agent_org_execution_run_completion_certificates WHERE org_run_id=${literal(runId)} AND id=${literal(first.certificateId)}`
   );
   if (certificates.length !== 1)
     throw new Error("Running report has no durable work certificate");
@@ -157,10 +157,10 @@ export async function runSummaryStopScenario(window, { postJson }) {
     action: "disarm",
   });
   const tasksBefore = rows(
-    `SELECT id,status,output_json FROM agent_org_runtime_tasks WHERE org_run_id=${literal(runId)} ORDER BY id`
+    `SELECT id,status,output_json FROM agent_org_execution_tasks WHERE org_run_id=${literal(runId)} ORDER BY id`
   );
   const executionsBefore = rows(
-    `SELECT session_id,turn_intent_id FROM agent_org_runtime_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
+    `SELECT session_id,turn_intent_id FROM agent_org_execution_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
   );
   if (window === "before")
     await probeObsoleteAssignmentWake(runId, { postJson });
@@ -310,7 +310,7 @@ export async function runSummaryStopScenario(window, { postJson }) {
     90000
   );
   const attempts = rows(
-    `SELECT status,attempt,event_id,typed_error,certificate_id FROM agent_org_runtime_final_summary_receipts WHERE org_run_id=${literal(runId)} ORDER BY attempt`
+    `SELECT status,attempt,event_id,typed_error,certificate_id FROM agent_org_execution_final_summary_receipts WHERE org_run_id=${literal(runId)} ORDER BY attempt`
   );
   if (
     attempts.length !== 2 ||
@@ -321,10 +321,10 @@ export async function runSummaryStopScenario(window, { postJson }) {
       `Unexpected report retry attempts: ${JSON.stringify(attempts)}`
     );
   const tasksAfter = rows(
-    `SELECT id,status,output_json FROM agent_org_runtime_tasks WHERE org_run_id=${literal(runId)} ORDER BY id`
+    `SELECT id,status,output_json FROM agent_org_execution_tasks WHERE org_run_id=${literal(runId)} ORDER BY id`
   );
   const executionsAfter = rows(
-    `SELECT session_id,turn_intent_id FROM agent_org_runtime_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
+    `SELECT session_id,turn_intent_id FROM agent_org_execution_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
   );
   if (
     JSON.stringify(tasksBefore) !== JSON.stringify(tasksAfter) ||
@@ -332,7 +332,7 @@ export async function runSummaryStopScenario(window, { postJson }) {
   )
     throw new Error("Retry changed certified work or reran a member");
   const events = rows(
-    `SELECT event.id,event.result_json FROM events event JOIN agent_org_runtime_final_summary_receipts receipt ON receipt.event_id=event.id AND receipt.coordinator_session_id=event.session_id WHERE receipt.org_run_id=${literal(runId)}`
+    `SELECT event.id,event.result_json FROM events event JOIN agent_org_execution_final_summary_receipts receipt ON receipt.event_id=event.id AND receipt.coordinator_session_id=event.session_id WHERE receipt.org_run_id=${literal(runId)}`
   );
   if (
     events.length !== 1 ||

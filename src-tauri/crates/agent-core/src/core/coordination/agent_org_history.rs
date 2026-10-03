@@ -66,12 +66,12 @@ fn coordinator_mail_wake(
     // attempt proves this is an inbox wake, including after it has resolved.
     conn.query_row(
         "SELECT EXISTS(
-            SELECT 1 FROM agent_org_runtime_formal_trigger_attempts attempt
-            JOIN agent_org_runtime_formal_trigger_receipts receipt USING(receipt_id)
+            SELECT 1 FROM agent_org_execution_formal_trigger_attempts attempt
+            JOIN agent_org_execution_formal_trigger_receipts receipt USING(receipt_id)
             WHERE attempt.session_id=?1 AND attempt.turn_intent_id=?2
               AND receipt.org_run_id=?3
         ) AND NOT EXISTS(
-            SELECT 1 FROM agent_org_runtime_initial_inputs
+            SELECT 1 FROM agent_org_execution_initial_inputs
             WHERE org_run_id=?3 AND turn_intent_id=?2
         ) AND NOT EXISTS(
             SELECT 1 FROM session_turn_intents
@@ -101,8 +101,8 @@ pub fn inbox_execution(
         .prepare(
             "SELECT inbox.sender_member_id, COUNT(*),
                 (inbox.sender_member_id IS NULL AND inbox.sender_agent_id=?5) AS system_sender
-         FROM agent_org_runtime_inbox_materializations receipt
-         JOIN agent_org_runtime_inbox inbox ON inbox.id=receipt.inbox_id
+         FROM agent_org_execution_inbox_materializations receipt
+         JOIN agent_org_execution_inbox inbox ON inbox.id=receipt.inbox_id
          WHERE receipt.session_id=?1 AND receipt.transcript_message_id=?2
            AND inbox.org_run_id=?3 AND inbox.recipient_member_id=?4
          GROUP BY inbox.sender_member_id, system_sender

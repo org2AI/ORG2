@@ -7,7 +7,7 @@ fn only_the_exact_initial_root_turn_gets_a_public_reply_marker() {
     crate::coordination::init_agent_org_schemas(&conn).expect("Agent Org schema");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs(
+        "INSERT INTO agent_org_execution_runs(
              id,org_id,coordinator_agent_id,root_session_id,entry_mode,status,
              activation_generation,has_initial_work,created_at,updated_at
          ) VALUES ('run','org','coordinator','coordinator-session',
@@ -16,7 +16,7 @@ fn only_the_exact_initial_root_turn_gets_a_public_reply_marker() {
     )
     .expect("seed run");
     conn.execute(
-        "INSERT INTO agent_org_runtime_initial_inputs(
+        "INSERT INTO agent_org_execution_initial_inputs(
              org_run_id,turn_intent_id,message_id,content,payload_json,status,
              created_at,updated_at
          ) VALUES ('run','initial-turn','initial-message','Build it','{}',

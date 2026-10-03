@@ -52,6 +52,7 @@ pub(super) fn make_session(
         parent_session_id: None,
         org_member_id: None,
         agent_org_id: None,
+        agent_org_mode: None,
         agent_org_name: None,
         agent_definition_id: None,
         agent_icon_id: None,

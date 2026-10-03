@@ -217,7 +217,7 @@ fn seed_run_with_status(run_id: &str, root_session_id: &str, status: &str) {
     if status == "archived" {
         let receipt_id = format!("archive-receipt-{run_id}");
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                  id, org_id, coordinator_agent_id, root_session_id,
                  entry_mode, status, activation_generation, archived_at,
                  archive_receipt_id, created_at, updated_at
@@ -227,7 +227,7 @@ fn seed_run_with_status(run_id: &str, root_session_id: &str, status: &str) {
         )
         .expect("seed archived run");
         conn.execute(
-            "INSERT INTO agent_org_runtime_archive_episodes (
+            "INSERT INTO agent_org_execution_archive_episodes (
                  archive_receipt_id,org_run_id,archive_request_id,
                  archive_generation,teardown_status,teardown_attempt_count,
                  retained_runtime_count,deadline_at,archived_at,updated_at,quiesced_at
@@ -243,7 +243,7 @@ fn seed_run_with_status(run_id: &str, root_session_id: &str, status: &str) {
         .expect("seed quiesced Archive receipt");
     } else {
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                  id, org_id, coordinator_agent_id, root_session_id,
                  entry_mode, status, created_at, updated_at
              ) VALUES (?1, 'org-delete-test', 'coordinator-agent', ?2,
@@ -495,7 +495,7 @@ fn seed_session_owned_rows(session_id: &str) {
 fn seed_run_owned_rows(run_id: &str) {
     let conn = get_connection().expect("sandbox DB");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
              recipient_agent_id, recipient_member_id, sender_agent_id,
              org_run_id, payload_kind, payload_json, created_at
          ) VALUES ('worker-agent', 'worker', 'system', ?1,
@@ -504,7 +504,7 @@ fn seed_run_owned_rows(run_id: &str) {
     )
     .expect("seed run inbox history");
     conn.execute(
-        r#"INSERT INTO agent_org_runtime_tasks (
+        r#"INSERT INTO agent_org_execution_tasks (
              id, org_run_id, activation_generation, subject, description, owner, status,
              execution_mode, blocked_by_json, output_json,
              created_by_participant_id, source_turn_intent_id,
@@ -519,7 +519,7 @@ fn seed_run_owned_rows(run_id: &str) {
     )
     .expect("seed run task history");
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_execution_handoffs (
+        "INSERT INTO agent_org_execution_task_execution_handoffs (
              id,org_run_id,activation_generation,request_id,request_digest,
              old_task_id,old_owner_member_id,state,requested_at,updated_at
          ) VALUES (?1,?2,1,?3,?4,?5,'worker','unknown',?6,?6)",
@@ -560,7 +560,7 @@ fn seed_linked_user_directed_history(
 
     let root_inbox_id = conn
         .query_row(
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                  delivery_class,recipient_agent_id,recipient_member_id,
                  sender_agent_id,sender_member_id,org_run_id,payload_kind,
                  payload_json,created_at,display_text
@@ -575,7 +575,7 @@ fn seed_linked_user_directed_history(
         .expect("seed root UDW Inbox");
     let linked_inbox_id = conn
         .query_row(
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                  delivery_class,recipient_agent_id,recipient_member_id,
                  sender_agent_id,sender_member_id,org_run_id,payload_kind,
                  payload_json,created_at,causation_inbox_id,display_text
@@ -590,7 +590,7 @@ fn seed_linked_user_directed_history(
         .expect("seed linked UDW Inbox");
     let coordinator_inbox_id = conn
         .query_row(
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                  delivery_class,recipient_agent_id,recipient_member_id,
                  sender_agent_id,sender_member_id,org_run_id,payload_kind,
                  payload_json,created_at,causation_inbox_id,display_text
@@ -605,7 +605,7 @@ fn seed_linked_user_directed_history(
         .expect("seed Coordinator UDW Inbox");
 
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
              root_authority_turn_id,actor_version,created_at
@@ -621,7 +621,7 @@ fn seed_linked_user_directed_history(
     )
     .expect("seed root UDW Turn context");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
              root_authority_turn_id,actor_version,created_at
@@ -638,7 +638,7 @@ fn seed_linked_user_directed_history(
     )
     .expect("seed linked UDW Turn context");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              source_kind,source_id,root_authority_turn_id,actor_version,created_at
          ) VALUES (?1,?2,?3,'coordinator','coordinator',
@@ -654,7 +654,7 @@ fn seed_linked_user_directed_history(
     )
     .expect("seed Coordinator side-quest Turn context");
     conn.execute(
-        "INSERT INTO agent_org_runtime_user_directed_roots (
+        "INSERT INTO agent_org_execution_user_directed_roots (
              org_run_id,root_authority_turn_id,policy_version,max_deliveries,
              max_cascade_depth,next_delivery_ordinal,created_at
          ) VALUES (?1,?2,1,8,2,4,?3)",
@@ -663,7 +663,7 @@ fn seed_linked_user_directed_history(
     .expect("seed UDW root authority");
     let root_delivery_id = conn
         .query_row(
-            "INSERT INTO agent_org_runtime_user_directed_deliveries (
+            "INSERT INTO agent_org_execution_user_directed_deliveries (
                  org_run_id,session_id,turn_intent_id,root_authority_turn_id,
                  source_kind,source_inbox_id,dispatch_member_id,
                  member_dispatch_sequence,depth,delivery_ordinal,request_digest,
@@ -685,7 +685,7 @@ fn seed_linked_user_directed_history(
         .expect("seed root UDW delivery");
     let linked_delivery_id = conn
         .query_row(
-            "INSERT INTO agent_org_runtime_user_directed_deliveries (
+            "INSERT INTO agent_org_execution_user_directed_deliveries (
                  org_run_id,session_id,turn_intent_id,root_authority_turn_id,
                  parent_delivery_id,parent_inbox_id,source_kind,source_inbox_id,
                  dispatch_member_id,member_dispatch_sequence,depth,delivery_ordinal,
@@ -710,7 +710,7 @@ fn seed_linked_user_directed_history(
         )
         .expect("seed linked UDW delivery");
     conn.execute(
-        "INSERT INTO agent_org_runtime_user_directed_coordinator_bindings (
+        "INSERT INTO agent_org_execution_user_directed_coordinator_bindings (
              org_run_id,session_id,turn_intent_id,root_authority_turn_id,
              parent_delivery_id,parent_inbox_id,source_inbox_id,depth,
              delivery_ordinal,request_digest,dispatch_content,display_content,
@@ -833,29 +833,29 @@ fn session_hierarchy_delete_removes_all_rust_descendants_and_run_history() {
         ));
     }
     assert!(!row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-delete-run"
     ));
     assert!(!row_exists(
-        "agent_org_runtime_inbox",
+        "agent_org_execution_inbox",
         "org_run_id",
         "hierarchy-delete-run"
     ));
     assert!(!row_exists(
-        "agent_org_runtime_tasks",
+        "agent_org_execution_tasks",
         "org_run_id",
         "hierarchy-delete-run"
     ));
     assert!(!row_exists(
-        "agent_org_runtime_task_execution_handoffs",
+        "agent_org_execution_task_execution_handoffs",
         "org_run_id",
         "hierarchy-delete-run"
     ));
     for table in [
-        "agent_org_runtime_user_directed_coordinator_bindings",
-        "agent_org_runtime_user_directed_deliveries",
-        "agent_org_runtime_user_directed_roots",
+        "agent_org_execution_user_directed_coordinator_bindings",
+        "agent_org_execution_user_directed_deliveries",
+        "agent_org_execution_user_directed_roots",
     ] {
         assert!(!row_exists(table, "org_run_id", "hierarchy-delete-run"));
     }
@@ -872,17 +872,17 @@ fn session_hierarchy_delete_removes_all_rust_descendants_and_run_history() {
         &format!("commit-link-{unrelated}")
     ));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-delete-other-run"
     ));
     assert!(row_exists(
-        "agent_org_runtime_inbox",
+        "agent_org_execution_inbox",
         "org_run_id",
         "hierarchy-delete-other-run"
     ));
     assert!(row_exists(
-        "agent_org_runtime_task_execution_handoffs",
+        "agent_org_execution_task_execution_handoffs",
         "org_run_id",
         "hierarchy-delete-other-run"
     ));
@@ -916,12 +916,12 @@ fn team_ownership_resolver_maps_worker_to_root_and_run() {
     assert!(row_exists("agent_sessions", "session_id", worker));
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-worker-run"
     ));
     assert!(row_exists(
-        "agent_org_runtime_inbox",
+        "agent_org_execution_inbox",
         "org_run_id",
         "hierarchy-worker-run"
     ));
@@ -949,7 +949,7 @@ fn session_hierarchy_delete_requires_archived_without_mutating_active_run() {
         get_connection()
             .expect("sandbox DB")
             .query_row(
-                "SELECT status FROM agent_org_runtime_runs WHERE id='hierarchy-active-run'",
+                "SELECT status FROM agent_org_execution_runs WHERE id='hierarchy-active-run'",
                 [],
                 |row| row.get::<_, String>(0)
             )
@@ -959,7 +959,7 @@ fn session_hierarchy_delete_requires_archived_without_mutating_active_run() {
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists("agent_sessions", "session_id", worker));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-active-run"
     ));
@@ -975,7 +975,7 @@ fn session_hierarchy_delete_rejects_retained_runtime_receipt() {
     seed_run(run_id, root);
     let conn = get_connection().expect("sandbox DB");
     conn.execute(
-        "UPDATE agent_org_runtime_archive_episodes
+        "UPDATE agent_org_execution_archive_episodes
          SET teardown_status='retained_runtime',teardown_attempt_count=3,
              retained_runtime_count=1,quiesced_at=NULL,
              last_error='archive_runtime_stop_timeout'
@@ -990,7 +990,7 @@ fn session_hierarchy_delete_rejects_retained_runtime_receipt() {
         .expect_err("retained runtime must block Team Delete");
     assert!(error.starts_with("team_runtime_not_quiesced:"));
     assert!(row_exists("agent_sessions", "session_id", root));
-    assert!(row_exists("agent_org_runtime_runs", "id", run_id));
+    assert!(row_exists("agent_org_execution_runs", "id", run_id));
 }
 
 #[test]
@@ -1072,7 +1072,7 @@ fn session_hierarchy_delete_blocks_resource_preflight_failures_before_database_c
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists("agent_sessions", "session_id", worker));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-replay-run"
     ));
@@ -1104,7 +1104,7 @@ fn session_hierarchy_delete_blocks_resource_preflight_failures_before_database_c
     assert!(row_exists("agent_sessions", "session_id", root));
     assert!(row_exists("agent_sessions", "session_id", worker));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-replay-run"
     ));
@@ -1134,12 +1134,12 @@ fn session_hierarchy_delete_rejects_nested_agent_org_without_mutation() {
         assert!(row_exists("agent_sessions", "session_id", session_id));
     }
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-nested-outer-run"
     ));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-nested-inner-run"
     ));
@@ -1186,7 +1186,7 @@ fn session_hierarchy_delete_rejects_cycle_and_size_limit() {
     assert!(error.contains("exceeds"));
     assert!(row_exists("agent_sessions", "session_id", limit_root));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-limit-run"
     ));
@@ -1216,7 +1216,7 @@ fn session_hierarchy_delete_rechecks_concurrent_structure_changes() {
         assert!(row_exists("agent_sessions", "session_id", session_id));
     }
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-recheck-run"
     ));
@@ -1291,17 +1291,17 @@ fn session_hierarchy_delete_rolls_back_on_midway_database_failure() {
         ));
     }
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-rollback-run"
     ));
     assert!(row_exists(
-        "agent_org_runtime_inbox",
+        "agent_org_execution_inbox",
         "org_run_id",
         "hierarchy-rollback-run"
     ));
     assert!(row_exists(
-        "agent_org_runtime_tasks",
+        "agent_org_execution_tasks",
         "org_run_id",
         "hierarchy-rollback-run"
     ));
@@ -1354,7 +1354,7 @@ fn session_hierarchy_delete_rolls_back_transaction_time_structure_changes() {
     assert!(row_exists("agent_sessions", "session_id", worker));
     assert!(!row_exists("agent_sessions", "session_id", injected));
     assert!(row_exists(
-        "agent_org_runtime_runs",
+        "agent_org_execution_runs",
         "id",
         "hierarchy-trigger-change-run"
     ));

@@ -88,7 +88,7 @@ pub(super) fn user_directed_link_allowed_in_tx(
     }
     let snapshot_json: Option<String> = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id=?1",
             [run_id],
             |row| row.get(0),
         )
@@ -154,7 +154,7 @@ pub(super) fn persist_user_directed_member_message_in_tx(
     }
     let status: Option<String> = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             [run_id],
             |row| row.get(0),
         )
@@ -221,7 +221,7 @@ pub(super) fn persist_user_directed_member_message_in_tx(
         format!("{summary}\n\n{content}")
     };
     conn.execute(
-        "UPDATE agent_org_runtime_inbox
+        "UPDATE agent_org_execution_inbox
          SET delivery_class='user_directed',display_text=?2
          WHERE id=?1 AND delivery_class='formal_work'",
         params![record.id, &display_text],
@@ -286,7 +286,7 @@ pub(super) fn persist_user_directed_coordinator_message_in_tx(
     }
     let status: Option<String> = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             [run_id],
             |row| row.get(0),
         )
@@ -348,7 +348,7 @@ pub(super) fn persist_user_directed_coordinator_message_in_tx(
         format!("{summary}\n\n{content}")
     };
     conn.execute(
-        "UPDATE agent_org_runtime_inbox
+        "UPDATE agent_org_execution_inbox
          SET delivery_class='user_directed',display_text=?2
          WHERE id=?1 AND delivery_class='formal_work'",
         params![record.id, &display_text],
@@ -462,7 +462,7 @@ fn member_coordination_guidance(
     let exact_task_is_active: bool = conn
         .query_row(
             "SELECT EXISTS(
-                 SELECT 1 FROM agent_org_runtime_tasks
+                 SELECT 1 FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND id=?2 AND owner=?3
                    AND status='in_progress'
              )",
@@ -553,7 +553,7 @@ pub(super) fn persist_ordinary_message_in_tx(
 ) -> Result<OrdinaryMessagePersistOutcome, OrdinaryMessagePersistError> {
     let run_status: Option<String> = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             params![run_id],
             |row| row.get(0),
         )
@@ -588,7 +588,7 @@ pub(super) fn persist_ordinary_message_in_tx(
         {
             let open_task_count = conn
                 .query_row(
-                    "SELECT COUNT(*) FROM agent_org_runtime_tasks
+                    "SELECT COUNT(*) FROM agent_org_execution_tasks
                      WHERE org_run_id=?1 AND owner=?2
                        AND status IN ('pending','in_progress')",
                     params![run_id, &recipient.member_id],

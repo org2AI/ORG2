@@ -345,13 +345,13 @@ pub(crate) fn guaranteed_current_turn_effects_with_connection(
     let mut stmt = conn
         .prepare(
             "SELECT inbox.payload_kind,inbox.payload_json,inbox.sender_agent_id,inbox.created_at
-             FROM agent_org_runtime_inbox inbox
-             JOIN agent_org_runtime_inbox_materializations receipt
+             FROM agent_org_execution_inbox inbox
+             JOIN agent_org_execution_inbox_materializations receipt
                ON receipt.inbox_id=inbox.id AND receipt.session_id=?2
              WHERE inbox.id=?1 AND inbox.org_run_id=?3 AND inbox.read_at IS NULL
                AND inbox.delivery_class='formal_work'
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                   SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
                    WHERE resolution.inbox_id=inbox.id
                )",
         )
@@ -401,7 +401,7 @@ pub(crate) fn guaranteed_current_turn_effects_with_connection(
     let mut active_turn_stmt = conn
         .prepare(
             "SELECT intent.created_at
-             FROM agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_turn_contexts context
              JOIN session_turn_intents intent
                ON intent.session_id=context.session_id
               AND intent.turn_intent_id=context.turn_intent_id
@@ -457,7 +457,7 @@ pub(super) fn load_and_assess(
     let run_row: Option<(String, Option<String>, i64)> = conn
         .query_row(
             "SELECT status, root_session_id, activation_generation
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             params![run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -521,7 +521,7 @@ pub(super) fn load_and_assess(
         let mut statement = conn
             .prepare(
                 "SELECT DISTINCT context.session_id
-                 FROM agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_turn_contexts context
                  JOIN session_turn_intents intent
                    ON intent.session_id=context.session_id
                   AND intent.turn_intent_id=context.turn_intent_id
@@ -563,8 +563,8 @@ pub(super) fn load_and_assess(
         crate::coordination::agent_org_tasks::corrupt_task_row_predicate_sql();
     let persisted_open_task_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_tasks task
-             JOIN agent_org_runtime_work_episode_tasks episode_task
+            "SELECT COUNT(*) FROM agent_org_execution_tasks task
+             JOIN agent_org_execution_work_episode_tasks episode_task
                ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
              WHERE task.org_run_id=?1 AND episode_task.work_episode_id=?2
                AND task.status IN ('pending','in_progress')",
@@ -602,8 +602,8 @@ pub(super) fn load_and_assess(
                     CASE WHEN metadata_json IS NULL
                               OR length(CAST(metadata_json AS BLOB))<={metadata_max}
                          THEN metadata_json ELSE '!' END AS metadata_json
-             FROM agent_org_runtime_tasks task
-             JOIN agent_org_runtime_work_episode_tasks episode_task
+             FROM agent_org_execution_tasks task
+             JOIN agent_org_execution_work_episode_tasks episode_task
                ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
              WHERE task.org_run_id=?1 AND episode_task.work_episode_id=?2
          ) AS bounded_tasks"
@@ -641,11 +641,11 @@ pub(super) fn load_and_assess(
     let unread_inbox_count: i64 = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_inbox
+             FROM agent_org_execution_inbox
              WHERE org_run_id=?1 AND delivery_class='formal_work' AND read_at IS NULL
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
-                   WHERE resolution.inbox_id=agent_org_runtime_inbox.id
+                   SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
+                   WHERE resolution.inbox_id=agent_org_execution_inbox.id
                )",
             params![run_id],
             |row| row.get(0),
@@ -654,17 +654,17 @@ pub(super) fn load_and_assess(
     let blocking_unread_inbox_count: i64 = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_inbox inbox
+             FROM agent_org_execution_inbox inbox
              WHERE inbox.org_run_id=?1 AND inbox.delivery_class='formal_work'
                AND inbox.read_at IS NULL
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                   SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
                    WHERE resolution.inbox_id=inbox.id
                )
                AND NOT (
                    inbox.payload_kind='shutdown_request'
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_tasks task
+                       SELECT 1 FROM agent_org_execution_tasks task
                        WHERE task.org_run_id=inbox.org_run_id
                          AND task.owner=inbox.recipient_member_id
                          AND task.status IN ('pending','in_progress')
@@ -675,7 +675,7 @@ pub(super) fn load_and_assess(
                    OR inbox.sender_agent_id=?2
                    OR EXISTS (
                        SELECT 1
-                       FROM agent_org_runtime_formal_trigger_receipts receipt
+                       FROM agent_org_execution_formal_trigger_receipts receipt
                        WHERE receipt.inbox_id=inbox.id
                          AND receipt.status IN ('pending','materialized')
                    )
@@ -688,7 +688,7 @@ pub(super) fn load_and_assess(
         .query_row(
             "SELECT COUNT(*)
              FROM session_turn_intents intent
-             JOIN agent_org_runtime_turn_contexts context
+             JOIN agent_org_execution_turn_contexts context
                ON context.session_id=intent.session_id
               AND context.turn_intent_id=intent.turn_intent_id
              WHERE intent.org_run_id=?1
@@ -709,7 +709,7 @@ pub(super) fn load_and_assess(
         .query_row(
             "SELECT COUNT(*)
              FROM session_turn_intents intent
-             JOIN agent_org_runtime_turn_contexts context
+             JOIN agent_org_execution_turn_contexts context
                ON context.session_id=intent.session_id
               AND context.turn_intent_id=intent.turn_intent_id
              WHERE intent.org_run_id=?1
@@ -726,7 +726,7 @@ pub(super) fn load_and_assess(
         .map_err(|err| err.to_string())?;
     let pending_formal_materialization_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_member_materializations
+            "SELECT COUNT(*) FROM agent_org_execution_member_materializations
              WHERE org_run_id=?1 AND generation=?2
                AND authority_class IN ('starting', 'formal')
                AND status<>'succeeded'",
@@ -736,7 +736,7 @@ pub(super) fn load_and_assess(
         .map_err(|err| err.to_string())?;
     let active_recovery_reservation_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_recovery_attempts
+            "SELECT COUNT(*) FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND reservation_token IS NOT NULL",
             params![run_id],
             |row| row.get(0),
@@ -745,8 +745,8 @@ pub(super) fn load_and_assess(
     let pending_plan_approval_count: i64 = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_plan_revisions revision
-             JOIN agent_org_runtime_plan_decisions decision
+             FROM agent_org_execution_plan_revisions revision
+             JOIN agent_org_execution_plan_decisions decision
                ON decision.plan_revision_id=revision.plan_revision_id
              WHERE revision.org_run_id=?1 AND decision.status='pending'",
             params![run_id],
@@ -755,8 +755,8 @@ pub(super) fn load_and_assess(
         .map_err(|err| err.to_string())?;
     let unresolved_handoff_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_task_execution_handoffs handoff
-             JOIN agent_org_runtime_work_episode_tasks episode_task
+            "SELECT COUNT(*) FROM agent_org_execution_task_execution_handoffs handoff
+             JOIN agent_org_execution_work_episode_tasks episode_task
                ON episode_task.org_run_id=handoff.org_run_id
               AND episode_task.task_id=handoff.old_task_id
              WHERE handoff.org_run_id=?1 AND episode_task.work_episode_id=?2
@@ -1191,26 +1191,26 @@ mod tests {
                  session_id TEXT,turn_intent_id TEXT,org_run_id TEXT,
                  status TEXT,created_at TEXT
              );
-             CREATE TABLE agent_org_runtime_turn_contexts(
+             CREATE TABLE agent_org_execution_turn_contexts(
                  session_id TEXT,turn_intent_id TEXT,org_run_id TEXT,
                  turn_kind TEXT,participant_id TEXT
              );
-             CREATE TABLE agent_org_runtime_inbox(
+             CREATE TABLE agent_org_execution_inbox(
                  id INTEGER PRIMARY KEY,org_run_id TEXT,read_at TEXT,
                  payload_kind TEXT,payload_json TEXT,sender_agent_id TEXT,created_at TEXT,
                  delivery_class TEXT NOT NULL DEFAULT 'formal_work'
              );
-             CREATE TABLE agent_org_runtime_inbox_materializations(
+             CREATE TABLE agent_org_execution_inbox_materializations(
                  inbox_id INTEGER,session_id TEXT
              );
-             CREATE TABLE agent_org_runtime_inbox_delivery_resolutions(inbox_id INTEGER);
+             CREATE TABLE agent_org_execution_inbox_delivery_resolutions(inbox_id INTEGER);
              INSERT INTO session_turn_intents VALUES
                  ('root','root-turn','run','running','2026-01-01T00:00:00Z'),
                  ('worker','worker-turn','run','running','2026-01-01T00:00:01Z');
-             INSERT INTO agent_org_runtime_turn_contexts VALUES
+             INSERT INTO agent_org_execution_turn_contexts VALUES
                  ('root','root-turn','run','coordinator','coordinator'),
                  ('worker','worker-turn','run','task_execution','member');
-             INSERT INTO agent_org_runtime_inbox_materializations VALUES (7,'root');",
+             INSERT INTO agent_org_execution_inbox_materializations VALUES (7,'root');",
         )
         .expect("minimal durable facts");
         let idle = serde_json::to_string(
@@ -1226,7 +1226,7 @@ mod tests {
         )
         .expect("member idle json");
         conn.execute(
-            "INSERT INTO agent_org_runtime_inbox(
+            "INSERT INTO agent_org_execution_inbox(
                  id,org_run_id,read_at,payload_kind,payload_json,sender_agent_id,created_at
              ) VALUES (7,'run',NULL,'member_idle',?1,'_system','2026-01-01T00:00:02Z')",
             [&idle],
@@ -1247,7 +1247,7 @@ mod tests {
         assert_eq!(effects.terminal_worker_turn_intents, 1);
 
         conn.execute(
-            "UPDATE agent_org_runtime_inbox SET created_at='2025-12-31T23:59:59Z' WHERE id=7",
+            "UPDATE agent_org_execution_inbox SET created_at='2025-12-31T23:59:59Z' WHERE id=7",
             [],
         )
         .expect("make the idle row stale");

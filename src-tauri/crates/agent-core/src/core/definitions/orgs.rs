@@ -8,7 +8,7 @@ use std::path::Path;
 #[cfg(not(test))]
 use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use app_paths::agent_org_definitions as storage_path;
 use key_vault::ModelType;
@@ -375,7 +375,6 @@ impl Default for AgentOrgsStore {
 
 impl AgentOrgsStore {
     pub fn new() -> Self {
-        retire_legacy_definitions_file();
         let path = storage_path();
         let (mut orgs, persistence_blocked, should_persist) = match load_from_disk(&path) {
             LoadOutcome::Missing => (Vec::new(), None, true),
@@ -971,24 +970,6 @@ pub(crate) fn parse_definitions_content(
     Ok(file.definitions)
 }
 
-fn retire_legacy_definitions_file() {
-    let legacy_path = app_paths::agent_orgs();
-    match std::fs::remove_file(&legacy_path) {
-        Ok(()) => info!(
-            event = "agent_org_legacy_definitions_retired",
-            path = %legacy_path.display(),
-            "removed retired Agent Org definitions file"
-        ),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => warn!(
-            event = "agent_org_legacy_definitions_retirement_failed",
-            path = %legacy_path.display(),
-            error = %err,
-            "could not remove retired Agent Org definitions file; canonical store remains isolated"
-        ),
-    }
-}
-
 fn save_to_disk(path: &Path, orgs: &[OrgDefinition]) -> Result<(), String> {
     let file = AgentOrgDefinitionsFile {
         schema_version: AGENT_ORGS_FILE_SCHEMA_VERSION,
@@ -1196,7 +1177,7 @@ mod tests {
     }
 
     #[test]
-    fn legacy_live_file_is_deleted_without_parsing_and_new_builtins_are_created() {
+    fn legacy_live_file_is_preserved_without_parsing_and_new_builtins_are_created() {
         let _sandbox = test_helpers::test_env::sandbox();
         let new_path = storage_path();
         let legacy_path = app_paths::agent_orgs();
@@ -1208,7 +1189,7 @@ mod tests {
         let store = AgentOrgsStore::new();
 
         assert!(store.get(DEFAULT_SDE_TEMPLATE_TEAM_ID).is_ok());
-        assert!(!legacy_path.exists());
+        assert!(legacy_path.exists());
         assert!(new_path.exists());
         assert_eq!(
             std::fs::read(unrelated_path).unwrap(),
@@ -1217,7 +1198,7 @@ mod tests {
     }
 
     #[test]
-    fn downgrade_recreated_legacy_file_is_deleted_without_changing_new_bytes() {
+    fn downgrade_recreated_legacy_file_is_preserved_without_changing_new_bytes() {
         let _sandbox = test_helpers::test_env::sandbox();
         let store = AgentOrgsStore::new();
         let mut org = custom_org(&["alice", "bob"]);
@@ -1237,7 +1218,7 @@ mod tests {
 
         let restarted = AgentOrgsStore::new();
 
-        assert!(!legacy_path.exists());
+        assert!(legacy_path.exists());
         assert_eq!(
             std::fs::read(&new_path).expect("new bytes after cleanup"),
             new_bytes

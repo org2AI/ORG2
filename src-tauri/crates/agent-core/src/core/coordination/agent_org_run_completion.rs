@@ -250,7 +250,7 @@ impl RunCompletionCandidateAssessment {
 pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     super::agent_org_work_episodes::create_schema(conn)?;
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_run_completion_certificates (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_run_completion_certificates (
             id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             activation_generation INTEGER NOT NULL CHECK(activation_generation >= 1),
@@ -268,14 +268,14 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             validator_version INTEGER NOT NULL CHECK(validator_version=1),
             created_at TEXT NOT NULL,
             UNIQUE(org_run_id, request_id),
-            FOREIGN KEY (org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY (org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_run_completion_certificates_turn
-            ON agent_org_runtime_run_completion_certificates(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_run_completion_certificates_turn
+            ON agent_org_execution_run_completion_certificates(
                 coordinator_session_id,coordinator_turn_intent_id
             );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_run_completion_public_timeline
-            ON agent_org_runtime_run_completion_certificates(org_run_id,created_at,id);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_run_completion_public_timeline
+            ON agent_org_execution_run_completion_certificates(org_run_id,created_at,id);",
     )
 }
 
@@ -429,8 +429,8 @@ fn try_assess_delivered_candidate_with_connection(
         .query_row(
             "SELECT COUNT(*),
                     COALESCE(SUM(CASE WHEN status IN ('pending','in_progress') THEN 1 ELSE 0 END),0)
-             FROM agent_org_runtime_tasks task
-             JOIN agent_org_runtime_work_episode_tasks episode_task
+             FROM agent_org_execution_tasks task
+             JOIN agent_org_execution_work_episode_tasks episode_task
                ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
              WHERE task.org_run_id=?1 AND episode_task.work_episode_id=?2",
             params![org_run_id, &work_episode.id],
@@ -521,8 +521,8 @@ fn try_assess_delivered_candidate_with_connection(
     if open_task_count > 0 {
         let mut statement = conn
             .prepare(
-                "SELECT task.id FROM agent_org_runtime_tasks task
-                 JOIN agent_org_runtime_work_episode_tasks episode_task
+                "SELECT task.id FROM agent_org_execution_tasks task
+                 JOIN agent_org_execution_work_episode_tasks episode_task
                    ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
                  WHERE task.org_run_id=?1 AND episode_task.work_episode_id=?2
                    AND task.status IN ('pending','in_progress')
@@ -639,7 +639,7 @@ pub fn certify_in_tx(
     let run: Option<(String, i64, Option<String>)> = conn
         .query_row(
             "SELECT status,activation_generation,root_session_id
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -680,7 +680,7 @@ pub fn certify_in_tx(
 
     let work_revision: i64 = conn
         .query_row(
-            "SELECT work_revision FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+            "SELECT work_revision FROM agent_org_execution_run_progress WHERE org_run_id=?1",
             [org_run_id],
             |row| row.get(0),
         )
@@ -728,8 +728,8 @@ pub fn certify_in_tx(
     let handoff_blockers: i64 = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_task_execution_handoffs handoff
-             JOIN agent_org_runtime_work_episode_tasks episode_task
+             FROM agent_org_execution_task_execution_handoffs handoff
+             JOIN agent_org_execution_work_episode_tasks episode_task
                ON episode_task.org_run_id=handoff.org_run_id
               AND episode_task.task_id=handoff.old_task_id
              WHERE handoff.org_run_id=?1 AND episode_task.work_episode_id=?2
@@ -758,7 +758,7 @@ pub fn certify_in_tx(
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates (
+        "INSERT INTO agent_org_execution_run_completion_certificates (
             id,org_run_id,activation_generation,work_revision,request_id,request_digest,
             outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
             evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -856,7 +856,7 @@ fn certify_user_handoff_cancellation_in_tx(
     let run: Option<(String, i64, Option<String>)> = conn
         .query_row(
             "SELECT status,activation_generation,root_session_id
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -893,8 +893,8 @@ fn certify_user_handoff_cancellation_in_tx(
     let receipt: Option<(String, Option<String>)> = conn
         .query_row(
             "SELECT handoff.state,handoff.resolution
-             FROM agent_org_runtime_task_execution_handoffs handoff
-             JOIN agent_org_runtime_work_episode_tasks episode_task
+             FROM agent_org_execution_task_execution_handoffs handoff
+             JOIN agent_org_execution_work_episode_tasks episode_task
                ON episode_task.org_run_id=handoff.org_run_id
               AND episode_task.task_id=handoff.old_task_id
              WHERE handoff.id=?1 AND handoff.org_run_id=?2
@@ -914,8 +914,8 @@ fn certify_user_handoff_cancellation_in_tx(
     }
     let unresolved_handoffs: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_task_execution_handoffs handoff
-             JOIN agent_org_runtime_work_episode_tasks episode_task
+            "SELECT COUNT(*) FROM agent_org_execution_task_execution_handoffs handoff
+             JOIN agent_org_execution_work_episode_tasks episode_task
                ON episode_task.org_run_id=handoff.org_run_id
               AND episode_task.task_id=handoff.old_task_id
              WHERE handoff.org_run_id=?1 AND episode_task.work_episode_id=?2
@@ -930,7 +930,7 @@ fn certify_user_handoff_cancellation_in_tx(
     }
     let work_revision: i64 = conn
         .query_row(
-            "SELECT work_revision FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+            "SELECT work_revision FROM agent_org_execution_run_progress WHERE org_run_id=?1",
             [org_run_id],
             |row| row.get(0),
         )
@@ -964,7 +964,7 @@ fn certify_user_handoff_cancellation_in_tx(
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates (
+        "INSERT INTO agent_org_execution_run_completion_certificates (
             id,org_run_id,activation_generation,work_revision,request_id,request_digest,
             outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
             evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -1026,7 +1026,7 @@ fn persist_validated_outcome_in_tx(
 ) -> Result<(), String> {
     let changed = conn
         .execute(
-            "UPDATE agent_org_runtime_runs
+            "UPDATE agent_org_execution_runs
              SET last_activity_outcome=?1,updated_at=?2
              WHERE id=?3 AND status='running' AND activation_generation=?4",
             params![
@@ -1372,7 +1372,7 @@ pub(crate) fn valid_team_user_event(
 ) -> Result<bool, String> {
     conn.query_row(
         "WITH RECURSIVE team_sessions(session_id) AS (
-             SELECT root_session_id FROM agent_org_runtime_runs WHERE id=?1
+             SELECT root_session_id FROM agent_org_execution_runs WHERE id=?1
              UNION ALL
              SELECT child.session_id
              FROM agent_sessions child
@@ -1415,7 +1415,7 @@ fn valid_user_scope_removal_source(
     conn.query_row(
         "SELECT EXISTS(
              SELECT 1
-             FROM agent_org_runtime_task_events event
+             FROM agent_org_execution_task_events event
              WHERE event.org_run_id=?1 AND event.task_id=?2
                AND event.event_type='updated'
                AND event.next_status='cancelled'
@@ -1436,10 +1436,10 @@ pub fn load_current_episode_with_connection(
     conn.query_row(
         &format!(
             "SELECT {CERTIFICATE_COLUMNS}
-             FROM agent_org_runtime_run_completion_certificates
+             FROM agent_org_execution_run_completion_certificates
              WHERE id=(
                  SELECT current_episode.certificate_id
-                 FROM agent_org_runtime_work_episodes current_episode
+                 FROM agent_org_execution_work_episodes current_episode
                  WHERE current_episode.org_run_id=?1
                  ORDER BY current_episode.episode_sequence DESC LIMIT 1
              )"
@@ -1458,7 +1458,7 @@ pub fn load_with_connection(
     conn.query_row(
         &format!(
             "SELECT {CERTIFICATE_COLUMNS}
-             FROM agent_org_runtime_run_completion_certificates WHERE id=?1"
+             FROM agent_org_execution_run_completion_certificates WHERE id=?1"
         ),
         [certificate_id],
         decode_certificate,
@@ -1671,18 +1671,18 @@ mod tests {
     fn user_scope_removal_requires_exact_team_user_event() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
-            "CREATE TABLE agent_org_runtime_runs(id TEXT PRIMARY KEY,root_session_id TEXT);
+            "CREATE TABLE agent_org_execution_runs(id TEXT PRIMARY KEY,root_session_id TEXT);
              CREATE TABLE agent_sessions(session_id TEXT PRIMARY KEY,parent_session_id TEXT);
              CREATE TABLE events(
                  id TEXT PRIMARY KEY,session_id TEXT,event_type TEXT,
                  function_name TEXT,meta_json TEXT
              );
-             CREATE TABLE agent_org_runtime_task_events(
+             CREATE TABLE agent_org_execution_task_events(
                  id TEXT PRIMARY KEY,org_run_id TEXT,task_id TEXT,event_type TEXT,
                  next_status TEXT,actor_member_id TEXT,actor_kind TEXT,
                  source_turn_intent_id TEXT
              );
-             INSERT INTO agent_org_runtime_runs(id,root_session_id) VALUES ('run','root');
+             INSERT INTO agent_org_execution_runs(id,root_session_id) VALUES ('run','root');
              INSERT INTO agent_sessions(session_id,parent_session_id) VALUES ('root',NULL);
              INSERT INTO events(id,session_id,event_type,function_name,meta_json)
              VALUES ('user-event','root','raw','user_message','{\"source\":\"user\"}'),
@@ -1741,7 +1741,7 @@ mod tests {
             "run_completion_scope_removal_source_invalid:run-view-removed"
         );
         conn.execute_batch(
-            "INSERT INTO agent_org_runtime_task_events(
+            "INSERT INTO agent_org_execution_task_events(
                  id,org_run_id,task_id,event_type,next_status,actor_member_id,
                  actor_kind,source_turn_intent_id
              ) VALUES (
@@ -1799,11 +1799,11 @@ mod tests {
     fn validated_outcome_is_owned_by_the_certificate_transaction() {
         let mut conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
-            "CREATE TABLE agent_org_runtime_runs(
+            "CREATE TABLE agent_org_execution_runs(
                  id TEXT PRIMARY KEY,status TEXT,activation_generation INTEGER,
                  last_activity_outcome TEXT,updated_at TEXT
              );
-             INSERT INTO agent_org_runtime_runs
+             INSERT INTO agent_org_execution_runs
                  VALUES ('run','running',1,NULL,'before');",
         )
         .unwrap();
@@ -1813,7 +1813,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             tx.query_row(
-                "SELECT last_activity_outcome FROM agent_org_runtime_runs WHERE id='run'",
+                "SELECT last_activity_outcome FROM agent_org_execution_runs WHERE id='run'",
                 [],
                 |row| row.get::<_, String>(0),
             )
@@ -1823,7 +1823,7 @@ mod tests {
         tx.rollback().unwrap();
         assert!(conn
             .query_row(
-                "SELECT last_activity_outcome FROM agent_org_runtime_runs WHERE id='run'",
+                "SELECT last_activity_outcome FROM agent_org_execution_runs WHERE id='run'",
                 [],
                 |row| row.get::<_, Option<String>>(0),
             )
@@ -1840,7 +1840,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             conn.query_row(
-                "SELECT last_activity_outcome FROM agent_org_runtime_runs WHERE id='run'",
+                "SELECT last_activity_outcome FROM agent_org_execution_runs WHERE id='run'",
                 [],
                 |row| row.get::<_, String>(0),
             )
@@ -1864,11 +1864,11 @@ mod tests {
     fn certificate_request_replay_is_read_only_and_digest_conflict_fails_closed() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
-            "CREATE TABLE agent_org_runtime_runs(
+            "CREATE TABLE agent_org_execution_runs(
                  id TEXT PRIMARY KEY,status TEXT,activation_generation INTEGER,
                  root_session_id TEXT
              );
-             INSERT INTO agent_org_runtime_runs
+             INSERT INTO agent_org_execution_runs
                  VALUES ('run','running',1,'root');",
         )
         .unwrap();
@@ -1878,7 +1878,7 @@ mod tests {
         crate::coordination::agent_org_formal_triggers::create_schema(&conn).unwrap();
         crate::coordination::agent_org_final_summary::create_schema(&conn).unwrap();
         conn.execute(
-            "INSERT INTO agent_org_runtime_run_completion_certificates(
+            "INSERT INTO agent_org_execution_run_completion_certificates(
                  id,org_run_id,activation_generation,work_revision,request_id,request_digest,
                  outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
                  evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -1892,7 +1892,7 @@ mod tests {
         )
         .unwrap();
         conn.execute_batch(
-            "INSERT INTO agent_org_runtime_work_episodes(
+            "INSERT INTO agent_org_execution_work_episodes(
                  id,org_run_id,episode_sequence,status,opening_activation_generation,
                  closing_activation_generation,opening_work_revision,closing_work_revision,
                  outcome,certificate_id,opened_by_turn_intent_id,created_at,closed_at
@@ -1919,7 +1919,7 @@ mod tests {
         assert_eq!(replay.id, "certificate");
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_run_completion_certificates",
+                "SELECT COUNT(*) FROM agent_org_execution_run_completion_certificates",
                 [],
                 |row| row.get(0),
             )

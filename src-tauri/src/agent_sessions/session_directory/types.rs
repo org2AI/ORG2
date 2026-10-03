@@ -127,6 +127,9 @@ pub struct SessionAggregateRecord {
     /// Agent Org definition id for root/coordinator rows launched from an org.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_org_id: Option<String>,
+    /// Read identity remains available when execution records have been retired.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_org_mode: Option<agent_core::coordination::agent_org_history_store::HistoryMode>,
     /// Agent Org display name for root/coordinator rows launched from an org.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_org_name: Option<String>,

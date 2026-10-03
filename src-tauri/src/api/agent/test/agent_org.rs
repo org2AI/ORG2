@@ -1532,7 +1532,7 @@ pub async fn test_agent_org_durable_invariants(
         let conn = database::db::get_connection().map_err(|err| err.to_string())?;
         let run_row: Option<(String, Option<String>)> = conn
             .query_row(
-                "SELECT status, root_session_id FROM agent_org_runtime_runs WHERE id = ?1",
+                "SELECT status, root_session_id FROM agent_org_execution_runs WHERE id = ?1",
                 params![org_run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -1544,7 +1544,7 @@ pub async fn test_agent_org_durable_invariants(
 
         let open_task_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_tasks
+                "SELECT COUNT(*) FROM agent_org_execution_tasks
                  WHERE org_run_id = ?1 AND status IN ('pending', 'in_progress')",
                 params![org_run_id],
                 |row| row.get(0),
@@ -1552,7 +1552,7 @@ pub async fn test_agent_org_durable_invariants(
             .map_err(|err| err.to_string())?;
         let ownerless_in_progress_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_tasks
+                "SELECT COUNT(*) FROM agent_org_execution_tasks
                  WHERE org_run_id = ?1
                    AND status = 'in_progress'
                    AND (owner IS NULL OR TRIM(owner) = '')",
@@ -1562,7 +1562,7 @@ pub async fn test_agent_org_durable_invariants(
             .map_err(|err| err.to_string())?;
         let unread_inbox_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_inbox
+                "SELECT COUNT(*) FROM agent_org_execution_inbox
                  WHERE org_run_id = ?1 AND read_at IS NULL",
                 params![org_run_id],
                 |row| row.get(0),
@@ -1920,7 +1920,7 @@ pub async fn test_agent_org_session_delete_snapshot(
         for run_id in run_ids {
             let exists = conn
                 .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs WHERE id=?1)",
+                    "SELECT EXISTS(SELECT 1 FROM agent_org_execution_runs WHERE id=?1)",
                     [&run_id],
                     |row| row.get::<_, bool>(0),
                 )
@@ -1931,8 +1931,8 @@ pub async fn test_agent_org_session_delete_snapshot(
                         "SELECT run.status,run.activation_generation,run.archived_at,
                                 run.archive_receipt_id,archive.teardown_status,
                                 archive.teardown_attempt_count,archive.retained_runtime_count
-                         FROM agent_org_runtime_runs run
-                         LEFT JOIN agent_org_runtime_archive_episodes archive
+                         FROM agent_org_execution_runs run
+                         LEFT JOIN agent_org_execution_archive_episodes archive
                            ON archive.org_run_id=run.id
                          WHERE run.id=?1",
                         [&run_id],
@@ -2653,7 +2653,7 @@ pub async fn test_agent_org_run_cleanup(
             let mut stmt = conn
                 .prepare(
                     "SELECT id
-                     FROM agent_org_runtime_runs
+                     FROM agent_org_execution_runs
                      WHERE org_id LIKE ?1
                        AND (?2 IS NULL OR id = ?2)",
                 )
@@ -3035,7 +3035,7 @@ pub async fn test_agent_org_seed_crashed_task_execution(
             routine_fire_id: None,
         })?;
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations(
+            "INSERT INTO agent_org_execution_member_materializations(
                  org_run_id,member_id,agent_id,generation,session_id,
                  authority_class,status,created_at,updated_at
              ) VALUES (?1,?2,?3,1,?4,'formal','succeeded',?5,?5)",
@@ -3052,7 +3052,7 @@ pub async fn test_agent_org_seed_crashed_task_execution(
         )
         .map_err(|error| error.to_string())?;
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts(
+            "INSERT INTO agent_org_execution_turn_contexts(
                  session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                  source_kind,source_id,activation_generation,created_at
              ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,1,?4)",
@@ -3089,7 +3089,7 @@ pub async fn test_agent_org_seed_crashed_task_execution(
         )
         .map_err(|error| error.to_string())?;
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts(
+            "INSERT INTO agent_org_execution_turn_contexts(
                  session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                  task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
                  source_kind,source_id,activation_generation,created_at
@@ -3299,7 +3299,7 @@ pub async fn test_agent_org_simulate_app_restart() -> Json<serde_json::Value> {
             .map_err(|err| format!("open sessions DB for recovery inspection failed: {err}"))?;
         let interventions_preserved: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_member_interventions
+                "SELECT COUNT(*) FROM agent_org_execution_member_interventions
                  WHERE status IN ('yield_requested','active','return_requested')",
                 [],
                 |row| row.get(0),
@@ -3522,7 +3522,7 @@ pub async fn test_agent_org_pause_evidence(
         let conn = database::db::get_connection().map_err(|error| error.to_string())?;
         let (run_status, activation_generation): (String, i64) = conn
             .query_row(
-                "SELECT status,activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                "SELECT status,activation_generation FROM agent_org_execution_runs WHERE id=?1",
                 [&query_run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -3530,7 +3530,7 @@ pub async fn test_agent_org_pause_evidence(
         let episode: Option<(String, String, i64, Option<i64>)> = conn
             .query_row(
                 "SELECT episode_id,status,pause_generation,resume_generation
-                 FROM agent_org_runtime_pause_episodes
+                 FROM agent_org_execution_pause_episodes
                  WHERE org_run_id=?1 ORDER BY created_at DESC LIMIT 1",
                 [&query_run_id],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
@@ -3548,8 +3548,8 @@ pub async fn test_agent_org_pause_evidence(
                             handoff.dialog_turn_generation,handoff.drain_timeout_at,
                             handoff.continuation_turn_intent_id,handoff.continuation_status,
                             handoff.skip_reason,context.member_dispatch_sequence
-                     FROM agent_org_runtime_pause_handoffs handoff
-                     LEFT JOIN agent_org_runtime_turn_contexts context
+                     FROM agent_org_execution_pause_handoffs handoff
+                     LEFT JOIN agent_org_execution_turn_contexts context
                        ON context.session_id=handoff.session_id
                       AND context.turn_intent_id=handoff.continuation_turn_intent_id
                      WHERE handoff.episode_id=?1
@@ -3586,7 +3586,7 @@ pub async fn test_agent_org_pause_evidence(
         if session_ids.is_empty() {
             let mut statement = conn
                 .prepare(
-                    "SELECT session_id FROM agent_org_runtime_member_materializations
+                    "SELECT session_id FROM agent_org_execution_member_materializations
                      WHERE org_run_id=?1 AND status='succeeded' ORDER BY member_id",
                 )
                 .map_err(|error| error.to_string())?;
@@ -3600,7 +3600,7 @@ pub async fn test_agent_org_pause_evidence(
         session_ids.dedup();
         let mut task_statement = conn
             .prepare(
-                "SELECT id,status,owner,updated_at FROM agent_org_runtime_tasks
+                "SELECT id,status,owner,updated_at FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 ORDER BY id",
             )
             .map_err(|error| error.to_string())?;
@@ -3618,7 +3618,7 @@ pub async fn test_agent_org_pause_evidence(
             .map_err(|error| error.to_string())?;
         let inbox_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1",
+                "SELECT COUNT(*) FROM agent_org_execution_inbox WHERE org_run_id=?1",
                 [&query_run_id],
                 |row| row.get(0),
             )

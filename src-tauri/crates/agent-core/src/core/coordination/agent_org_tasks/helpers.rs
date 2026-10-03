@@ -205,7 +205,7 @@ pub(super) fn insert_task_history_event(
             "system"
         };
     tx.execute(
-        "INSERT INTO agent_org_runtime_task_events (
+        "INSERT INTO agent_org_execution_task_events (
             id, org_run_id, task_id, event_type, previous_owner, next_owner,
             previous_status, next_status, actor_member_id, actor_kind,
             source_turn_intent_id, created_at
@@ -238,7 +238,7 @@ pub(super) fn insert_task_history_event_as(
     actor: &super::actor::TaskActorAudit,
 ) -> Result<(), String> {
     tx.execute(
-        "INSERT INTO agent_org_runtime_task_events (
+        "INSERT INTO agent_org_execution_task_events (
             id, org_run_id, task_id, event_type, previous_owner, next_owner,
             previous_status, next_status, actor_member_id, actor_kind,
             source_turn_intent_id, created_at
@@ -267,7 +267,7 @@ pub(super) fn list_tasks_with_conn(
     org_run_id: &str,
 ) -> Result<Vec<Task>, String> {
     let sql = format!(
-        "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks
+        "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks
          WHERE org_run_id = ?1
          ORDER BY created_at ASC, id ASC"
     );

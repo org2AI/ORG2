@@ -44,8 +44,8 @@ fn complete(task: &Task) {
 fn assert_cancelled(conn: &rusqlite::Connection, id: i64) {
     let (read_at, kind, reason): (Option<String>, String, String) = conn.query_row(
         "SELECT inbox.read_at,resolution.resolution_kind,resolution.reason
-         FROM agent_org_runtime_inbox inbox
-         JOIN agent_org_runtime_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id
+         FROM agent_org_execution_inbox inbox
+         JOIN agent_org_execution_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id
          WHERE inbox.id=?1", [id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     ).expect("obsolete delivery has an exact disposition");
     assert!(read_at.is_none(), "system disposition is not model read");
@@ -54,8 +54,8 @@ fn assert_cancelled(conn: &rusqlite::Connection, id: i64) {
     assert_eq!(reason["code"], "obsolete_task_assignment");
     let extra: i64 = conn
         .query_row(
-            "SELECT (SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE causation_inbox_id=?1)
-              + (SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts WHERE inbox_id=?1)",
+            "SELECT (SELECT COUNT(*) FROM agent_org_execution_inbox WHERE causation_inbox_id=?1)
+              + (SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts WHERE inbox_id=?1)",
             [id],
             |row| row.get(0),
         )
@@ -99,8 +99,8 @@ fn task_assignment_race_owner_changed_keeps_new_delivery_and_exact_old_dispositi
     let conn = get_connection().unwrap();
     assert_cancelled(&conn, deliver(&snapshot).unwrap());
     let state: (bool, i64) = conn.query_row(
-        "SELECT NOT EXISTS(SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions WHERE inbox_id=?1),
-         (SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE causation_inbox_id=?1 AND payload_kind='task_assignment_committed')",
+        "SELECT NOT EXISTS(SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions WHERE inbox_id=?1),
+         (SELECT COUNT(*) FROM agent_org_execution_inbox WHERE causation_inbox_id=?1 AND payload_kind='task_assignment_committed')",
         [fresh], |row| Ok((row.get(0)?, row.get(1)?)),
     ).unwrap();
     assert_eq!(
@@ -117,13 +117,15 @@ fn task_assignment_race_disposition_failure_rolls_back_delivery_and_is_a_real_er
     complete(&snapshot);
     let conn = get_connection().unwrap();
     let count = || {
-        conn.query_row("SELECT COUNT(*) FROM agent_org_runtime_inbox", [], |row| {
-            row.get::<_, i64>(0)
-        })
+        conn.query_row(
+            "SELECT COUNT(*) FROM agent_org_execution_inbox",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
         .unwrap()
     };
     let before = count();
-    conn.execute_batch("CREATE TRIGGER reject_late_disposition BEFORE INSERT ON agent_org_runtime_inbox_delivery_resolutions
+    conn.execute_batch("CREATE TRIGGER reject_late_disposition BEFORE INSERT ON agent_org_execution_inbox_delivery_resolutions
         BEGIN SELECT RAISE(ABORT, 'disposition storage failure'); END;").unwrap();
     assert!(deliver(&snapshot)
         .unwrap_err()

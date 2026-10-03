@@ -264,7 +264,12 @@ pub fn get_session(session_id: &str) -> SqliteResult<Option<UnifiedSessionRecord
 pub fn list_sessions(filter: &SessionListFilter) -> SqliteResult<Vec<UnifiedSessionRecord>> {
     let conn = get_connection()?;
 
-    let mut conditions: Vec<String> = Vec::new();
+    // Compatibility copies are a downgrade representation; the current
+    // directory lists their authoritative source sessions exactly once.
+    let mut conditions: Vec<String> = vec![
+        "NOT EXISTS (SELECT 1 FROM org_history_copies c WHERE c.copy_session_id=s.session_id)"
+            .into(),
+    ];
     let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
     if let Some(ref type_name) = filter.type_name {
@@ -361,7 +366,8 @@ pub fn mark_stale_running_sessions_abandoned() -> SqliteResult<usize> {
         // adding a new in-flight variant only requires updating one place.
         let updated = conn.execute(
             "UPDATE agent_sessions SET status = ?1, updated_at = ?2 \
-             WHERE status IN (?3, ?4, ?5)",
+             WHERE status IN (?3, ?4, ?5)
+             AND NOT EXISTS (SELECT 1 FROM org_history_sessions h WHERE h.session_id=agent_sessions.session_id)",
             params![
                 SessionStatus::Abandoned.as_str(),
                 now,
@@ -470,6 +476,7 @@ pub fn reconcile_sessions_with_terminal_turn_markers() -> SqliteResult<usize> {
                  END,
                  updated_at = COALESCE(last_terminal_turn_at, updated_at)
              WHERE status IN (?2, ?3, ?4)
+               AND NOT EXISTS (SELECT 1 FROM org_history_sessions h WHERE h.session_id=agent_sessions.session_id)
                AND last_terminal_turn_id IS NOT NULL
                AND last_terminal_turn_status IN (?5, ?7, ?9)",
             params![

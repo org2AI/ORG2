@@ -21,7 +21,7 @@ fn delete_user_directed_work_for_run_with_connection(
     run_id: &str,
 ) -> Result<(), String> {
     conn.execute(
-        "DELETE FROM agent_org_runtime_user_directed_coordinator_bindings
+        "DELETE FROM agent_org_execution_user_directed_coordinator_bindings
          WHERE org_run_id=?1",
         params![run_id],
     )
@@ -32,7 +32,7 @@ fn delete_user_directed_work_for_run_with_connection(
     let mut remaining = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_user_directed_deliveries
+             FROM agent_org_execution_user_directed_deliveries
              WHERE org_run_id=?1",
             params![run_id],
             |row| row.get::<_, usize>(0),
@@ -41,14 +41,14 @@ fn delete_user_directed_work_for_run_with_connection(
     while remaining > 0 {
         let deleted = conn
             .execute(
-                "DELETE FROM agent_org_runtime_user_directed_deliveries
+                "DELETE FROM agent_org_execution_user_directed_deliveries
                  WHERE delivery_id IN (
                      SELECT parent.delivery_id
-                     FROM agent_org_runtime_user_directed_deliveries parent
+                     FROM agent_org_execution_user_directed_deliveries parent
                      WHERE parent.org_run_id=?1
                        AND NOT EXISTS (
                            SELECT 1
-                           FROM agent_org_runtime_user_directed_deliveries child
+                           FROM agent_org_execution_user_directed_deliveries child
                            WHERE child.parent_delivery_id=parent.delivery_id
                        )
                  )",
@@ -66,7 +66,7 @@ fn delete_user_directed_work_for_run_with_connection(
     }
 
     conn.execute(
-        "DELETE FROM agent_org_runtime_user_directed_roots WHERE org_run_id=?1",
+        "DELETE FROM agent_org_execution_user_directed_roots WHERE org_run_id=?1",
         params![run_id],
     )
     .map_err(|err| format!("failed to delete user-directed roots for {run_id}: {err}"))?;
@@ -97,10 +97,10 @@ impl AgentOrgRunStore {
             let mut stmt = conn
                 .prepare(
                     "SELECT DISTINCT revision.source_session_id, revision.plan_path
-                     FROM agent_org_runtime_plan_revisions revision
+                     FROM agent_org_execution_plan_revisions revision
                      WHERE revision.org_run_id=?1
                        AND NOT EXISTS (
-                         SELECT 1 FROM agent_org_runtime_plan_revisions other
+                         SELECT 1 FROM agent_org_execution_plan_revisions other
                          WHERE other.plan_path=revision.plan_path
                            AND other.org_run_id<>?1
                        )",
@@ -131,41 +131,41 @@ impl AgentOrgRunStore {
         )
         .map_err(|err| err.to_string())?;
         conn.execute(
-            "DELETE FROM agent_org_runtime_inbox_materializations
+            "DELETE FROM agent_org_execution_inbox_materializations
              WHERE inbox_id IN (
-                 SELECT id FROM agent_org_runtime_inbox WHERE org_run_id=?1
+                 SELECT id FROM agent_org_execution_inbox WHERE org_run_id=?1
              )",
             params![run_id],
         )
         .map_err(|err| {
-            format!("failed to delete agent_org_runtime_inbox_materializations rows for {run_id}: {err}")
+            format!("failed to delete agent_org_execution_inbox_materializations rows for {run_id}: {err}")
         })?;
         conn.execute(
-            "DELETE FROM agent_org_runtime_plan_decisions
+            "DELETE FROM agent_org_execution_plan_decisions
              WHERE plan_revision_id IN (
-                 SELECT plan_revision_id FROM agent_org_runtime_plan_revisions
+                 SELECT plan_revision_id FROM agent_org_execution_plan_revisions
                  WHERE org_run_id=?1
              )",
             params![run_id],
         )
         .map_err(|err| {
-            format!("failed to delete agent_org_runtime_plan_decisions rows for {run_id}: {err}")
+            format!("failed to delete agent_org_execution_plan_decisions rows for {run_id}: {err}")
         })?;
         for table in [
-            "agent_org_runtime_plan_revisions",
-            "agent_org_runtime_recovery_attempts",
+            "agent_org_execution_plan_revisions",
+            "agent_org_execution_recovery_attempts",
             // Handoffs retain exact old/replacement Task identities. Delete
             // the run-owned receipts before their Task rows so permanent Team
             // deletion preserves foreign-key enforcement instead of relying
             // on disabled or deferred constraints.
-            "agent_org_runtime_task_execution_handoffs",
-            "agent_org_runtime_task_annotations",
-            "agent_org_runtime_task_events",
-            "agent_org_runtime_tasks",
-            "agent_org_runtime_inbox_delivery_resolutions",
-            "agent_org_runtime_inbox",
-            "agent_org_runtime_member_interventions",
-            "agent_org_runtime_run_progress",
+            "agent_org_execution_task_execution_handoffs",
+            "agent_org_execution_task_annotations",
+            "agent_org_execution_task_events",
+            "agent_org_execution_tasks",
+            "agent_org_execution_inbox_delivery_resolutions",
+            "agent_org_execution_inbox",
+            "agent_org_execution_member_interventions",
+            "agent_org_execution_run_progress",
         ] {
             conn.execute(
                 &format!("DELETE FROM {table} WHERE org_run_id=?1"),
@@ -175,7 +175,7 @@ impl AgentOrgRunStore {
         }
         let deleted = conn
             .execute(
-                "DELETE FROM agent_org_runtime_runs WHERE id=?1",
+                "DELETE FROM agent_org_execution_runs WHERE id=?1",
                 params![run_id],
             )
             .map_err(|err| err.to_string())?

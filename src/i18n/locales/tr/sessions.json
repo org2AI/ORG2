@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "Eski sürüm konuşması, yalnızca görüntüleme",
+    "savedContent": "Kaydedilmiş grup mesajları ve çıktılar",
+    "unknownMember": "Bilinmeyen üye",
+    "loading": "Geçmiş yükleniyor…",
+    "retry": "Yeniden dene",
+    "empty": "Kaydedilmiş grup içeriği yok",
+    "nextPage": "Sonraki sayfa",
+    "firstPage": "İlk sayfa"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "Kullanıcı isteği",

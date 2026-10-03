@@ -523,7 +523,7 @@ fn ensure_agent_org_hierarchy_absent(
     }
     let run_exists = conn
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs WHERE id=?1)",
+            "SELECT EXISTS(SELECT 1 FROM agent_org_execution_runs WHERE id=?1)",
             [&plan.run_id],
             |row| row.get::<_, bool>(0),
         )

@@ -123,6 +123,65 @@ afterEach(() => {
 });
 
 describe("Agent Org run-view store", () => {
+  it("stops history discovery across shared surfaces and reconnects", async () => {
+    vi.useFakeTimers();
+    let reconnect: (() => void) | undefined;
+    mocks.websocketOn.mockImplementation(
+      (event: string, handler: () => void) => {
+        if (event === "connected") reconnect = handler;
+        return mocks.unsubscribeBackendChanges;
+      }
+    );
+    mocks.getAgentOrgSessionRunView.mockRejectedValue(
+      "agent_org_history_read_only"
+    );
+    const closeChat = subscribeAgentOrgRunView("history-root", vi.fn());
+    const closeStation = subscribeAgentOrgRunView("history-root", vi.fn());
+    await flushPromises();
+    expect(getAgentOrgRunViewSnapshot("history-root")).toEqual({
+      view: null,
+      error: null,
+    });
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+    reconnect?.();
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_FALLBACK_MS * 5);
+    expect(mocks.getAgentOrgSessionRunView).toHaveBeenCalledTimes(1);
+    closeChat();
+    closeStation();
+  });
+
+  it("discards a retired projection while continuing to poll a current team", async () => {
+    vi.useFakeTimers();
+    mocks.getAgentOrgSessionRunView.mockImplementation((sessionId: string) =>
+      Promise.resolve(runViewForRoot("running", sessionId, sessionId))
+    );
+    const closeHistory = subscribeAgentOrgRunView("history-root", vi.fn());
+    await flushPromises();
+    const closeCurrent = subscribeAgentOrgRunView("current-root", vi.fn());
+    await flushPromises();
+    mocks.getAgentOrgSessionRunView.mockImplementation((sessionId: string) =>
+      sessionId === "history-root"
+        ? Promise.reject(new Error("agent_org_history_read_only"))
+        : Promise.resolve(runViewForRoot("running", sessionId, sessionId))
+    );
+    await agentOrgRunViewStoreTestApi.refresh("history-root");
+    expect(getAgentOrgRunViewSnapshot("history-root").view).toBeNull();
+    const historyCalls = () =>
+      mocks.getAgentOrgSessionRunView.mock.calls.filter(
+        ([sessionId]) => sessionId === "history-root"
+      ).length;
+    const before = historyCalls();
+    await vi.advanceTimersByTimeAsync(AGENT_ORG_RUN_VIEW_FALLBACK_MS * 2);
+    expect(historyCalls()).toBe(before);
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(true);
+    expect(getAgentOrgRunViewSnapshot("current-root").view?.runStatus).toBe(
+      "running"
+    );
+    closeHistory();
+    closeCurrent();
+    expect(agentOrgRunViewStoreTestApi.hasPollingTimer()).toBe(false);
+  });
+
   it("shares one fallback per run, coalesces pushes, and stops immediately on Idle", async () => {
     vi.useFakeTimers();
     let stateChangeHandler: ((sessionId: string) => void) | undefined;

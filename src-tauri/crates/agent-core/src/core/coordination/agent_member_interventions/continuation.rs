@@ -10,7 +10,7 @@ pub(crate) fn continuation_nudge_for_turn(
     let returned: Option<(String, String, String)> = conn
         .query_row(
             "SELECT intervention.org_run_id,intervention.member_id,intervention.original_task_id
-             FROM agent_org_runtime_member_interventions intervention
+             FROM agent_org_execution_member_interventions intervention
              JOIN session_turn_intents intent
                ON intent.session_id=intervention.session_id
               AND intent.turn_intent_id=intervention.continuation_turn_intent_id

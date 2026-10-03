@@ -178,7 +178,7 @@ pub fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
 
 pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_plan_revisions (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_plan_revisions (
             plan_revision_id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             source_task_id TEXT NOT NULL,
@@ -194,27 +194,27 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             content_digest TEXT NOT NULL CHECK(length(content_digest)=64),
             created_at TEXT NOT NULL,
             UNIQUE(org_run_id, source_task_id, revision_number),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             FOREIGN KEY(previous_plan_revision_id)
-                REFERENCES agent_org_runtime_plan_revisions(plan_revision_id)
+                REFERENCES agent_org_execution_plan_revisions(plan_revision_id)
         );
-        CREATE TRIGGER IF NOT EXISTS trg_agent_org_runtime_plan_revisions_immutable
-        BEFORE UPDATE ON agent_org_runtime_plan_revisions
+        CREATE TRIGGER IF NOT EXISTS trg_agent_org_execution_plan_revisions_immutable
+        BEFORE UPDATE ON agent_org_execution_plan_revisions
         BEGIN
             SELECT RAISE(ABORT, 'agent_org_plan_revision_immutable');
         END;
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_plan_revisions_run_task
-            ON agent_org_runtime_plan_revisions(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_plan_revisions_run_task
+            ON agent_org_execution_plan_revisions(
                 org_run_id, source_task_id, revision_number DESC
             );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_plan_revisions_path
-            ON agent_org_runtime_plan_revisions(plan_path, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_plan_revisions_source_session_turn
-            ON agent_org_runtime_plan_revisions(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_plan_revisions_path
+            ON agent_org_execution_plan_revisions(plan_path, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_plan_revisions_source_session_turn
+            ON agent_org_execution_plan_revisions(
                 source_session_id, source_turn_intent_id, created_at
             );
 
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_plan_decisions (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_plan_decisions (
             approval_id TEXT PRIMARY KEY,
             plan_revision_id TEXT NOT NULL UNIQUE,
             request_id TEXT NOT NULL UNIQUE,
@@ -229,7 +229,7 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             created_at TEXT NOT NULL,
             resolved_at TEXT,
             FOREIGN KEY(plan_revision_id)
-                REFERENCES agent_org_runtime_plan_revisions(plan_revision_id)
+                REFERENCES agent_org_execution_plan_revisions(plan_revision_id)
                 ON DELETE CASCADE,
             CHECK(
                 (status='pending' AND decision_by IS NULL AND resolved_at IS NULL)
@@ -237,8 +237,8 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 (status!='pending' AND decision_by IS NOT NULL AND resolved_at IS NOT NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_plan_decisions_status
-            ON agent_org_runtime_plan_decisions(status, created_at, approval_id);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_plan_decisions_status
+            ON agent_org_execution_plan_decisions(status, created_at, approval_id);",
     )?;
     Ok(())
 }

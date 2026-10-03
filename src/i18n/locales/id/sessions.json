@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "Percakapan versi lama, hanya lihat",
+    "savedContent": "Pesan grup dan keluaran tersimpan",
+    "unknownMember": "Anggota tidak dikenal",
+    "loading": "Memuat riwayat…",
+    "retry": "Coba lagi",
+    "empty": "Tidak ada konten grup tersimpan",
+    "nextPage": "Halaman berikutnya",
+    "firstPage": "Halaman pertama"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "Permintaan pengguna",

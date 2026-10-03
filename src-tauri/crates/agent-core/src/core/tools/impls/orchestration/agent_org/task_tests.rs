@@ -178,6 +178,7 @@ fn sandbox() -> test_env::SandboxGuard {
     let sandbox = test_env::sandbox();
     let conn = database::db::get_connection().expect("test sqlite");
     crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+    crate::persistence::test_schema::ensure_session_events_schema(&conn);
     conn.execute_batch(
         "CREATE TABLE code_sessions (
             session_id TEXT PRIMARY KEY,
@@ -218,7 +219,7 @@ fn sandbox() -> test_env::SandboxGuard {
     })
     .to_string();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs(
+        "INSERT INTO agent_org_execution_runs(
             id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
             entry_mode,status,activation_generation,created_at,updated_at
          ) VALUES (?1,'org-task-tools','agent-coordinator',?2,?3,
@@ -251,7 +252,7 @@ fn sandbox() -> test_env::SandboxGuard {
         )
         .expect("participant Session");
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations (
+            "INSERT INTO agent_org_execution_member_materializations (
                  org_run_id,member_id,agent_id,generation,session_id,
                  authority_class,status,created_at,updated_at
              ) VALUES (?1,?2,?3,1,?4,'formal','succeeded',?5,?5)",
@@ -282,7 +283,7 @@ fn insert_coordinator_context_for_turn(conn: &rusqlite::Connection, turn_id: &st
     insert_base_turn(conn, ROOT_SESSION, turn_id);
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             source_kind,source_id,activation_generation,created_at
          ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,1,?4)",
@@ -294,12 +295,12 @@ fn insert_coordinator_context_for_turn(conn: &rusqlite::Connection, turn_id: &st
 fn seed_initial_empty_task_board(conn: &rusqlite::Connection) {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET has_initial_work=1 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET has_initial_work=1 WHERE id=?1",
         [RUN_ID],
     )
     .expect("mark initial work");
     conn.execute(
-        "INSERT INTO agent_org_runtime_initial_inputs (
+        "INSERT INTO agent_org_execution_initial_inputs (
              org_run_id,turn_intent_id,message_id,content,payload_json,
              status,created_at,updated_at
          ) VALUES (?1,?2,'message-initial','Build the requested app','{}',
@@ -308,14 +309,14 @@ fn seed_initial_empty_task_board(conn: &rusqlite::Connection) {
     )
     .expect("initial input");
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_progress (org_run_id,work_revision,updated_at)
+        "INSERT INTO agent_org_execution_run_progress (org_run_id,work_revision,updated_at)
          VALUES (?1,0,?2)
          ON CONFLICT(org_run_id) DO UPDATE SET work_revision=0,updated_at=excluded.updated_at",
         rusqlite::params![RUN_ID, &now],
     )
     .expect("initial revision");
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts
+        "UPDATE agent_org_execution_turn_contexts
          SET coordinator_work_revision=0,terminal_reason=NULL
          WHERE session_id=?1 AND turn_intent_id=?2",
         rusqlite::params![ROOT_SESSION, COORDINATOR_TURN],
@@ -325,7 +326,7 @@ fn seed_initial_empty_task_board(conn: &rusqlite::Connection) {
 
 fn coordinator_terminal_reason(conn: &rusqlite::Connection, turn_id: &str) -> Option<String> {
     conn.query_row(
-        "SELECT terminal_reason FROM agent_org_runtime_turn_contexts
+        "SELECT terminal_reason FROM agent_org_execution_turn_contexts
          WHERE session_id=?1 AND turn_intent_id=?2",
         rusqlite::params![ROOT_SESSION, turn_id],
         |row| row.get(0),
@@ -344,7 +345,7 @@ fn insert_owner_context(conn: &rusqlite::Connection, turn_id: &str, task_id: &st
     let sequence: i64 = conn
         .query_row(
             "SELECT COALESCE(MAX(member_dispatch_sequence),0)+1
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE org_run_id=?1 AND dispatch_member_id=?2",
             rusqlite::params![RUN_ID, ALICE],
             |row| row.get(0),
@@ -352,7 +353,7 @@ fn insert_owner_context(conn: &rusqlite::Connection, turn_id: &str, task_id: &st
         .unwrap();
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
             source_kind,source_id,activation_generation,created_at
@@ -486,7 +487,7 @@ async fn empty_board_bypass_excludes_later_task_revision_and_certificate_states(
     let later_turn = "turn-after-initial-input";
     insert_coordinator_context_for_turn(&conn, later_turn);
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts SET coordinator_work_revision=0
+        "UPDATE agent_org_execution_turn_contexts SET coordinator_work_revision=0
          WHERE session_id=?1 AND turn_intent_id=?2",
         rusqlite::params![ROOT_SESSION, later_turn],
     )
@@ -501,7 +502,7 @@ async fn empty_board_bypass_excludes_later_task_revision_and_certificate_states(
     assert_task_list_ends_turn(&later);
 
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
              id,org_run_id,activation_generation,subject,status,execution_mode,
              created_by_participant_id,source_turn_intent_id,created_at,updated_at
          ) VALUES ('existing-task',?1,1,'Existing task','pending','build',
@@ -516,17 +517,17 @@ async fn empty_board_bypass_excludes_later_task_revision_and_certificate_states(
     assert_task_list_ends_turn(&with_task);
 
     conn.execute(
-        "DELETE FROM agent_org_runtime_tasks WHERE org_run_id=?1",
+        "DELETE FROM agent_org_execution_tasks WHERE org_run_id=?1",
         [RUN_ID],
     )
     .expect("restore empty board");
     conn.execute(
-        "UPDATE agent_org_runtime_run_progress SET work_revision=1 WHERE org_run_id=?1",
+        "UPDATE agent_org_execution_run_progress SET work_revision=1 WHERE org_run_id=?1",
         [RUN_ID],
     )
     .expect("advance run revision");
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts
+        "UPDATE agent_org_execution_turn_contexts
          SET coordinator_work_revision=1,terminal_reason=NULL
          WHERE session_id=?1 AND turn_intent_id=?2",
         rusqlite::params![ROOT_SESSION, COORDINATOR_TURN],
@@ -539,19 +540,19 @@ async fn empty_board_bypass_excludes_later_task_revision_and_certificate_states(
     assert_task_list_ends_turn(&advanced);
 
     conn.execute(
-        "UPDATE agent_org_runtime_run_progress SET work_revision=0 WHERE org_run_id=?1",
+        "UPDATE agent_org_execution_run_progress SET work_revision=0 WHERE org_run_id=?1",
         [RUN_ID],
     )
     .expect("restore initial revision");
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts
+        "UPDATE agent_org_execution_turn_contexts
          SET coordinator_work_revision=0,terminal_reason=NULL
          WHERE session_id=?1 AND turn_intent_id=?2",
         rusqlite::params![ROOT_SESSION, COORDINATOR_TURN],
     )
     .expect("restore initial Turn state");
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates (
+        "INSERT INTO agent_org_execution_run_completion_certificates (
              id,org_run_id,activation_generation,work_revision,request_id,request_digest,
              outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
              evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -608,8 +609,8 @@ async fn list_dir_then_initial_task_list_can_create_graph_and_advance_revision()
     let (task_count, work_revision): (i64, i64) = conn
         .query_row(
             "SELECT
-                 (SELECT COUNT(*) FROM agent_org_runtime_tasks WHERE org_run_id=?1),
-                 (SELECT work_revision FROM agent_org_runtime_run_progress WHERE org_run_id=?1)",
+                 (SELECT COUNT(*) FROM agent_org_execution_tasks WHERE org_run_id=?1),
+                 (SELECT work_revision FROM agent_org_execution_run_progress WHERE org_run_id=?1)",
             [RUN_ID],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -624,20 +625,20 @@ async fn completion_request_replays_without_rewriting_progress() {
     let conn = database::db::get_connection().expect("test sqlite");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_progress (org_run_id,updated_at)
+        "INSERT INTO agent_org_execution_run_progress (org_run_id,updated_at)
          VALUES (?1,?2)",
         rusqlite::params![RUN_ID, &now],
     )
     .expect("completion progress fixture");
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts
+        "UPDATE agent_org_execution_turn_contexts
          SET coordinator_work_revision=0
          WHERE session_id=?1 AND turn_intent_id=?2",
         rusqlite::params![ROOT_SESSION, COORDINATOR_TURN],
     )
     .expect("presented completion revision");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
             id,org_run_id,activation_generation,subject,description,status,owner,
             execution_mode,blocked_by_json,output_json,created_by_participant_id,
             source_turn_intent_id,created_at,updated_at
@@ -690,7 +691,7 @@ async fn completion_request_replays_without_rewriting_progress() {
     assert_eq!(replay, first);
     assert_eq!(progress_after, progress_before);
     let certificates: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM agent_org_runtime_run_completion_certificates WHERE org_run_id=?1",
+        "SELECT COUNT(*) FROM agent_org_execution_run_completion_certificates WHERE org_run_id=?1",
         [RUN_ID], |row| row.get(0),
     ).unwrap();
     assert_eq!(
@@ -706,7 +707,7 @@ async fn configured_writer_uses_one_schema_for_graph_and_owned_lifecycle_authori
     let mut snapshot: Value = serde_json::from_str(
         &conn
             .query_row(
-                "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id=?1",
+                "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id=?1",
                 [RUN_ID],
                 |row| row.get::<_, String>(0),
             )
@@ -715,7 +716,7 @@ async fn configured_writer_uses_one_schema_for_graph_and_owned_lifecycle_authori
     .unwrap();
     snapshot["additionalTaskGraphWriterMemberIds"] = json!([ALICE]);
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?2 WHERE id=?1",
         rusqlite::params![RUN_ID, serde_json::to_string(&snapshot).unwrap()],
     )
     .unwrap();
@@ -883,7 +884,7 @@ async fn idle_first_task_activates_once_and_replay_stays_read_only_after_archive
     let _sandbox = sandbox();
     let conn = database::db::get_connection().expect("test sqlite");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='idle',idled_at=?2,last_activity_outcome='completed'
          WHERE id=?1",
         rusqlite::params![RUN_ID, chrono::Utc::now().to_rfc3339()],
@@ -914,7 +915,7 @@ async fn idle_first_task_activates_once_and_replay_stays_read_only_after_archive
     assert_eq!(activated.activation_generation, 2);
     let marker_generation: i64 = conn
         .query_row(
-            "SELECT activation_generation FROM agent_org_runtime_turn_contexts
+            "SELECT activation_generation FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND turn_intent_id=?2",
             rusqlite::params![ROOT_SESSION, COORDINATOR_TURN],
             |row| row.get(0),
@@ -952,7 +953,7 @@ async fn idle_first_task_activates_once_and_replay_stays_read_only_after_archive
     );
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='archived',activation_generation=activation_generation+1,
              archived_at=?2,archive_receipt_id='idle-replay-archive'
          WHERE id=?1",
@@ -962,13 +963,13 @@ async fn idle_first_task_activates_once_and_replay_stays_read_only_after_archive
     let before = (
         AgentOrgTaskStore::list(RUN_ID).unwrap().len(),
         conn.query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_inbox WHERE org_run_id=?1",
             [RUN_ID],
             |row| row.get::<_, i64>(0),
         )
         .unwrap(),
         conn.query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_tool_call_receipts WHERE org_run_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_tool_call_receipts WHERE org_run_id=?1",
             [RUN_ID],
             |row| row.get::<_, i64>(0),
         )
@@ -982,13 +983,13 @@ async fn idle_first_task_activates_once_and_replay_stays_read_only_after_archive
     let after = (
         AgentOrgTaskStore::list(RUN_ID).unwrap().len(),
         conn.query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_inbox WHERE org_run_id=?1",
             [RUN_ID],
             |row| row.get::<_, i64>(0),
         )
         .unwrap(),
         conn.query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_tool_call_receipts WHERE org_run_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_tool_call_receipts WHERE org_run_id=?1",
             [RUN_ID],
             |row| row.get::<_, i64>(0),
         )
@@ -1021,7 +1022,7 @@ async fn idle_after_cancelled_episode_accepts_new_work_and_clears_prior_outcome(
     let _sandbox = sandbox();
     let conn = database::db::get_connection().expect("test sqlite");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='idle',idled_at=?2,last_activity_outcome='cancelled'
          WHERE id=?1",
         rusqlite::params![RUN_ID, chrono::Utc::now().to_rfc3339()],
@@ -1057,7 +1058,7 @@ async fn concurrent_idle_task_creates_share_one_activation_generation() {
     let _sandbox = sandbox();
     let conn = database::db::get_connection().expect("test sqlite");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='idle',idled_at=?2,last_activity_outcome='completed'
          WHERE id=?1",
         rusqlite::params![RUN_ID, chrono::Utc::now().to_rfc3339()],
@@ -1098,7 +1099,7 @@ async fn concurrent_idle_task_creates_share_one_activation_generation() {
     assert_eq!(AgentOrgTaskStore::list(RUN_ID).unwrap().len(), 2);
     let marker_generation: i64 = conn
         .query_row(
-            "SELECT activation_generation FROM agent_org_runtime_turn_contexts
+            "SELECT activation_generation FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND turn_intent_id=?2",
             rusqlite::params![ROOT_SESSION, COORDINATOR_TURN],
             |row| row.get(0),
@@ -1112,7 +1113,7 @@ async fn paused_first_task_is_rejected_without_task_or_receipt() {
     let _sandbox = sandbox();
     let conn = database::db::get_connection().expect("test sqlite");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='paused',activation_generation=2,updated_at=?2
          WHERE id=?1",
         rusqlite::params![RUN_ID, chrono::Utc::now().to_rfc3339()],
@@ -1137,7 +1138,7 @@ async fn paused_first_task_is_rejected_without_task_or_receipt() {
     assert!(AgentOrgTaskStore::list(RUN_ID).unwrap().is_empty());
     let receipt_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_tool_call_receipts
+            "SELECT COUNT(*) FROM agent_org_execution_tool_call_receipts
              WHERE org_run_id=?1 AND call_id=?2",
             rusqlite::params![RUN_ID, &call.call_id],
             |row| row.get(0),

@@ -6,7 +6,7 @@ fn make_params(org_run_id: &str, id: &str, subject: &str) -> CreateTaskParams {
     let conn = get_connection().expect("task test database");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT OR IGNORE INTO agent_org_runtime_runs
+        "INSERT OR IGNORE INTO agent_org_execution_runs
          (id, org_id, coordinator_agent_id, entry_mode, status, created_at, updated_at)
          VALUES (?1, 'task-test-org', 'task-test-coordinator', 'standalone_session', 'running', ?2, ?2)",
         rusqlite::params![org_run_id, now],
@@ -48,7 +48,7 @@ fn make_params(org_run_id: &str, id: &str, subject: &str) -> CreateTaskParams {
     })
     .to_string();
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET activation_generation=1,
              org_snapshot_json=COALESCE(org_snapshot_json,?2)
          WHERE id=?1",
@@ -172,7 +172,7 @@ fn task_mutations_require_running_parent_run() {
     crate::coordination::agent_org_runs::init_schema(&conn).expect("run schema");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs
+        "INSERT INTO agent_org_execution_runs
          (id, org_id, coordinator_agent_id, entry_mode, status, created_at, updated_at)
          VALUES ('guarded-run', 'org', 'coord', 'standalone_session', 'paused', ?1, ?1)",
         rusqlite::params![now],
@@ -189,7 +189,7 @@ fn task_mutations_require_running_parent_run() {
     assert!(create_error.contains("agent_org_run_not_mutable"));
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='running' WHERE id='guarded-run'",
+        "UPDATE agent_org_execution_runs SET status='running' WHERE id='guarded-run'",
         [],
     )
     .unwrap();
@@ -201,7 +201,7 @@ fn task_mutations_require_running_parent_run() {
     ))
     .expect("running run permits create");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='archived',activation_generation=activation_generation+1,
              archived_at=?1,archive_receipt_id='guarded-run-archive-receipt'
          WHERE id='guarded-run'",
@@ -439,7 +439,7 @@ fn delete_rejects_task_used_as_an_inbox_delivery_replacement() {
     let conn = get_connection().expect("test sqlite connection");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
              recipient_agent_id, sender_agent_id, org_run_id,
              payload_kind, payload_json, created_at
          ) VALUES (
@@ -451,7 +451,7 @@ fn delete_rejects_task_used_as_an_inbox_delivery_replacement() {
     .expect("seed source inbox evidence");
     let inbox_id = conn.last_insert_rowid();
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_delivery_resolutions (
+        "INSERT INTO agent_org_execution_inbox_delivery_resolutions (
              inbox_id, org_run_id, resolution_kind, resolved_by_member_id,
              reason, replacement_task_id, created_at
          ) VALUES (?1, ?2, 'superseded', 'coordinator', 'Moved to task',
@@ -480,14 +480,14 @@ fn delete_fails_closed_when_delivery_resolution_schema_is_missing() {
     .expect("create guarded task");
     let conn = get_connection().expect("test sqlite connection");
     conn.execute(
-        "DROP TABLE agent_org_runtime_inbox_delivery_resolutions",
+        "DROP TABLE agent_org_execution_inbox_delivery_resolutions",
         [],
     )
     .expect("simulate damaged delivery-resolution schema");
 
     let error = AgentOrgTaskStore::delete(&run_id, "schema-guarded-task")
         .expect_err("schema failure must not be treated as an unreferenced task");
-    assert!(error.contains("agent_org_runtime_inbox_delivery_resolutions"));
+    assert!(error.contains("agent_org_execution_inbox_delivery_resolutions"));
     assert!(AgentOrgTaskStore::get(&run_id, "schema-guarded-task")
         .expect("reload guarded task")
         .is_some());
@@ -569,7 +569,7 @@ fn corrupt_predicate_flags_ownerless_in_progress_and_spaced_eligibility() {
     conn.execute_batch("PRAGMA ignore_check_constraints=ON;")
         .expect("allow corruption fixture");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks
+        "INSERT INTO agent_org_execution_tasks
          (id, org_run_id, activation_generation, subject, description, active_form, owner, status,
           execution_mode, blocked_by_json, metadata_json,
           created_by_participant_id, source_turn_intent_id, created_at, updated_at)
@@ -583,7 +583,7 @@ fn corrupt_predicate_flags_ownerless_in_progress_and_spaced_eligibility() {
     )
     .expect("seed ownerless in-progress row");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks
+        "INSERT INTO agent_org_execution_tasks
          (id, org_run_id, activation_generation, subject, description, active_form, owner, status,
           execution_mode, blocked_by_json, metadata_json,
           created_by_participant_id, source_turn_intent_id, created_at, updated_at)
@@ -604,7 +604,7 @@ fn corrupt_predicate_flags_ownerless_in_progress_and_spaced_eligibility() {
     let corrupt_count: i64 = conn
         .query_row(
             &format!(
-                "SELECT COUNT(*) FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND {predicate}"
+                "SELECT COUNT(*) FROM agent_org_execution_tasks WHERE org_run_id=?1 AND {predicate}"
             ),
             rusqlite::params![&run_id],
             |row| row.get(0),
@@ -624,7 +624,7 @@ fn summary_filtered_total_matches_rows_after_scalar_corruption_filtering() {
     let oversized_id =
         "x".repeat(crate::coordination::agent_org_payload_limits::TASK_IDENTIFIER_MAX_CHARS + 1);
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks
+        "INSERT INTO agent_org_execution_tasks
          (id, org_run_id, activation_generation, subject, description, active_form, owner, status,
           execution_mode, blocked_by_json, metadata_json,
           created_by_participant_id, source_turn_intent_id, created_at, updated_at)
@@ -735,7 +735,7 @@ fn store_rejects_malformed_reserved_dispatch_metadata() {
     let conn = get_connection().expect("task database");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks
+        "INSERT INTO agent_org_execution_tasks
          (id, org_run_id, activation_generation, subject, description, active_form, owner, status,
           execution_mode, blocked_by_json, metadata_json, output_json,
           created_by_participant_id, source_turn_intent_id, created_at, updated_at)
@@ -754,7 +754,7 @@ fn store_rejects_malformed_reserved_dispatch_metadata() {
     let classified: bool = conn
         .query_row(
             &format!(
-                "SELECT {predicate} FROM agent_org_runtime_tasks
+                "SELECT {predicate} FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND id='historical-output-producer'"
             ),
             rusqlite::params![&run_id],
@@ -777,7 +777,7 @@ fn store_rejects_malformed_reserved_dispatch_metadata() {
         },
     });
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks
+        "INSERT INTO agent_org_execution_tasks
          (id, org_run_id, activation_generation, subject, description, active_form, owner, status,
           execution_mode, blocked_by_json, metadata_json, output_json,
           created_by_participant_id, source_turn_intent_id, created_at, updated_at)
@@ -795,7 +795,7 @@ fn store_rejects_malformed_reserved_dispatch_metadata() {
     let classified: bool = conn
         .query_row(
             &format!(
-                "SELECT {predicate} FROM agent_org_runtime_tasks
+                "SELECT {predicate} FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND id='historical-output-zone'"
             ),
             rusqlite::params![&run_id],

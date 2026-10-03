@@ -349,6 +349,7 @@ async fn ensure_session_initialized(
         model_override,
         native_harness_type,
     } = request;
+    crate::coordination::agent_org_history_store::require_writable_session(session_id).await?;
 
     let workspace_root = resolved.workspace().to_path_buf();
 
@@ -772,7 +773,7 @@ mod tests {
         crate::coordination::init_agent_org_schemas(&conn).expect("Agent Org schemas");
         let now = "2026-08-23T00:00:00Z";
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id,org_id,coordinator_agent_id,entry_mode,status,
                 activation_generation,created_at,updated_at
              ) VALUES (?1,'org-runtime-admission','builtin:sde',
@@ -811,7 +812,7 @@ mod tests {
 
         let conn = database::db::get_connection().expect("sandbox DB");
         conn.execute(
-            "UPDATE agent_org_runtime_runs SET activation_generation=8 WHERE id=?1",
+            "UPDATE agent_org_execution_runs SET activation_generation=8 WHERE id=?1",
             [&admission.run_id],
         )
         .expect("change lifecycle generation");
@@ -820,7 +821,7 @@ mod tests {
         assert!(stale.starts_with("agent_org_runtime_admission_stale:"));
 
         conn.execute(
-            "UPDATE agent_org_runtime_runs
+            "UPDATE agent_org_execution_runs
              SET status='archived',archived_at=?2,archive_receipt_id=?3
              WHERE id=?1",
             params![

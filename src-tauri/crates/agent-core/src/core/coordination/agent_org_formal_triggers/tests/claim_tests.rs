@@ -33,7 +33,7 @@ fn same_turn_replays_the_exact_batch_and_leaves_later_facts_pending() {
     let conn = get_connection().expect("formal trigger database");
     let later_status: String = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_formal_trigger_receipts WHERE inbox_id=?1",
+            "SELECT status FROM agent_org_execution_formal_trigger_receipts WHERE inbox_id=?1",
             [later.id],
             |row| row.get(0),
         )
@@ -78,7 +78,7 @@ fn known_failure_terminates_attempt_and_allows_one_new_attempt() {
     let attempts: Vec<(i64, String)> = {
         let mut stmt = conn
             .prepare(
-                "SELECT attempt,status FROM agent_org_runtime_formal_trigger_attempts
+                "SELECT attempt,status FROM agent_org_execution_formal_trigger_attempts
                  ORDER BY attempt",
             )
             .unwrap();
@@ -152,7 +152,7 @@ fn user_group_fact_replays_until_exact_provider_turn_acknowledges_it() {
     assert_eq!(replay, first);
 
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations(
+        "INSERT INTO agent_org_execution_inbox_materializations(
              inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
          ) VALUES (?1,'formal-root','group-transcript','turn-group',?2)",
         rusqlite::params![row.id, chrono::Utc::now().to_rfc3339()],
@@ -174,8 +174,8 @@ fn user_group_fact_replays_until_exact_provider_turn_acknowledges_it() {
     let state: (String, bool, Option<String>) = conn
         .query_row(
             "SELECT receipt.status,inbox.read_at IS NOT NULL,receipt.materialized_event_id
-             FROM agent_org_runtime_formal_trigger_receipts receipt
-             JOIN agent_org_runtime_inbox inbox ON inbox.id=receipt.inbox_id
+             FROM agent_org_execution_formal_trigger_receipts receipt
+             JOIN agent_org_execution_inbox inbox ON inbox.id=receipt.inbox_id
              WHERE inbox.id=?1",
             [row.id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),

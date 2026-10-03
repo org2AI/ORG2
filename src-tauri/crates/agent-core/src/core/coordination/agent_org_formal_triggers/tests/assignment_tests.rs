@@ -50,7 +50,7 @@ fn coordinator_created_assignment_records_one_resolved_receipt_without_self_wake
     let state: (String, String, Option<String>, String, i64) = conn
         .query_row(
             "SELECT status,doorbell_status,source_turn_intent_id,owner_member_id,inbox_id
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE source_kind='task_assignment'",
             [],
             |row| {
@@ -96,8 +96,8 @@ fn external_assignment_materializes_a_separate_coordinator_fact_without_consumin
     let observation: (i64, String, String, String) = conn
         .query_row(
             "SELECT receipt.inbox_id,inbox.payload_kind,receipt.status,receipt.owner_member_id
-             FROM agent_org_runtime_formal_trigger_receipts receipt
-             JOIN agent_org_runtime_inbox inbox ON inbox.id=receipt.inbox_id
+             FROM agent_org_execution_formal_trigger_receipts receipt
+             JOIN agent_org_execution_inbox inbox ON inbox.id=receipt.inbox_id
              WHERE receipt.source_kind='task_assignment'",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),

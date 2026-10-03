@@ -192,7 +192,7 @@ impl AgentOrgRunStore {
         let run: Option<(String, i64, Option<String>)> = conn
             .query_row(
                 "SELECT status,activation_generation,org_snapshot_json
-                 FROM agent_org_runtime_runs WHERE id=?1",
+                 FROM agent_org_execution_runs WHERE id=?1",
                 [run_id],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
@@ -295,7 +295,7 @@ impl AgentOrgRunStore {
         let now = chrono::Utc::now().to_rfc3339();
         let changed = conn
             .execute(
-                "UPDATE agent_org_runtime_runs
+                "UPDATE agent_org_execution_runs
                  SET status='running',activation_generation=?2,updated_at=?3,
                      idled_at=NULL,last_activity_outcome=NULL
                  WHERE id=?1 AND status=?5 AND activation_generation=?4",
@@ -316,7 +316,7 @@ impl AgentOrgRunStore {
             for turn in turns {
                 let marked = conn
                     .execute(
-                        "UPDATE agent_org_runtime_turn_contexts
+                        "UPDATE agent_org_execution_turn_contexts
                      SET activation_generation=?4
                      WHERE session_id=?1 AND turn_intent_id=?2 AND org_run_id=?3
                        AND participant_id='coordinator' AND turn_kind='coordinator'

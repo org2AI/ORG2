@@ -322,7 +322,7 @@ pub(super) fn build_agent_org_run_view(
             "SELECT
                 COALESCE(SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END),0),
                 COALESCE(SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END),0)
-             FROM agent_org_runtime_tasks WHERE org_run_id=?1",
+             FROM agent_org_execution_tasks WHERE org_run_id=?1",
             params![&context.run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -585,12 +585,12 @@ pub(super) fn load_task_state_window(
             "SELECT task.id,task.status,task.owner,task.activation_generation,
                     task.replaces_task_id,
                     (SELECT replacement.id
-                     FROM agent_org_runtime_tasks replacement
+                     FROM agent_org_execution_tasks replacement
                      WHERE replacement.org_run_id=task.org_run_id
                        AND replacement.replaces_task_id=task.id
                      ORDER BY replacement.created_at,replacement.id LIMIT 1),
                     task.updated_at
-             FROM agent_org_runtime_tasks task
+             FROM agent_org_execution_tasks task
              WHERE task.org_run_id=?1
              ORDER BY task.updated_at DESC,task.id
              LIMIT ?2",
@@ -673,7 +673,7 @@ pub(super) fn latest_coordinator_is_waiting_for_org_event(
         "SELECT COALESCE((
             SELECT context.terminal_reason='waiting_for_org_event'
                    AND intent.status IN ('completed','failed','cancelled','abandoned')
-            FROM agent_org_runtime_turn_contexts context
+            FROM agent_org_execution_turn_contexts context
             JOIN session_turn_intents intent
               ON intent.session_id=context.session_id
              AND intent.turn_intent_id=context.turn_intent_id
@@ -831,7 +831,7 @@ fn task_counts_by_owner_with_connection(
                     COALESCE(SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END), 0),
                     COALESCE(SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END), 0),
                     COALESCE(SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END), 0)
-             FROM agent_org_runtime_tasks
+             FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND owner IS NOT NULL
              GROUP BY owner",
         )

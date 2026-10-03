@@ -78,7 +78,7 @@ pub(crate) fn create_initial_for_certificate_in_tx(
     let receipt_id = stable_receipt_id(&certificate.id, 1);
     let now = chrono::Utc::now().to_rfc3339();
     tx.execute(
-        "INSERT INTO agent_org_runtime_final_summary_receipts (
+        "INSERT INTO agent_org_execution_final_summary_receipts (
              receipt_id,org_run_id,activation_generation,certificate_id,
              evidence_digest,attempt,status,coordinator_session_id,
              turn_intent_id,retry_request_id,started_at,terminal_at,event_id,
@@ -135,7 +135,7 @@ pub(crate) fn claim_pending_for_coordinator_turn_in_tx(
     let pending: Option<(String, String)> = tx
         .query_row(
             "SELECT receipt_id,coordinator_session_id
-             FROM agent_org_runtime_final_summary_receipts
+             FROM agent_org_execution_final_summary_receipts
              WHERE org_run_id=?1 AND status='pending'
              ORDER BY attempt DESC LIMIT 1",
             [org_run_id],
@@ -152,7 +152,7 @@ pub(crate) fn claim_pending_for_coordinator_turn_in_tx(
     let now = chrono::Utc::now().to_rfc3339();
     let updated = tx
         .execute(
-            "UPDATE agent_org_runtime_final_summary_receipts
+            "UPDATE agent_org_execution_final_summary_receipts
              SET status='running',turn_intent_id=?2,started_at=?3,updated_at=?3
              WHERE receipt_id=?1 AND status='pending'",
             params![&receipt_id, turn_intent_id, &now],
@@ -163,7 +163,7 @@ pub(crate) fn claim_pending_for_coordinator_turn_in_tx(
     }
     let resolved_trigger = tx
         .execute(
-            "UPDATE agent_org_runtime_formal_trigger_receipts
+            "UPDATE agent_org_execution_formal_trigger_receipts
          SET status='resolved',doorbell_status='suppressed',resolved_at=?2,updated_at=?2
          WHERE org_run_id=?1 AND trigger_kind='final_summary'
            AND trigger_id=?3 AND status='pending'",
@@ -183,7 +183,7 @@ pub(crate) fn is_summary_turn_with_connection(
 ) -> Result<bool, String> {
     conn.query_row(
         "SELECT EXISTS(
-             SELECT 1 FROM agent_org_runtime_final_summary_receipts
+             SELECT 1 FROM agent_org_execution_final_summary_receipts
              WHERE coordinator_session_id=?1 AND turn_intent_id=?2
                AND status IN ('running','persisting')
          )",
@@ -200,7 +200,7 @@ pub(crate) fn has_summary_receipt_for_turn_with_connection(
 ) -> Result<bool, String> {
     conn.query_row(
         "SELECT EXISTS(
-             SELECT 1 FROM agent_org_runtime_final_summary_receipts
+             SELECT 1 FROM agent_org_execution_final_summary_receipts
              WHERE coordinator_session_id=?1 AND turn_intent_id=?2
          )",
         params![session_id, turn_intent_id],
@@ -221,7 +221,7 @@ pub(crate) fn status_for_turn(
     let conn = database::db::get_connection().map_err(|error| error.to_string())?;
     let raw: Option<String> = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_final_summary_receipts
+            "SELECT status FROM agent_org_execution_final_summary_receipts
              WHERE coordinator_session_id=?1 AND turn_intent_id=?2",
             params![session_id, turn_intent_id],
             |row| row.get(0),
@@ -240,7 +240,7 @@ pub(crate) fn certificate_for_turn(
     let certificate_id: Option<String> = conn
         .query_row(
             "SELECT certificate_id
-             FROM agent_org_runtime_final_summary_receipts
+             FROM agent_org_execution_final_summary_receipts
              WHERE coordinator_session_id=?1 AND turn_intent_id=?2",
             params![session_id, turn_intent_id],
             |row| row.get(0),
@@ -266,7 +266,7 @@ pub(crate) fn stable_event_id_for_turn(
     let receipt_id: Option<String> = conn
         .query_row(
             "SELECT receipt_id
-             FROM agent_org_runtime_final_summary_receipts
+             FROM agent_org_execution_final_summary_receipts
              WHERE coordinator_session_id=?1 AND turn_intent_id=?2
                AND status IN ('running','persisting')",
             params![session_id, turn_intent_id],
@@ -354,7 +354,7 @@ fn settle_attempt_in_tx(
     typed_error: &str,
 ) -> Result<bool, String> {
     let receipt: Option<String> = conn.query_row(
-        "SELECT receipt_id FROM agent_org_runtime_final_summary_receipts
+        "SELECT receipt_id FROM agent_org_execution_final_summary_receipts
          WHERE coordinator_session_id=?1 AND turn_intent_id=?2 AND status IN ('running','persisting')",
         params![session_id, turn_intent_id], |row| row.get(0))
         .optional().map_err(|error| error.to_string())?;
@@ -374,7 +374,7 @@ fn settle_attempt_in_tx(
     let now = chrono::Utc::now().to_rfc3339();
     let changed = conn
         .execute(
-            "UPDATE agent_org_runtime_final_summary_receipts
+            "UPDATE agent_org_execution_final_summary_receipts
          SET status=?2,event_id=?3,typed_error=?4,terminal_at=?5,updated_at=?5
          WHERE receipt_id=?1 AND status IN ('running','persisting')",
             params![
@@ -403,7 +403,7 @@ fn update_turn_status(
         let terminal = matches!(next, "persisted" | "failed");
         let changed = conn
             .execute(
-                "UPDATE agent_org_runtime_final_summary_receipts
+                "UPDATE agent_org_execution_final_summary_receipts
                  SET status=?4,event_id=?5,typed_error=?6,
                      terminal_at=CASE WHEN ?7 THEN ?8 ELSE terminal_at END,
                      updated_at=?8
@@ -432,7 +432,7 @@ pub(crate) fn active_for_run_with_connection(
     conn.query_row(
         &format!(
             "SELECT {RECEIPT_COLUMNS}
-             FROM agent_org_runtime_final_summary_receipts
+             FROM agent_org_execution_final_summary_receipts
              WHERE org_run_id=?1 AND activation_generation=?2
              ORDER BY attempt DESC LIMIT 1"
         ),
@@ -460,7 +460,7 @@ pub(crate) fn retry_failed(
             .query_row(
                 &format!(
                     "SELECT {RECEIPT_COLUMNS}
-                     FROM agent_org_runtime_final_summary_receipts
+                     FROM agent_org_execution_final_summary_receipts
                      WHERE certificate_id=?1 AND retry_request_id=?2"
                 ),
                 params![certificate_id, request_id],
@@ -485,7 +485,7 @@ pub(crate) fn retry_failed(
         }
         let current_attempt: i64 = tx
             .query_row(
-                "SELECT MAX(attempt) FROM agent_org_runtime_final_summary_receipts
+                "SELECT MAX(attempt) FROM agent_org_execution_final_summary_receipts
                  WHERE certificate_id=?1",
                 [certificate_id],
                 |row| row.get(0),
@@ -513,7 +513,7 @@ pub(crate) fn retry_failed(
         let now = chrono::Utc::now().to_rfc3339();
         let reactivated = tx
             .execute(
-                "UPDATE agent_org_runtime_runs
+                "UPDATE agent_org_execution_runs
                  SET status='running',idled_at=NULL,updated_at=?3
                  WHERE id=?1 AND status='idle' AND activation_generation=?2",
                 params![
@@ -527,7 +527,7 @@ pub(crate) fn retry_failed(
             return Err("final_summary_retry_requires_idle_current_generation".to_string());
         }
         tx.execute(
-            "INSERT INTO agent_org_runtime_final_summary_receipts (
+            "INSERT INTO agent_org_execution_final_summary_receipts (
                  receipt_id,org_run_id,activation_generation,certificate_id,
                  evidence_digest,attempt,status,coordinator_session_id,
                  turn_intent_id,retry_request_id,started_at,terminal_at,event_id,
@@ -577,7 +577,7 @@ pub(crate) fn reconcile_after_restart(conn: &Connection) -> Result<usize, String
         let mut stmt = conn
             .prepare(
                 "SELECT receipt_id,coordinator_session_id
-                 FROM agent_org_runtime_final_summary_receipts
+                 FROM agent_org_execution_final_summary_receipts
                  WHERE status IN ('running','persisting') AND event_id IS NULL
                  ORDER BY created_at,receipt_id",
             )
@@ -603,7 +603,7 @@ pub(crate) fn reconcile_after_restart(conn: &Connection) -> Result<usize, String
             .map_err(|error| error.to_string())?;
         let changed = if persisted {
             conn.execute(
-                "UPDATE agent_org_runtime_final_summary_receipts
+                "UPDATE agent_org_execution_final_summary_receipts
                  SET status='persisted',event_id=?2,terminal_at=?3,updated_at=?3
                  WHERE receipt_id=?1 AND status IN ('running','persisting')
                    AND event_id IS NULL",
@@ -611,7 +611,7 @@ pub(crate) fn reconcile_after_restart(conn: &Connection) -> Result<usize, String
             )
         } else {
             conn.execute(
-                "UPDATE agent_org_runtime_final_summary_receipts
+                "UPDATE agent_org_execution_final_summary_receipts
                  SET status='failed',typed_error='started_but_output_unknown_after_restart',
                      terminal_at=?2,updated_at=?2
                  WHERE receipt_id=?1 AND status IN ('running','persisting')
@@ -686,7 +686,7 @@ fn load_attempt_with_connection(
     conn.query_row(
         &format!(
             "SELECT {RECEIPT_COLUMNS}
-             FROM agent_org_runtime_final_summary_receipts
+             FROM agent_org_execution_final_summary_receipts
              WHERE certificate_id=?1 AND attempt=?2"
         ),
         params![certificate_id, attempt],
@@ -703,7 +703,7 @@ fn load_by_receipt_with_connection(
     conn.query_row(
         &format!(
             "SELECT {RECEIPT_COLUMNS}
-             FROM agent_org_runtime_final_summary_receipts WHERE receipt_id=?1"
+             FROM agent_org_execution_final_summary_receipts WHERE receipt_id=?1"
         ),
         [receipt_id],
         row_to_receipt,

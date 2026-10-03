@@ -7,7 +7,7 @@ fn streamed_final_summary_uses_stable_identity_and_certificate_authority() {
     crate::coordination::init_agent_org_schemas(&conn).expect("Agent Org schema");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs(
+        "INSERT INTO agent_org_execution_runs(
              id,org_id,coordinator_agent_id,root_session_id,entry_mode,status,
              activation_generation,has_initial_work,created_at,updated_at
          ) VALUES ('run','org','coordinator','coordinator-session',
@@ -16,7 +16,7 @@ fn streamed_final_summary_uses_stable_identity_and_certificate_authority() {
     )
     .expect("seed run");
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates(
+        "INSERT INTO agent_org_execution_run_completion_certificates(
              id,org_run_id,activation_generation,work_revision,request_id,request_digest,
              outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
              evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -27,7 +27,7 @@ fn streamed_final_summary_uses_stable_identity_and_certificate_authority() {
     )
     .expect("seed certificate");
     conn.execute(
-        "INSERT INTO agent_org_runtime_final_summary_receipts(
+        "INSERT INTO agent_org_execution_final_summary_receipts(
              receipt_id,org_run_id,activation_generation,certificate_id,
              evidence_digest,attempt,status,coordinator_session_id,
              turn_intent_id,started_at,created_at,updated_at
@@ -71,7 +71,7 @@ fn streamed_final_summary_uses_stable_identity_and_certificate_authority() {
     );
 
     conn.execute(
-        "UPDATE agent_org_runtime_final_summary_receipts
+        "UPDATE agent_org_execution_final_summary_receipts
          SET status='failed',typed_error='stopped',terminal_at=?2,updated_at=?2
          WHERE receipt_id=?1",
         rusqlite::params!["summary-receipt", chrono::Utc::now().to_rfc3339()],

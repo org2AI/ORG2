@@ -48,10 +48,10 @@ fn five_ticks_repair_only_the_original_receipt_once() {
     let state: (String, String, i64, i64) = conn
         .query_row(
             "SELECT receipt.status,receipt.doorbell_status,
-                    (SELECT COUNT(*) FROM agent_org_runtime_inbox),
+                    (SELECT COUNT(*) FROM agent_org_execution_inbox),
                     progress.work_revision
-             FROM agent_org_runtime_formal_trigger_receipts receipt
-             JOIN agent_org_runtime_run_progress progress
+             FROM agent_org_execution_formal_trigger_receipts receipt
+             JOIN agent_org_execution_run_progress progress
                ON progress.org_run_id=receipt.org_run_id
              WHERE receipt.receipt_id=?1",
             [&receipt_id],
@@ -91,16 +91,16 @@ fn ready_assigned_task_gets_one_replacement_doorbell_without_owner_or_task_mutat
     let state: (String, String, i64, i64, i64) = conn
         .query_row(
             "SELECT task.status,task.owner,
-                    (SELECT COUNT(*) FROM agent_org_runtime_tasks
+                    (SELECT COUNT(*) FROM agent_org_execution_tasks
                      WHERE org_run_id=task.org_run_id),
-                    (SELECT COUNT(*) FROM agent_org_runtime_inbox
+                    (SELECT COUNT(*) FROM agent_org_execution_inbox
                      WHERE org_run_id=task.org_run_id
                        AND recipient_member_id='worker'
                        AND payload_kind='task_assigned'),
-                    (SELECT COUNT(*) FROM agent_org_runtime_recovery_attempts
+                    (SELECT COUNT(*) FROM agent_org_execution_recovery_attempts
                      WHERE org_run_id=task.org_run_id
                        AND action_kind='task_assignment_doorbell_repair_event')
-             FROM agent_org_runtime_tasks task
+             FROM agent_org_execution_tasks task
              WHERE task.org_run_id=?1 AND task.id='assigned-with-lost-doorbell'",
             [&fixture.run_id],
             |row| {
@@ -141,8 +141,8 @@ fn paused_idle_and_archived_teams_never_receive_assignment_repairs() {
     let side_effects: (i64, i64) = conn
         .query_row(
             "SELECT
-                 (SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1),
-                 (SELECT COUNT(*) FROM agent_org_runtime_recovery_attempts WHERE org_run_id=?1)",
+                 (SELECT COUNT(*) FROM agent_org_execution_inbox WHERE org_run_id=?1),
+                 (SELECT COUNT(*) FROM agent_org_execution_recovery_attempts WHERE org_run_id=?1)",
             [&fixture.run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -166,7 +166,7 @@ fn unaccepted_wake_keeps_confirmation_missing_for_next_tick() {
     let doorbell: String = conn
         .query_row(
             "SELECT doorbell_status
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE receipt_id=?1",
             [&receipt_id],
             |row| row.get(0),
@@ -184,14 +184,14 @@ fn missing_doorbell_scan_uses_the_partial_index() {
         let mut stmt = conn
             .prepare(
                 "EXPLAIN QUERY PLAN
-                 SELECT receipt_id FROM agent_org_runtime_formal_trigger_receipts receipt
+                 SELECT receipt_id FROM agent_org_execution_formal_trigger_receipts receipt
                  WHERE receipt.status='pending' AND receipt.doorbell_status='missing'
                    AND EXISTS (
-                       SELECT 1 FROM agent_org_runtime_runs run
+                       SELECT 1 FROM agent_org_execution_runs run
                        WHERE run.id=receipt.org_run_id AND run.status='running'
                    )
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_formal_trigger_attempts attempt
+                       SELECT 1 FROM agent_org_execution_formal_trigger_attempts attempt
                        WHERE attempt.receipt_id=receipt.receipt_id
                          AND attempt.status IN ('queued','running')
                    )
@@ -204,9 +204,9 @@ fn missing_doorbell_scan_uses_the_partial_index() {
             .unwrap()
     };
     assert!(
-        details
-            .iter()
-            .any(|detail| detail.contains("idx_agent_org_formal_trigger_missing_doorbell")),
+        details.iter().any(
+            |detail| detail.contains("idx_agent_org_execution_formal_trigger_missing_doorbell")
+        ),
         "query plan did not use the missing-doorbell index: {details:?}"
     );
 }

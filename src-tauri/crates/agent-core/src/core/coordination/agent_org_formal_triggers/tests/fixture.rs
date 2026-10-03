@@ -82,7 +82,7 @@ impl FormalFixture {
         )
         .expect("Coordinator Session");
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations(
+            "INSERT INTO agent_org_execution_member_materializations(
                 org_run_id,member_id,agent_id,generation,session_id,
                 authority_class,status,created_at,updated_at
              ) VALUES (?1,'coordinator','coordinator-agent',1,'formal-root',
@@ -107,7 +107,7 @@ impl FormalFixture {
         )
         .expect("Coordinator Turn intent");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts(
+            "INSERT INTO agent_org_execution_turn_contexts(
                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                 source_kind,source_id,activation_generation,created_at
              ) VALUES ('formal-root',?1,?2,'coordinator','coordinator',

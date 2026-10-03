@@ -287,10 +287,10 @@ impl AgentOrgPlanRevisionStore {
         let conn = get_connection().map_err(|err| err.to_string())?;
         let sql = format!(
             "SELECT {RECORD_SELECT}
-             FROM agent_org_runtime_plan_revisions revision
-             JOIN agent_org_runtime_plan_decisions decision
+             FROM agent_org_execution_plan_revisions revision
+             JOIN agent_org_execution_plan_decisions decision
                ON decision.plan_revision_id=revision.plan_revision_id
-             LEFT JOIN agent_org_runtime_tasks task
+             LEFT JOIN agent_org_execution_tasks task
                ON task.org_run_id=revision.org_run_id AND task.id=revision.source_task_id
              WHERE revision.org_run_id=?1 AND decision.status=?2
              ORDER BY revision.revision_number ASC,revision.plan_revision_id ASC"
@@ -312,8 +312,8 @@ impl AgentOrgPlanRevisionStore {
         let mut stmt = conn
             .prepare(
                 "SELECT revision.source_task_id
-                 FROM agent_org_runtime_plan_revisions revision
-                 JOIN agent_org_runtime_plan_decisions decision
+                 FROM agent_org_execution_plan_revisions revision
+                 JOIN agent_org_execution_plan_decisions decision
                    ON decision.plan_revision_id=revision.plan_revision_id
                  WHERE revision.org_run_id=?1 AND decision.status=?2
                  ORDER BY revision.revision_number ASC,revision.plan_revision_id ASC",
@@ -377,10 +377,10 @@ impl AgentOrgPlanRevisionStore {
                     length(CAST(revision.plan_content AS BLOB)),revision.content_digest,
                     decision.decision_by,decision.feedback,revision.created_at,
                     decision.resolved_at,task.output_json
-             FROM agent_org_runtime_plan_revisions revision
-             JOIN agent_org_runtime_plan_decisions decision
+             FROM agent_org_execution_plan_revisions revision
+             JOIN agent_org_execution_plan_decisions decision
                ON decision.plan_revision_id=revision.plan_revision_id
-             LEFT JOIN agent_org_runtime_tasks task
+             LEFT JOIN agent_org_execution_tasks task
                ON task.org_run_id=revision.org_run_id AND task.id=revision.source_task_id
              WHERE revision.org_run_id=?1 {pending_filter}
              ORDER BY (decision.status='pending') DESC,
@@ -607,7 +607,7 @@ impl AgentOrgPlanRevisionStore {
         authorize_decision(revision.policy, decision_by)?;
         let (run_status, coordinator_agent_id): (String, String) = conn
             .query_row(
-                "SELECT status,coordinator_agent_id FROM agent_org_runtime_runs WHERE id=?1",
+                "SELECT status,coordinator_agent_id FROM agent_org_execution_runs WHERE id=?1",
                 params![&revision.org_run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -621,7 +621,7 @@ impl AgentOrgPlanRevisionStore {
         let resolved_at = chrono::Utc::now().to_rfc3339();
         let changed = conn
             .execute(
-                "UPDATE agent_org_runtime_plan_decisions
+                "UPDATE agent_org_execution_plan_decisions
                  SET status=?1, decision_by=?2, feedback=?3, resolved_at=?4
                  WHERE approval_id=?5 AND plan_revision_id=?6 AND status=?7",
                 params![
@@ -658,7 +658,7 @@ impl AgentOrgPlanRevisionStore {
             && decision_source_turn_intent_id.is_some();
         let remaining_open_task_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_tasks
+                "SELECT COUNT(*) FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND status IN ('pending','in_progress')",
                 [&revision.org_run_id],
                 |row| row.get(0),
@@ -703,7 +703,7 @@ impl AgentOrgPlanRevisionStore {
         )?;
         if suppress_self_wake {
             conn.execute(
-                "UPDATE agent_org_runtime_inbox SET read_at=?2 WHERE id=?1 AND read_at IS NULL",
+                "UPDATE agent_org_execution_inbox SET read_at=?2 WHERE id=?1 AND read_at IS NULL",
                 params![coordinator_record.id, chrono::Utc::now().to_rfc3339()],
             )
             .map_err(|error| error.to_string())?;
@@ -838,17 +838,17 @@ impl AgentOrgPlanRevisionStore {
                     let mut stmt = conn
                         .prepare(
                             "SELECT DISTINCT revision.org_run_id
-                         FROM agent_org_runtime_plan_revisions revision
-                         JOIN agent_org_runtime_plan_decisions decision
+                         FROM agent_org_execution_plan_revisions revision
+                         JOIN agent_org_execution_plan_decisions decision
                            ON decision.plan_revision_id=revision.plan_revision_id
                          WHERE decision.status=?1
                            AND (
                              NOT EXISTS (
-                               SELECT 1 FROM agent_org_runtime_runs run
+                               SELECT 1 FROM agent_org_execution_runs run
                                WHERE run.id=revision.org_run_id
                              )
                              OR EXISTS (
-                               SELECT 1 FROM agent_org_runtime_runs run
+                               SELECT 1 FROM agent_org_execution_runs run
                                WHERE run.id=revision.org_run_id
                                  AND run.status='failed'
                              )
@@ -866,19 +866,19 @@ impl AgentOrgPlanRevisionStore {
                 };
                 let changed = conn
                     .execute(
-                        "UPDATE agent_org_runtime_plan_decisions
+                        "UPDATE agent_org_execution_plan_decisions
                  SET status=?1, decision_by='automatic', resolved_at=?2
                  WHERE status=?3
                    AND plan_revision_id IN (
                      SELECT revision.plan_revision_id
-                     FROM agent_org_runtime_plan_revisions revision
+                     FROM agent_org_execution_plan_revisions revision
                      WHERE
                      NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_runs run
+                       SELECT 1 FROM agent_org_execution_runs run
                        WHERE run.id=revision.org_run_id
                      )
                      OR EXISTS (
-                       SELECT 1 FROM agent_org_runtime_runs run
+                       SELECT 1 FROM agent_org_execution_runs run
                        WHERE run.id=revision.org_run_id
                          AND run.status='failed'
                      )

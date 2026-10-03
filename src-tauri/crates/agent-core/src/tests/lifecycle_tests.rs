@@ -76,6 +76,7 @@ impl MemberIdleHook for RecordingMemberIdleHook {
 fn ensure_runtime_schemas() {
     let conn = database::db::get_connection().expect("test sqlite connection");
     crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+    crate::persistence::test_schema::ensure_session_events_schema(&conn);
     crate::coordination::init_agent_org_schemas(&conn).expect("complete Agent Org runtime schema");
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS code_sessions (
@@ -211,7 +212,7 @@ fn seed_run(member_agent_id: &str) -> String {
     .expect("create run");
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations(
+        "INSERT INTO agent_org_execution_member_materializations(
             org_run_id,member_id,agent_id,generation,session_id,
             authority_class,status,created_at,updated_at
          ) VALUES (?1,'member-worker',?2,1,'member-session',
@@ -258,7 +259,7 @@ fn seed_task_execution_turn(run_id: &str, task_id: &str, turn_id: &str) {
     let sequence: i64 = conn
         .query_row(
             "SELECT COALESCE(MAX(member_dispatch_sequence),0)+1
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE org_run_id=?1 AND dispatch_member_id='member-worker'",
             [run_id],
             |row| row.get(0),
@@ -272,7 +273,7 @@ fn seed_task_execution_turn(run_id: &str, task_id: &str, turn_id: &str) {
     )
     .expect("seed failed base Turn");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
             source_kind,source_id,activation_generation,created_at
@@ -283,13 +284,13 @@ fn seed_task_execution_turn(run_id: &str, task_id: &str, turn_id: &str) {
     )
     .expect("seed exact TaskExecution context");
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_events(
+        "INSERT INTO agent_org_execution_task_events(
             id,org_run_id,task_id,event_type,previous_owner,next_owner,
             previous_status,next_status,actor_member_id,actor_kind,
             source_turn_intent_id,created_at
          ) SELECT ?1,task.org_run_id,task.id,'updated',task.owner,task.owner,
                   'pending','in_progress','member-worker','owner_execution',?2,task.updated_at
-           FROM agent_org_runtime_tasks task
+           FROM agent_org_execution_tasks task
           WHERE task.org_run_id=?3 AND task.id=?4 AND task.status='in_progress'",
         rusqlite::params![uuid::Uuid::new_v4().to_string(), turn_id, run_id, task_id],
     )
@@ -385,7 +386,7 @@ async fn successful_member_finalize_keeps_in_progress_work_owned() {
     let conn = database::db::get_connection().expect("test sqlite connection");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_recovery_attempts(
+        "INSERT INTO agent_org_execution_recovery_attempts(
             org_run_id,action_kind,target_key,reason_fingerprint,attempts,
             next_allowed_at,updated_at,reservation_token
          ) VALUES (?1,'task_failure_recovery','active-task','historical',2,?2,?2,NULL)",
@@ -446,7 +447,7 @@ async fn successful_member_finalize_keeps_in_progress_work_owned() {
     assert!(release_events.is_empty());
     let task_recovery_attempts: i64 = conn
         .query_row(
-            "SELECT attempts FROM agent_org_runtime_recovery_attempts
+            "SELECT attempts FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind='task_failure_recovery'
                AND target_key='active-task'",
             [&run_id],
@@ -478,7 +479,7 @@ async fn user_directed_finalize_never_mutates_formal_task_lifecycle() {
     )
     .expect("seed admitted direct Turn intent");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
             root_authority_turn_id,actor_version,created_at
@@ -530,7 +531,7 @@ fn successful_cancelled_turn_does_not_blanket_resolve_member_inbox() {
     let conn = database::db::get_connection().expect("test sqlite connection");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        r#"UPDATE agent_org_runtime_tasks
+        r#"UPDATE agent_org_execution_tasks
          SET status='cancelled',
              cancel_reason_json='{"code":"writer_cancelled","message":"replaced"}',
              updated_at=?3
@@ -588,11 +589,11 @@ fn successful_cancelled_turn_does_not_blanket_resolve_member_inbox() {
     let (unread_rows, resolutions): (i64, i64) = conn
         .query_row(
             "SELECT
-                 (SELECT COUNT(*) FROM agent_org_runtime_inbox
+                 (SELECT COUNT(*) FROM agent_org_execution_inbox
                   WHERE org_run_id=?1 AND recipient_member_id='member-worker'
                     AND read_at IS NULL),
                  (SELECT COUNT(*)
-                  FROM agent_org_runtime_inbox_delivery_resolutions
+                  FROM agent_org_execution_inbox_delivery_resolutions
                   WHERE org_run_id=?1
                     AND reason='member_turn_finished_without_owned_formal_work')",
             [&run_id],
@@ -778,7 +779,7 @@ fn deterministic_sibling_terminal_failure_never_requeues_completed_task() {
     assert_eq!(loser_status, "failed");
     let recovery_event_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_task_events
+            "SELECT COUNT(*) FROM agent_org_execution_task_events
              WHERE org_run_id=?1 AND task_id='sibling-terminal-task'
                AND previous_status='completed'",
             [&run_id],
@@ -856,7 +857,7 @@ fn startup_recovery_requeues_only_the_uniquely_bound_task_and_is_idempotent() {
     let receipt: (String, String, String, String, String) = conn
         .query_row(
             "SELECT source_kind,task_id,owner_member_id,source_turn_intent_id,doorbell_status
-             FROM agent_org_runtime_formal_trigger_receipts WHERE receipt_id=?1",
+             FROM agent_org_execution_formal_trigger_receipts WHERE receipt_id=?1",
             [receipt_id],
             |row| {
                 Ok((
@@ -881,7 +882,7 @@ fn startup_recovery_requeues_only_the_uniquely_bound_task_and_is_idempotent() {
     );
     let recovery_inbox_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox
+            "SELECT COUNT(*) FROM agent_org_execution_inbox
              WHERE org_run_id=?1 AND payload_kind='member_idle'",
             [&run_id],
             |row| row.get(0),
@@ -914,7 +915,7 @@ fn startup_recovery_requeues_only_the_uniquely_bound_task_and_is_idempotent() {
     }
     let receipt_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts
+            "SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND source_kind='task_execution_recovery_required'",
             [&run_id],
             |row| row.get(0),
@@ -942,7 +943,7 @@ fn startup_recovery_keyset_scan_is_not_capped_at_first_hundred_runs() {
         let root = format!("root-page-{index:03}");
         let now = chrono::Utc::now().to_rfc3339();
         tx.execute(
-            "INSERT INTO agent_org_runtime_runs(
+            "INSERT INTO agent_org_execution_runs(
                  id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
                  entry_mode,status,activation_generation,created_at,updated_at
              ) VALUES (?1,'org-lifecycle','builtin:coord',?2,?3,
@@ -1080,7 +1081,7 @@ async fn stale_generation_terminal_cannot_change_new_execution_or_notify() {
     seed_task_execution_turn(&run_id, "old-work", "old-intent");
     let conn = database::db::get_connection().unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id=?1",
         [&run_id],
     )
     .unwrap();

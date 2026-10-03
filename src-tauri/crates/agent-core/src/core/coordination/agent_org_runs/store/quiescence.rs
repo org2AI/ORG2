@@ -58,7 +58,7 @@ impl AgentOrgRunStore {
                 .map(|certificate| certificate.outcome.last_activity_outcome());
             let changed = tx
                 .execute(
-                    "UPDATE agent_org_runtime_runs
+                    "UPDATE agent_org_execution_runs
                          SET status='idle',
                              summary=COALESCE(?1, summary),
                              last_activity_outcome=?2,
@@ -67,8 +67,8 @@ impl AgentOrgRunStore {
                          WHERE id=?4 AND status='running'
                            AND activation_generation=?5
                            AND EXISTS (
-                               SELECT 1 FROM agent_org_runtime_run_progress progress
-                               WHERE progress.org_run_id=agent_org_runtime_runs.id
+                               SELECT 1 FROM agent_org_execution_run_progress progress
+                               WHERE progress.org_run_id=agent_org_execution_runs.id
                                  AND progress.work_revision=?6
                            )",
                     params![

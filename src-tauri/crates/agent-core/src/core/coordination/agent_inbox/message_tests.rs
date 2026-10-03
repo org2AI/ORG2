@@ -19,7 +19,7 @@ fn sandbox_with_inbox_schema() -> test_helpers::test_env::SandboxGuard {
 fn seed_minimal_running_run_for_delivery_resolution(run_id: &str) {
     let conn = get_connection().expect("open sandbox database");
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_runs (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_runs (
              id TEXT PRIMARY KEY,
              status TEXT NOT NULL,
              org_snapshot_json TEXT,
@@ -41,7 +41,7 @@ fn seed_minimal_running_run_for_delivery_resolution(run_id: &str) {
              org_member_id TEXT,
              updated_at TEXT NOT NULL
          );
-         CREATE TABLE IF NOT EXISTS agent_org_runtime_tasks (
+         CREATE TABLE IF NOT EXISTS agent_org_execution_tasks (
              id TEXT PRIMARY KEY,
              org_run_id TEXT NOT NULL
          );",
@@ -57,7 +57,7 @@ fn seed_minimal_running_run_for_delivery_resolution(run_id: &str) {
     )
     .expect("seed coordinator session");
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs (
+        "INSERT INTO agent_org_execution_runs (
             id,org_id,coordinator_agent_id,status,org_snapshot_json,
             root_session_id,entry_mode,created_at,updated_at
          ) VALUES (?1,'delivery-repair-org','coordinator','running',NULL,?2,
@@ -75,7 +75,7 @@ fn seed_legacy_orphan_inbox_row(run_id: &str, summary: &str, text: &str) -> Agen
     let payload_json = serde_json::to_string(&message).expect("serialize legacy payload");
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
              recipient_agent_id, recipient_member_id,
              sender_agent_id, sender_member_id, org_run_id,
              payload_kind, payload_json, request_id,
@@ -720,7 +720,7 @@ fn delivery_resolution_invalidates_stale_materialization_guard() {
         seed_legacy_orphan_inbox_row(run_id, "Stale receipt", "Do not acknowledge after repair");
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations (
+        "INSERT INTO agent_org_execution_inbox_materializations (
              inbox_id, session_id, transcript_message_id,
              transcript_intent_id, materialized_at
          ) VALUES (?1, 'old-session', 'message-1', 'intent-1', ?2)",
@@ -796,7 +796,7 @@ fn superseded_delivery_requires_an_existing_same_run_replacement() {
     let source = seed_legacy_orphan_inbox_row(run_id, "Original", "Original work");
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (id, org_run_id) VALUES ('replacement-task', ?1)",
+        "INSERT INTO agent_org_execution_tasks (id, org_run_id) VALUES ('replacement-task', ?1)",
         params![run_id],
     )
     .expect("seed replacement task");
@@ -871,7 +871,7 @@ fn superseded_delivery_can_follow_a_real_replacement_chain_but_not_cycle() {
     };
     let conn = get_connection().expect("open sandbox database");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?1 WHERE id=?2",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?1 WHERE id=?2",
         params![
             serde_json::to_string(&crate::definitions::orgs::AgentOrgLaunchSnapshot::from(
                 &org

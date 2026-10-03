@@ -150,7 +150,7 @@ async fn replacement_requires_explicit_consumer_patch_and_preserves_other_depend
         .any(|id| id == consumer_id));
     let assignments: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE org_run_id=?1
+            "SELECT COUNT(*) FROM agent_org_execution_inbox WHERE org_run_id=?1
          AND payload_kind='task_assigned' AND json_extract(payload_json,'$.task_id')=?2",
             rusqlite::params![RUN_ID, consumer_id],
             |row| row.get(0),

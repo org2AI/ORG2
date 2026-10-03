@@ -55,21 +55,12 @@ fn list_agent_sessions_page(
 ) -> Result<Vec<UnifiedSessionRecord>, String> {
     let conn = get_connection().map_err(|err| err.to_string())?;
     let root_predicate = match agent_org_root {
-        Some(true) => {
-            "AND EXISTS (
-                SELECT 1
-                FROM agent_org_runtime_runs r
-                WHERE r.root_session_id = s.session_id
-            )"
-        }
-        Some(false) => {
-            "AND s.org_member_id IS NULL
-            AND NOT EXISTS (
-                SELECT 1
-                FROM agent_org_runtime_runs r
-                WHERE r.root_session_id = s.session_id
-            )"
-        }
+        Some(true) => "AND (EXISTS (SELECT 1 FROM agent_org_execution_runs r
+            WHERE r.root_session_id=s.session_id) OR EXISTS (SELECT 1 FROM org_history_sessions h
+            WHERE h.session_id=s.session_id AND (h.root_session_id=s.session_id OR h.root_session_id IS NULL)))",
+        Some(false) => "AND s.org_member_id IS NULL AND NOT EXISTS
+            (SELECT 1 FROM agent_org_execution_runs r WHERE r.root_session_id=s.session_id)
+            AND NOT EXISTS (SELECT 1 FROM org_history_sessions h WHERE h.session_id=s.session_id)",
         None => "",
     };
     let bounded_limit = limit.min(i64::MAX as usize) as i64;
@@ -78,7 +69,8 @@ fn list_agent_sessions_page(
         let sql = format!(
             "{UNIFIED_SESSION_SELECT}
              WHERE s.session_type = ?1
-               AND s.status != ?2
+               AND (s.status != ?2 OR EXISTS (SELECT 1 FROM org_history_sessions h WHERE h.session_id=s.session_id))
+               AND NOT EXISTS (SELECT 1 FROM org_history_copies c WHERE c.copy_session_id=s.session_id)
                AND s.pinned = 0
                AND s.parent_session_id IS NULL
                {root_predicate}
@@ -110,7 +102,8 @@ fn list_agent_sessions_page(
     let sql = format!(
         "{UNIFIED_SESSION_SELECT}
          WHERE s.session_type = ?1
-           AND s.status != ?2
+           AND (s.status != ?2 OR EXISTS (SELECT 1 FROM org_history_sessions h WHERE h.session_id=s.session_id))
+               AND NOT EXISTS (SELECT 1 FROM org_history_copies c WHERE c.copy_session_id=s.session_id)
            AND s.pinned = 0
            AND s.parent_session_id IS NULL
            {root_predicate}
@@ -206,7 +199,7 @@ mod tests {
         ensure_runtime_schemas();
         let conn = database::db::get_connection().expect("test sqlite connection");
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id,
                 org_id,
                 coordinator_agent_id,
@@ -404,7 +397,7 @@ mod tests {
                    AND s.org_member_id IS NULL
                    AND NOT EXISTS (
                        SELECT 1
-                       FROM agent_org_runtime_runs r
+                       FROM agent_org_execution_runs r
                        WHERE r.root_session_id = s.session_id
                    )
                  ORDER BY s.updated_at DESC, s.session_id DESC
@@ -423,8 +416,12 @@ mod tests {
             "session page did not use ordered pin/type index:\n{details}"
         );
         assert!(
-            details.contains("idx_agent_org_runtime_runs_root_session"),
+            details.contains("idx_agent_org_execution_runs_root_session"),
             "root membership probe did not use root-session index:\n{details}"
         );
     }
 }
+
+#[cfg(test)]
+#[path = "sidebar_history_tests.rs"]
+mod history_tests;

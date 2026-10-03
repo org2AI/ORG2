@@ -96,14 +96,14 @@ fn create_fixture(conn: &Connection) {
             function_name TEXT NOT NULL DEFAULT 'raw',
             result_json TEXT NOT NULL DEFAULT '{}'
          );
-         CREATE TABLE agent_org_runtime_runs (
+         CREATE TABLE agent_org_execution_runs (
             id TEXT PRIMARY KEY,
             root_session_id TEXT,
             org_snapshot_json TEXT,
             activation_generation INTEGER NOT NULL,
             status TEXT NOT NULL
          );
-         CREATE TABLE agent_org_runtime_run_progress (
+         CREATE TABLE agent_org_execution_run_progress (
             org_run_id TEXT PRIMARY KEY,
             work_revision INTEGER NOT NULL DEFAULT 0,
             coordinator_presented_work_revision INTEGER,
@@ -113,9 +113,9 @@ fn create_fixture(conn: &Connection) {
             completion_requested_work_revision INTEGER,
             completion_summary TEXT,
             updated_at TEXT NOT NULL,
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
          );
-         CREATE TABLE agent_org_runtime_member_materializations (
+         CREATE TABLE agent_org_execution_member_materializations (
             org_run_id TEXT NOT NULL,
             member_id TEXT NOT NULL,
             agent_id TEXT NOT NULL,
@@ -123,9 +123,9 @@ fn create_fixture(conn: &Connection) {
             session_id TEXT NOT NULL,
             status TEXT NOT NULL,
             PRIMARY KEY(org_run_id, member_id, generation),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
          );
-         CREATE TABLE agent_org_runtime_tasks (
+         CREATE TABLE agent_org_execution_tasks (
             org_run_id TEXT NOT NULL,
             id TEXT NOT NULL,
             activation_generation INTEGER NOT NULL DEFAULT 1,
@@ -135,9 +135,9 @@ fn create_fixture(conn: &Connection) {
             blocked_by_json TEXT NOT NULL DEFAULT '[]',
             updated_at TEXT NOT NULL DEFAULT 'now',
             PRIMARY KEY(org_run_id, id),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
          );
-         CREATE TABLE agent_org_runtime_task_events (
+         CREATE TABLE agent_org_execution_task_events (
             id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             task_id TEXT NOT NULL,
@@ -151,9 +151,9 @@ fn create_fixture(conn: &Connection) {
             source_turn_intent_id TEXT,
             created_at TEXT NOT NULL
          );
-         CREATE INDEX idx_agent_org_runtime_task_events_task
-            ON agent_org_runtime_task_events(org_run_id, task_id, created_at, id);
-         CREATE TABLE agent_org_runtime_inbox (
+         CREATE INDEX idx_agent_org_execution_task_events_task
+            ON agent_org_execution_task_events(org_run_id, task_id, created_at, id);
+         CREATE TABLE agent_org_execution_inbox (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             delivery_class TEXT NOT NULL DEFAULT 'formal_work',
             recipient_agent_id TEXT NOT NULL DEFAULT 'agent-member',
@@ -166,17 +166,17 @@ fn create_fixture(conn: &Connection) {
             request_id TEXT,
             created_at TEXT NOT NULL DEFAULT 'now',
             read_at TEXT,
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
          );
-         CREATE TABLE agent_org_runtime_inbox_delivery_resolutions (
+         CREATE TABLE agent_org_execution_inbox_delivery_resolutions (
             inbox_id INTEGER PRIMARY KEY
          );
-         CREATE TABLE agent_org_runtime_initial_inputs (
+         CREATE TABLE agent_org_execution_initial_inputs (
             org_run_id TEXT PRIMARY KEY,
             turn_intent_id TEXT NOT NULL,
             message_id TEXT NOT NULL,
             status TEXT NOT NULL,
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
          );",
     )
     .expect("create canonical fixture schema");
@@ -203,7 +203,7 @@ fn create_fixture(conn: &Connection) {
     crate::coordination::agent_org_finality::create_schema(conn)
         .expect("create Task execution finality schema");
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs
+        "INSERT INTO agent_org_execution_runs
             (id, root_session_id, org_snapshot_json, activation_generation, status)
          VALUES (?1, ?2, ?3, 1, 'running')",
         params![RUN_ID, ROOT_SESSION_ID, snapshot_json()],
@@ -213,16 +213,16 @@ fn create_fixture(conn: &Connection) {
         "INSERT INTO agent_sessions VALUES
             ('session-root', 'agent-coordinator', 'coordinator'),
             ('session-member', 'agent-member', 'member-a');
-         INSERT INTO agent_org_runtime_member_materializations
+         INSERT INTO agent_org_execution_member_materializations
             (org_run_id, member_id, agent_id, generation, session_id, status)
          VALUES
             ('run-a', 'coordinator', 'agent-coordinator', 1, 'session-root', 'succeeded'),
             ('run-a', 'member-a', 'agent-member', 1, 'session-member', 'succeeded');
-         INSERT INTO agent_org_runtime_tasks
+         INSERT INTO agent_org_execution_tasks
             (org_run_id,id,owner,status,execution_mode,blocked_by_json)
             VALUES ('run-a', 'task-a', 'member-a', 'pending', 'build', '[]');
          INSERT INTO events (id,session_id) VALUES ('event-direct', 'session-member');
-         INSERT INTO agent_org_runtime_inbox (
+         INSERT INTO agent_org_execution_inbox (
             org_run_id, recipient_member_id, delivery_class
          ) VALUES
             ('run-a', 'member-a', 'user_directed'),
@@ -230,11 +230,11 @@ fn create_fixture(conn: &Connection) {
     )
     .expect("seed canonical identities and sources");
     conn.execute_batch(
-        "INSERT INTO agent_org_runtime_work_episodes (
+        "INSERT INTO agent_org_execution_work_episodes (
              id,org_run_id,episode_sequence,status,opening_activation_generation,
              opening_work_revision,opened_by_turn_intent_id,created_at
          ) VALUES ('episode-a','run-a',1,'active',1,0,'fixture-root','now');
-         INSERT INTO agent_org_runtime_work_episode_tasks (
+         INSERT INTO agent_org_execution_work_episode_tasks (
              org_run_id,work_episode_id,task_id,associated_at
          ) VALUES ('run-a','episode-a','task-a','now');",
     )
@@ -249,7 +249,7 @@ fn connection() -> Connection {
 
 fn insert_task_assignment(conn: &Connection, task_id: &str) -> i64 {
     conn.execute(
-        "INSERT OR IGNORE INTO agent_org_runtime_work_episode_tasks (
+        "INSERT OR IGNORE INTO agent_org_execution_work_episode_tasks (
              org_run_id,work_episode_id,task_id,associated_at
          ) VALUES (?1,'episode-a',?2,'now')",
         params![RUN_ID, task_id],
@@ -265,7 +265,7 @@ fn insert_task_assignment(conn: &Connection, task_id: &str) -> i64 {
     };
     let payload = serde_json::to_string(&message).expect("serialize TaskAssigned");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
             recipient_agent_id,org_run_id,recipient_member_id,sender_agent_id,
             sender_member_id,payload_kind,payload_json,created_at
          ) VALUES ('agent-member',?1,?2,'_system',NULL,'task_assigned',?3,'now')",
@@ -285,7 +285,7 @@ fn insert_bound_coordinator_reply(
         text: "Continue and complete the current task.".into(),
     };
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
             recipient_agent_id,org_run_id,recipient_member_id,sender_agent_id,
             sender_member_id,payload_kind,payload_json,created_at
          ) VALUES ('agent-member',?1,?2,'agent-coordinator','coordinator','plain',?3,'now')",
@@ -401,7 +401,7 @@ fn row_count(conn: &Connection, table: &str) -> i64 {
 
 fn seed_final_summary_receipt(conn: &Connection, status: &str) {
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates (
+        "INSERT INTO agent_org_execution_run_completion_certificates (
              id,org_run_id,activation_generation,work_revision,request_id,
              request_digest,outcome,summary,coordinator_session_id,
              coordinator_turn_intent_id,evidence_task_ids_json,
@@ -436,7 +436,7 @@ fn seed_final_summary_receipt(conn: &Connection, status: &str) {
         other => panic!("unsupported final summary fixture status: {other}"),
     };
     conn.execute(
-        "INSERT INTO agent_org_runtime_final_summary_receipts (
+        "INSERT INTO agent_org_execution_final_summary_receipts (
              receipt_id,org_run_id,activation_generation,certificate_id,
              evidence_digest,attempt,status,coordinator_session_id,
              turn_intent_id,started_at,terminal_at,event_id,typed_error,
@@ -499,7 +499,7 @@ fn final_summary_active_states_reject_every_new_user_admission_atomically() {
             );
         }
 
-        assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 0);
+        assert_eq!(row_count(&conn, "agent_org_execution_turn_contexts"), 0);
         assert_eq!(row_count(&conn, "session_turn_intents"), 0);
     }
 }
@@ -520,7 +520,7 @@ fn user_admission_committed_before_finalizing_remains_idempotently_accepted() {
     let replay = accept_in_transaction(&mut conn, &request)
         .expect("the exact accepted Turn must remain replayable while finalizing");
     assert_eq!(replay, accepted);
-    assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 1);
+    assert_eq!(row_count(&conn, "agent_org_execution_turn_contexts"), 1);
     assert_eq!(row_count(&conn, "session_turn_intents"), 1);
 }
 
@@ -600,7 +600,7 @@ fn coordinator_is_root_scoped_and_never_allocates_member_sequence() {
     assert_eq!(first.activation_generation, Some(1));
     assert_eq!(first.member_dispatch_sequence, None);
     assert_eq!(
-        row_count(&conn, "agent_org_runtime_member_dispatch_allocators"),
+        row_count(&conn, "agent_org_execution_member_dispatch_allocators"),
         0
     );
 
@@ -675,7 +675,7 @@ fn group_root_is_typed_exact_replayable_and_never_allocates_member_authority() {
         .prepare(
             "EXPLAIN QUERY PLAN
              SELECT source_id
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND source_kind='group_root'
              ORDER BY context_id ASC",
         )
@@ -685,18 +685,19 @@ fn group_root_is_typed_exact_replayable_and_never_allocates_member_authority() {
         })
         .expect("explain GroupRoot visibility authority query");
     assert!(
-        query_plan.iter().any(|detail| detail.contains(
-            "idx_agent_org_runtime_turn_contexts_group_root_session"
-        )),
+        query_plan
+            .iter()
+            .any(|detail| detail
+                .contains("idx_agent_org_execution_turn_contexts_group_root_session")),
         "unexpected query plan: {query_plan:?}"
     );
     assert_eq!(
-        row_count(&conn, "agent_org_runtime_member_dispatch_allocators"),
+        row_count(&conn, "agent_org_execution_member_dispatch_allocators"),
         0
     );
 
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts
+        "UPDATE agent_org_execution_turn_contexts
          SET coordinator_work_revision=0,
              coordinator_observed_task_ids_json=json_array('task-a'),
              terminal_reason='waiting_for_org_event'
@@ -726,7 +727,7 @@ fn group_root_is_typed_exact_replayable_and_never_allocates_member_authority() {
     assert!(error.contains("base Turn replay mismatch"), "{error}");
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='paused' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='paused' WHERE id=?1",
         [RUN_ID],
     )
     .expect("pause Team");
@@ -749,7 +750,7 @@ fn group_root_is_typed_exact_replayable_and_never_allocates_member_authority() {
 fn idle_root_coordinator_turn_runs_and_persists_without_activating_team() {
     let mut conn = connection();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='idle' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='idle' WHERE id=?1",
         [RUN_ID],
     )
     .unwrap();
@@ -774,7 +775,7 @@ fn idle_root_coordinator_turn_runs_and_persists_without_activating_team() {
         .expect("Idle Root can persist its final assistant answer");
     let status: String = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             [RUN_ID],
             |row| row.get(0),
         )
@@ -786,7 +787,7 @@ fn idle_root_coordinator_turn_runs_and_persists_without_activating_team() {
 fn member_wake_binds_oldest_dependency_ready_assignment_and_revalidates_at_start() {
     let mut conn = connection();
     conn.execute_batch(
-        "INSERT INTO agent_org_runtime_tasks
+        "INSERT INTO agent_org_execution_tasks
             (org_run_id,id,owner,status,execution_mode,blocked_by_json)
          VALUES
             ('run-a','blocker','member-a','failed','build','[]'),
@@ -820,7 +821,7 @@ fn member_wake_binds_oldest_dependency_ready_assignment_and_revalidates_at_start
     );
     let still_unread: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox
+            "SELECT COUNT(*) FROM agent_org_execution_inbox
              WHERE id IN (?1,?2) AND read_at IS NULL",
             params![blocked_inbox_id, ready_inbox_id],
             |row| row.get(0),
@@ -832,7 +833,7 @@ fn member_wake_binds_oldest_dependency_ready_assignment_and_revalidates_at_start
     );
 
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET owner='member-reassigned'
+        "UPDATE agent_org_execution_tasks SET owner='member-reassigned'
          WHERE org_run_id=?1 AND id='task-a'",
         [RUN_ID],
     )
@@ -848,7 +849,7 @@ fn coordinator_reply_resumes_the_same_in_progress_task_execution() {
     let original = accept_in_transaction(&mut conn, &task_request("turn-original-task"))
         .expect("accept original TaskExecution");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET status='in_progress' WHERE id='task-a'",
+        "UPDATE agent_org_execution_tasks SET status='in_progress' WHERE id='task-a'",
         [],
     )
     .expect("start Task");
@@ -905,7 +906,7 @@ fn unbound_plain_message_cannot_resume_task_execution() {
     accept_in_transaction(&mut conn, &task_request("turn-original-task"))
         .expect("accept original TaskExecution");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET status='in_progress' WHERE id='task-a'",
+        "UPDATE agent_org_execution_tasks SET status='in_progress' WHERE id='task-a'",
         [],
     )
     .expect("start Task");
@@ -915,7 +916,7 @@ fn unbound_plain_message_cannot_resume_task_execution() {
     })
     .expect("serialize peer chat");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
              recipient_agent_id,org_run_id,recipient_member_id,sender_agent_id,
              sender_member_id,payload_kind,payload_json,created_at
          ) VALUES ('agent-member',?1,?2,'agent-peer','member-peer','plain',?3,'now')",
@@ -951,14 +952,14 @@ fn assistant_persistence_accepts_only_exact_same_turn_terminal_provenance() {
     )
     .expect("promote Turn to running");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET status='completed',updated_at='completed-at'
          WHERE org_run_id=?1 AND id='task-a'",
         [RUN_ID],
     )
     .expect("complete Task");
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_events (
+        "INSERT INTO agent_org_execution_task_events (
             id,org_run_id,task_id,event_type,previous_owner,next_owner,
             previous_status,next_status,actor_member_id,actor_kind,
             source_turn_intent_id,created_at
@@ -980,7 +981,7 @@ fn assistant_persistence_accepts_only_exact_same_turn_terminal_provenance() {
         .expect("same completing Turn may persist its final assistant iteration");
 
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_events (
+        "INSERT INTO agent_org_execution_task_events (
             id,org_run_id,task_id,event_type,previous_owner,next_owner,
             previous_status,next_status,actor_member_id,actor_kind,
             source_turn_intent_id,created_at
@@ -999,13 +1000,13 @@ fn assistant_persistence_accepts_only_exact_same_turn_terminal_provenance() {
         "{stale_terminal}"
     );
     conn.execute(
-        "DELETE FROM agent_org_runtime_task_events WHERE id='event-later-system'",
+        "DELETE FROM agent_org_execution_task_events WHERE id='event-later-system'",
         [],
     )
     .expect("remove later mutation for the remaining provenance cases");
 
     conn.execute(
-        "UPDATE agent_org_runtime_task_events
+        "UPDATE agent_org_execution_task_events
          SET source_turn_intent_id='turn-other'
          WHERE id='event-completed'",
         [],
@@ -1017,7 +1018,7 @@ fn assistant_persistence_accepts_only_exact_same_turn_terminal_provenance() {
     assert!(other_turn.contains("terminal provenance"), "{other_turn}");
 
     conn.execute(
-        "UPDATE agent_org_runtime_task_events
+        "UPDATE agent_org_execution_task_events
          SET source_turn_intent_id=?1,actor_kind='system'
          WHERE id='event-completed'",
         [turn_id],
@@ -1032,7 +1033,7 @@ fn assistant_persistence_accepts_only_exact_same_turn_terminal_provenance() {
     );
 
     conn.execute(
-        "UPDATE agent_org_runtime_task_events
+        "UPDATE agent_org_execution_task_events
          SET actor_kind='owner_execution'
          WHERE id='event-completed'",
         [],
@@ -1065,14 +1066,14 @@ fn assistant_persistence_allows_exact_owner_failure_and_cancelled_turn_end() {
     )
     .expect("promote Turn to running");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET status='failed',updated_at='failed-at'
          WHERE org_run_id=?1 AND id='task-a'",
         [RUN_ID],
     )
     .expect("fail Task");
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_events (
+        "INSERT INTO agent_org_execution_task_events (
             id,org_run_id,task_id,event_type,previous_owner,next_owner,
             previous_status,next_status,actor_member_id,actor_kind,
             source_turn_intent_id,created_at
@@ -1087,7 +1088,7 @@ fn assistant_persistence_allows_exact_owner_failure_and_cancelled_turn_end() {
         .expect("owner may explain a failure committed by this exact Turn");
 
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET status='cancelled',updated_at='cancelled-at'
          WHERE org_run_id=?1 AND id='task-a'",
         [RUN_ID],
@@ -1103,7 +1104,7 @@ fn assistant_persistence_allows_exact_owner_failure_and_cancelled_turn_end() {
         .expect("the already-running exact Turn may persist its transcript and end naturally");
 
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET updated_at='reassigned-at',owner='member-reassigned'
          WHERE org_run_id=?1 AND id='task-a'",
         [RUN_ID],
@@ -1130,7 +1131,7 @@ fn assistant_persistence_rejects_generation_and_materialization_drift() {
         .expect("current in-progress Task may persist assistant output");
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id=?1",
         [RUN_ID],
     )
     .expect("advance activation generation");
@@ -1142,7 +1143,7 @@ fn assistant_persistence_rejects_generation_and_materialization_drift() {
         "{generation}"
     );
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=1 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=1 WHERE id=?1",
         [RUN_ID],
     )
     .expect("restore activation generation");
@@ -1150,7 +1151,7 @@ fn assistant_persistence_rejects_generation_and_materialization_drift() {
     conn.execute_batch(
         "INSERT INTO agent_sessions VALUES
             ('session-member-new', 'agent-member', 'member-a');
-         INSERT INTO agent_org_runtime_member_materializations
+         INSERT INTO agent_org_execution_member_materializations
             (org_run_id, member_id, agent_id, generation, session_id, status)
          VALUES
             ('run-a', 'member-a', 'agent-member', 2, 'session-member-new', 'succeeded');",
@@ -1180,13 +1181,13 @@ fn assistant_terminal_provenance_query_is_task_index_bounded() {
     assert!(
         details
             .iter()
-            .any(|detail| detail.contains("idx_agent_org_runtime_task_events_task")),
+            .any(|detail| detail.contains("idx_agent_org_execution_task_events_task")),
         "task event lookup must use the exact run/task index: {details:?}"
     );
     assert!(
         details
             .iter()
-            .all(|detail| !detail.contains("SCAN agent_org_runtime_task_events")),
+            .all(|detail| !detail.contains("SCAN agent_org_execution_task_events")),
         "task event lookup must not scan the full history table: {details:?}"
     );
 }
@@ -1204,12 +1205,12 @@ fn durable_pause_continuation_excludes_parallel_ordinary_wake_until_terminal() {
     )
     .expect("finish original Turn before persisted continuation");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=3 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=3 WHERE id=?1",
         [RUN_ID],
     )
     .expect("advance run to Resume generation");
     conn.execute(
-        "UPDATE agent_org_runtime_member_materializations
+        "UPDATE agent_org_execution_member_materializations
          SET generation=3 WHERE org_run_id=?1 AND member_id=?2",
         params![RUN_ID, MEMBER_ID],
     )
@@ -1235,7 +1236,7 @@ fn durable_pause_continuation_excludes_parallel_ordinary_wake_until_terminal() {
         .expect("persist Resume continuation before dispatcher starts");
     assert_eq!(continuation_context.member_dispatch_sequence, Some(2));
     conn.execute_batch(
-        "INSERT INTO agent_org_runtime_pause_episodes (
+        "INSERT INTO agent_org_execution_pause_episodes (
             episode_id,org_run_id,pause_request_id,pause_generation,status,
             resume_request_id,resume_generation,teardown_owner_id,
             created_at,updated_at,resumed_at
@@ -1243,7 +1244,7 @@ fn durable_pause_continuation_excludes_parallel_ordinary_wake_until_terminal() {
             'episode-a','run-a','pause-request-a',2,'consumed',
             'resume-request-a',3,'teardown-a','now','now','now'
          );
-         INSERT INTO agent_org_runtime_pause_handoffs (
+         INSERT INTO agent_org_execution_pause_handoffs (
             handoff_id,episode_id,org_run_id,session_id,original_turn_intent_id,
             turn_kind,participant_id,task_id,original_owner_member_id,
             original_activation_generation,original_intent_status,drain_status,
@@ -1309,8 +1310,8 @@ fn durable_pause_continuation_excludes_parallel_ordinary_wake_until_terminal() {
 fn failed_or_cancelled_blockers_never_unlock_a_task_wake() {
     let mut conn = connection();
     conn.execute_batch(
-        "UPDATE agent_org_runtime_tasks SET status='cancelled' WHERE id='task-a';
-         INSERT INTO agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks SET status='cancelled' WHERE id='task-a';
+         INSERT INTO agent_org_execution_tasks
             (org_run_id,id,owner,status,execution_mode,blocked_by_json)
          VALUES
             ('run-a','blocker','member-a','failed','build','[]'),
@@ -1335,7 +1336,7 @@ fn failed_or_cancelled_blockers_never_unlock_a_task_wake() {
     assert!(matches!(error, WakeAdmission::NoReadyWork));
 
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET status='completed'
+        "UPDATE agent_org_execution_tasks SET status='completed'
          WHERE org_run_id=?1 AND id='blocker'",
         [RUN_ID],
     )
@@ -1443,7 +1444,7 @@ fn every_member_kind_and_source_shares_one_fifo_and_replay_does_not_bump_it() {
     assert_eq!(replay.member_dispatch_sequence, Some(1));
     let next_sequence: i64 = conn
         .query_row(
-            "SELECT next_sequence FROM agent_org_runtime_member_dispatch_allocators
+            "SELECT next_sequence FROM agent_org_execution_member_dispatch_allocators
              WHERE org_run_id=?1 AND member_id=?2",
             params![RUN_ID, MEMBER_ID],
             |row| row.get(0),
@@ -1469,7 +1470,7 @@ fn every_member_kind_and_source_shares_one_fifo_and_replay_does_not_bump_it() {
 fn user_directed_actor_version_is_independent_from_formal_activation_generation() {
     let mut conn = connection();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id=?1",
         [RUN_ID],
     )
     .unwrap();
@@ -1499,7 +1500,7 @@ fn canonical_check_and_exhaustive_decode_fail_closed() {
     )
     .unwrap();
     let invalid = conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
             session_id, turn_intent_id, org_run_id, participant_id, turn_kind,
             dispatch_member_id, member_dispatch_sequence, source_kind, source_id,
             activation_generation, created_at
@@ -1522,7 +1523,7 @@ fn canonical_check_and_exhaustive_decode_fail_closed() {
     conn.execute_batch("PRAGMA ignore_check_constraints=ON;")
         .expect("simulate corrupted stored discriminant");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
             session_id, turn_intent_id, org_run_id, participant_id, turn_kind,
             source_kind, source_id, activation_generation, created_at
          ) VALUES (?1, 'turn-unknown-kind', ?2, 'coordinator', 'future_kind',
@@ -1545,7 +1546,7 @@ fn transaction_failure_rolls_back_allocator_base_and_context() {
             "CREATE TRIGGER fail_admission BEFORE INSERT ON session_turn_intents
              BEGIN SELECT RAISE(ABORT, 'base fault'); END;"
         } else {
-            "CREATE TRIGGER fail_admission BEFORE INSERT ON agent_org_runtime_turn_contexts
+            "CREATE TRIGGER fail_admission BEFORE INSERT ON agent_org_execution_turn_contexts
              BEGIN SELECT RAISE(ABORT, 'context fault'); END;"
         };
         conn.execute_batch(trigger).expect("install fault trigger");
@@ -1557,9 +1558,9 @@ fn transaction_failure_rolls_back_allocator_base_and_context() {
         assert!(error.contains("fault"), "{error}");
         transaction.rollback().expect("rollback failed admission");
         assert_eq!(row_count(&conn, "session_turn_intents"), 0);
-        assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 0);
+        assert_eq!(row_count(&conn, "agent_org_execution_turn_contexts"), 0);
         assert_eq!(
-            row_count(&conn, "agent_org_runtime_member_dispatch_allocators"),
+            row_count(&conn, "agent_org_execution_member_dispatch_allocators"),
             0
         );
     }
@@ -1585,8 +1586,11 @@ fn task_execution_without_exact_authority_source_rolls_back_admission() {
         "{error}"
     );
     assert_eq!(row_count(&conn, "session_turn_intents"), 0);
-    assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 0);
-    assert_eq!(row_count(&conn, "agent_org_task_execution_leases"), 0);
+    assert_eq!(row_count(&conn, "agent_org_execution_turn_contexts"), 0);
+    assert_eq!(
+        row_count(&conn, "agent_org_execution_task_execution_leases"),
+        0
+    );
 }
 
 #[test]
@@ -1638,8 +1642,11 @@ fn continuation_receipt_is_one_time_even_after_prior_turn_ends() {
         error.contains(super::super::agent_org_finality::TASK_EXECUTION_ALREADY_ACTIVE),
         "{error}"
     );
-    assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 1);
-    assert_eq!(row_count(&conn, "agent_org_task_execution_leases"), 1);
+    assert_eq!(row_count(&conn, "agent_org_execution_turn_contexts"), 1);
+    assert_eq!(
+        row_count(&conn, "agent_org_execution_task_execution_leases"),
+        1
+    );
 }
 
 #[test]
@@ -1750,7 +1757,7 @@ fn fifty_concurrent_task_wakes_admit_exactly_one_live_execution() {
     let conn = Connection::open(path).expect("inspect shared database");
     let live: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_task_execution_leases
+            "SELECT COUNT(*) FROM agent_org_execution_task_execution_leases
              WHERE org_run_id=?1 AND work_episode_id='episode-a'
                AND task_id='task-a' AND activation_generation=1 AND state='active'",
             [RUN_ID],
@@ -1772,7 +1779,7 @@ fn recovery_preserves_only_typed_canonical_initial_and_keeps_running_unknown() {
     );
     accept_in_transaction(&mut conn, &initial).unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_initial_inputs
+        "INSERT INTO agent_org_execution_initial_inputs
             (org_run_id, turn_intent_id, message_id, status)
          VALUES (?1, 'turn-initial', 'message-initial', 'queued')",
         [RUN_ID],
@@ -1808,7 +1815,7 @@ fn recovery_preserves_only_typed_canonical_initial_and_keeps_running_unknown() {
     assert_eq!(status(&conn, "turn-contextless-terminal"), "completed");
 
     conn.execute(
-        "UPDATE agent_org_runtime_initial_inputs SET message_id='wrong-message' WHERE org_run_id=?1",
+        "UPDATE agent_org_execution_initial_inputs SET message_id='wrong-message' WHERE org_run_id=?1",
         [RUN_ID],
     )
     .unwrap();
@@ -1875,7 +1882,7 @@ fn background_coordinator_wake_preserves_the_durable_fact_trigger() {
     let persisted: (String, String, i64, String, String) = conn
         .query_row(
             "SELECT trigger_kind,trigger_id,trigger_revision,status,doorbell_status
-             FROM agent_org_runtime_formal_trigger_receipts WHERE receipt_id=?1",
+             FROM agent_org_execution_formal_trigger_receipts WHERE receipt_id=?1",
             [&receipt.receipt_id],
             |row| {
                 Ok((
@@ -1917,15 +1924,15 @@ fn run_delete_cascades_context_and_allocator_without_touching_generic_rows() {
         [RUN_ID],
     )
     .unwrap();
-    assert_eq!(row_count(&conn, "agent_org_runtime_turn_contexts"), 0);
+    assert_eq!(row_count(&conn, "agent_org_execution_turn_contexts"), 0);
     assert_eq!(
-        row_count(&conn, "agent_org_runtime_member_dispatch_allocators"),
+        row_count(&conn, "agent_org_execution_member_dispatch_allocators"),
         1
     );
-    conn.execute("DELETE FROM agent_org_runtime_runs WHERE id=?1", [RUN_ID])
+    conn.execute("DELETE FROM agent_org_execution_runs WHERE id=?1", [RUN_ID])
         .unwrap();
     assert_eq!(
-        row_count(&conn, "agent_org_runtime_member_dispatch_allocators"),
+        row_count(&conn, "agent_org_execution_member_dispatch_allocators"),
         0
     );
     assert_eq!(row_count(&conn, "session_turn_intents"), 1);

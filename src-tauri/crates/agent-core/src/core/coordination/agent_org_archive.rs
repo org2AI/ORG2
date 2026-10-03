@@ -93,7 +93,7 @@ pub(crate) struct ArchiveTeardownTarget {
 
 pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_archive_episodes (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_archive_episodes (
             archive_receipt_id TEXT PRIMARY KEY CHECK(length(trim(archive_receipt_id)) > 0),
             org_run_id TEXT NOT NULL UNIQUE,
             archive_request_id TEXT NOT NULL CHECK(length(trim(archive_request_id)) > 0),
@@ -118,7 +118,7 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             updated_at TEXT NOT NULL,
             quiesced_at TEXT,
             UNIQUE(org_run_id, archive_request_id),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             CHECK(
                 (teardown_status='quiesced' AND quiesced_at IS NOT NULL
                  AND retained_runtime_count=0)
@@ -126,10 +126,10 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 (teardown_status<>'quiesced' AND quiesced_at IS NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_archive_pending
-            ON agent_org_runtime_archive_episodes(teardown_status, deadline_at);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_archive_pending
+            ON agent_org_execution_archive_episodes(teardown_status, deadline_at);
 
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_archive_teardowns (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_archive_teardowns (
             teardown_id TEXT PRIMARY KEY CHECK(length(trim(teardown_id)) > 0),
             archive_receipt_id TEXT NOT NULL,
             org_run_id TEXT NOT NULL,
@@ -148,8 +148,8 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             updated_at TEXT NOT NULL,
             UNIQUE(archive_receipt_id, session_id),
             FOREIGN KEY(archive_receipt_id)
-                REFERENCES agent_org_runtime_archive_episodes(archive_receipt_id) ON DELETE CASCADE,
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_archive_episodes(archive_receipt_id) ON DELETE CASCADE,
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             CHECK(
                 (teardown_status='quiesced' AND released_at IS NOT NULL)
                 OR
@@ -160,8 +160,8 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 OR runtime_lease_id IS NOT NULL
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_archive_teardown_pending
-            ON agent_org_runtime_archive_teardowns(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_archive_teardown_pending
+            ON agent_org_execution_archive_teardowns(
                 archive_receipt_id, teardown_status, session_id
             );",
     )
@@ -186,7 +186,7 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
         let run: Option<(String, i64)> = tx
             .query_row(
                 "SELECT status,activation_generation
-                 FROM agent_org_runtime_runs WHERE id=?1",
+                 FROM agent_org_execution_runs WHERE id=?1",
                 [run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -225,7 +225,7 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
 
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_runs
+                "UPDATE agent_org_execution_runs
                  SET status='archived',activation_generation=?2,archived_at=?3,
                      archive_receipt_id=?4,updated_at=?3
                  WHERE id=?1 AND status=?5 AND activation_generation=?6",
@@ -245,7 +245,7 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
             ));
         }
         tx.execute(
-            "INSERT INTO agent_org_runtime_archive_episodes (
+            "INSERT INTO agent_org_execution_archive_episodes (
                 archive_receipt_id,org_run_id,archive_request_id,archive_generation,
                 teardown_status,deadline_at,archived_at,updated_at
              ) VALUES (?1,?2,?3,?4,'pending',?5,?6,?6)",
@@ -263,7 +263,7 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
         let ownership = load_team_for_run(&tx, run_id)?;
         for session in &ownership.sessions {
             tx.execute(
-                "INSERT INTO agent_org_runtime_archive_teardowns (
+                "INSERT INTO agent_org_execution_archive_teardowns (
                     teardown_id,archive_receipt_id,org_run_id,session_id,member_id,
                     captured_parent_session_id,teardown_status,created_at,updated_at
                  ) VALUES (?1,?2,?3,?4,?5,?6,'pending',?7,?7)",
@@ -305,12 +305,12 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
             .map_err(|error| error.to_string())?;
 
         tx.execute(
-            "DELETE FROM agent_org_runtime_inbox_materializations
+            "DELETE FROM agent_org_execution_inbox_materializations
              WHERE inbox_id IN (
-                 SELECT inbox.id FROM agent_org_runtime_inbox inbox
+                 SELECT inbox.id FROM agent_org_execution_inbox inbox
                  WHERE inbox.org_run_id=?1 AND inbox.read_at IS NULL
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                       SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
                        WHERE resolution.inbox_id=inbox.id
                    )
              )",
@@ -319,16 +319,16 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
         .map_err(|error| error.to_string())?;
         let inbox_deliveries = tx
             .execute(
-                "INSERT INTO agent_org_runtime_inbox_delivery_resolutions (
+                "INSERT INTO agent_org_execution_inbox_delivery_resolutions (
                     inbox_id,org_run_id,resolution_kind,resolved_by_member_id,
                     reason,replacement_inbox_id,replacement_task_id,created_at
                  )
                  SELECT inbox.id,inbox.org_run_id,'cancelled','system:archive',
                         'team_archived',NULL,NULL,?2
-                 FROM agent_org_runtime_inbox inbox
+                 FROM agent_org_execution_inbox inbox
                  WHERE inbox.org_run_id=?1 AND inbox.read_at IS NULL
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                       SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
                        WHERE resolution.inbox_id=inbox.id
                    )",
                 params![run_id, &archived_at_text],
@@ -336,11 +336,11 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
             .map_err(|error| error.to_string())?;
         let plan_approvals = tx
             .execute(
-                "UPDATE agent_org_runtime_plan_decisions
+                "UPDATE agent_org_execution_plan_decisions
                  SET status='cancelled',decision_by='automatic',feedback='team_archived',
                      resolved_at=?2
                  WHERE status='pending' AND plan_revision_id IN (
-                     SELECT plan_revision_id FROM agent_org_runtime_plan_revisions
+                     SELECT plan_revision_id FROM agent_org_execution_plan_revisions
                      WHERE org_run_id=?1
                  )",
                 params![run_id, &archived_at_text],
@@ -348,7 +348,7 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
             .map_err(|error| error.to_string())?;
         let interventions = tx
             .execute(
-                "UPDATE agent_org_runtime_member_interventions
+                "UPDATE agent_org_execution_member_interventions
                  SET status='failed',failure_reason='team_archived',cleared_at=?2,updated_at=?2
                  WHERE org_run_id=?1
                    AND status IN ('yield_requested','active','return_requested')",
@@ -356,11 +356,11 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
             )
             .map_err(|error| error.to_string())?;
         tx.execute(
-            "UPDATE agent_org_runtime_member_intervention_turns
+            "UPDATE agent_org_execution_member_intervention_turns
              SET status='cancelled',terminal_at=?2,failure_reason='team_archived'
              WHERE intervention_receipt_id IN (
                  SELECT intervention_receipt_id
-                 FROM agent_org_runtime_member_interventions
+                 FROM agent_org_execution_member_interventions
                  WHERE org_run_id=?1
              ) AND status IN ('queued','running')",
             params![run_id, &archived_at_text],
@@ -368,7 +368,7 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
         .map_err(|error| error.to_string())?;
         let pause_continuations = tx
             .execute(
-                "UPDATE agent_org_runtime_pause_handoffs
+                "UPDATE agent_org_execution_pause_handoffs
                  SET continuation_status='skipped',skip_reason='team_archived',updated_at=?2
                  WHERE org_run_id=?1 AND continuation_status='queued'",
                 params![run_id, &archived_at_text],
@@ -376,7 +376,7 @@ pub(crate) fn archive_run_commit(run_id: &str, request_id: &str) -> Result<Archi
             .map_err(|error| error.to_string())?;
 
         tx.execute(
-            "UPDATE agent_org_runtime_archive_episodes
+            "UPDATE agent_org_execution_archive_episodes
              SET task_cancel_count=?2,turn_cancel_count=?3,inbox_cancel_count=?4,
                  approval_cancel_count=?5,intervention_cancel_count=?6,
                  pause_continuation_cancel_count=?7,updated_at=?8
@@ -410,8 +410,8 @@ pub(crate) fn teardown_targets(receipt_id: &str) -> Result<Vec<ArchiveTeardownTa
         .prepare(
             "SELECT teardown.archive_receipt_id,teardown.org_run_id,
                     teardown.session_id,teardown.member_id,teardown.attempt_count
-             FROM agent_org_runtime_archive_teardowns teardown
-             JOIN agent_org_runtime_archive_episodes archive
+             FROM agent_org_execution_archive_teardowns teardown
+             JOIN agent_org_execution_archive_episodes archive
                ON archive.archive_receipt_id=teardown.archive_receipt_id
              WHERE teardown.archive_receipt_id=?1
                AND archive.teardown_status='pending'
@@ -451,7 +451,7 @@ pub(crate) fn record_teardown_attempt(
         let archive: Option<(String, i64)> = tx
             .query_row(
                 "SELECT teardown_status,teardown_attempt_count
-                 FROM agent_org_runtime_archive_episodes
+                 FROM agent_org_execution_archive_episodes
                  WHERE archive_receipt_id=?1 AND org_run_id=?2",
                 params![&target.receipt_id, &target.run_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
@@ -480,7 +480,7 @@ pub(crate) fn record_teardown_attempt(
         };
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_archive_teardowns
+                "UPDATE agent_org_execution_archive_teardowns
                  SET teardown_status=?4,attempt_count=?5,runtime_lease_id=?6,
                      dialog_turn_generation=?7,last_error=?8,
                      released_at=CASE WHEN ?4='quiesced' THEN ?9 ELSE NULL END,
@@ -521,7 +521,7 @@ pub(crate) fn mark_deadline_expired(receipt_id: &str) -> Result<ArchiveTeardownS
             .map_err(|error| error.to_string())?;
         let now = chrono::Utc::now().to_rfc3339();
         tx.execute(
-            "UPDATE agent_org_runtime_archive_teardowns
+            "UPDATE agent_org_execution_archive_teardowns
              SET teardown_status='retained_runtime',last_error='archive_teardown_deadline',
                  updated_at=?2
              WHERE archive_receipt_id=?1 AND teardown_status='pending'",
@@ -542,7 +542,7 @@ pub(crate) fn pending_receipt_ids(limit: usize) -> Result<Vec<String>, String> {
     let conn = database::db::get_connection().map_err(|error| error.to_string())?;
     let mut statement = conn
         .prepare(
-            "SELECT archive_receipt_id FROM agent_org_runtime_archive_episodes
+            "SELECT archive_receipt_id FROM agent_org_execution_archive_episodes
              WHERE teardown_status='pending'
              ORDER BY archived_at ASC LIMIT ?1",
         )
@@ -578,7 +578,7 @@ pub(crate) fn summary_for_run_with_connection(
 ) -> Result<Option<ArchiveTeardownSummary>, String> {
     let receipt_id: Option<String> = conn
         .query_row(
-            "SELECT archive_receipt_id FROM agent_org_runtime_archive_episodes
+            "SELECT archive_receipt_id FROM agent_org_execution_archive_episodes
              WHERE org_run_id=?1",
             [run_id],
             |row| row.get(0),
@@ -602,7 +602,7 @@ fn recompute_archive_summary(
                  SUM(CASE WHEN teardown_status='pending' THEN 1 ELSE 0 END),
                  SUM(CASE WHEN teardown_status='retained_runtime' THEN 1 ELSE 0 END),
                  COALESCE(MAX(attempt_count),0)
-             FROM agent_org_runtime_archive_teardowns
+             FROM agent_org_execution_archive_teardowns
              WHERE archive_receipt_id=?1",
             [receipt_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -616,7 +616,7 @@ fn recompute_archive_summary(
         ArchiveTeardownStatus::Quiesced
     };
     conn.execute(
-        "UPDATE agent_org_runtime_archive_episodes
+        "UPDATE agent_org_execution_archive_episodes
          SET teardown_status=?2,teardown_attempt_count=?3,
              retained_runtime_count=?4,last_error=COALESCE(?5,last_error),
              quiesced_at=CASE WHEN ?2='quiesced' THEN ?6 ELSE NULL END,
@@ -647,7 +647,7 @@ fn outcome_for_request(
                 approval_cancel_count,intervention_cancel_count,
                 pause_continuation_cancel_count,teardown_status,
                 teardown_attempt_count,retained_runtime_count,deadline_at
-         FROM agent_org_runtime_archive_episodes
+         FROM agent_org_execution_archive_episodes
          WHERE org_run_id=?1 AND archive_request_id=?2",
         params![run_id, request_id],
         |row| {
@@ -691,7 +691,7 @@ fn outcome_for_request(
 fn load_summary(conn: &Connection, receipt_id: &str) -> Result<ArchiveTeardownSummary, String> {
     conn.query_row(
         "SELECT teardown_status,teardown_attempt_count,retained_runtime_count,deadline_at
-         FROM agent_org_runtime_archive_episodes WHERE archive_receipt_id=?1",
+         FROM agent_org_execution_archive_episodes WHERE archive_receipt_id=?1",
         [receipt_id],
         |row| {
             let status_raw: String = row.get(0)?;

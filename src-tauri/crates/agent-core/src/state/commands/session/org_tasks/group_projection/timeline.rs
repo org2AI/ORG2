@@ -242,7 +242,7 @@ fn resolve_context(conn: &Connection, session_id: &str) -> Result<AgentOrgRunCon
                     run.project_slug,run.routine_fire_id,run.summary,run.last_error,
                     run.failure_json,run.last_activity_outcome,run.created_at,
                     run.updated_at,run.idled_at,run.archived_at,run.archive_receipt_id
-             FROM agent_org_runtime_runs run
+             FROM agent_org_execution_runs run
              JOIN ancestry ON ancestry.session_id=run.root_session_id
              ORDER BY ancestry.depth ASC,run.created_at DESC
              LIMIT 1",
@@ -266,12 +266,12 @@ fn load_candidates(
     let sql = r#"
         WITH candidates(created_at,source_rank,stable_source_id,item_ordinal,row_kind,authority_id,event_id) AS (
           SELECT initial.created_at,10,initial.message_id,0,'initial_user',initial.message_id,NULL
-          FROM agent_org_runtime_initial_inputs initial
+          FROM agent_org_execution_initial_inputs initial
           WHERE initial.org_run_id=:run_id
           UNION ALL
           SELECT reply.created_at,10,initial.message_id,1,'initial_reply',initial.message_id,reply.id
-          FROM agent_org_runtime_initial_inputs initial
-          JOIN agent_org_runtime_runs run ON run.id=initial.org_run_id
+          FROM agent_org_execution_initial_inputs initial
+          JOIN agent_org_execution_runs run ON run.id=initial.org_run_id
           JOIN events reply ON reply.id=(
             SELECT candidate.id
             FROM events candidate INDEXED BY idx_events_agent_org_initial_reply
@@ -291,13 +291,13 @@ fn load_candidates(
                  CASE context.source_kind WHEN 'group_root' THEN 'group_root_user' ELSE 'group_mention_user' END,
                  CAST(context.context_id AS TEXT),
                  CASE context.source_kind WHEN 'group_root' THEN context.source_id ELSE NULL END
-          FROM agent_org_runtime_turn_contexts context
+          FROM agent_org_execution_turn_contexts context
           WHERE context.org_run_id=:run_id
             AND context.source_kind IN ('group_root','group_mention')
           UNION ALL
           SELECT reply.created_at,20,printf('%020lld',context.context_id),1,
                  'group_root_reply',CAST(context.context_id AS TEXT),reply.id
-          FROM agent_org_runtime_turn_contexts context
+          FROM agent_org_execution_turn_contexts context
           JOIN events reply ON reply.id=(
             SELECT candidate.id
             FROM events candidate INDEXED BY idx_events_agent_org_group_root_reply
@@ -313,7 +313,7 @@ fn load_candidates(
           UNION ALL
           SELECT reply.created_at,20,printf('%020lld',context.context_id),1,
                  'group_mention_reply',CAST(context.context_id AS TEXT),reply.id
-          FROM agent_org_runtime_turn_contexts context
+          FROM agent_org_execution_turn_contexts context
           JOIN events reply ON reply.id=(
             SELECT candidate.id
             FROM events candidate INDEXED BY idx_events_agent_org_group_mention_reply
@@ -328,7 +328,7 @@ fn load_candidates(
           WHERE context.org_run_id=:run_id AND context.source_kind='group_mention'
           UNION ALL
           SELECT event.created_at,30,event.id,0,'task_event',event.id,NULL
-          FROM agent_org_runtime_task_events event
+          FROM agent_org_execution_task_events event
           WHERE event.org_run_id=:run_id
             AND (
               event.event_type='created'
@@ -340,39 +340,39 @@ fn load_candidates(
             )
           UNION ALL
           SELECT episode.created_at,40,episode.episode_id,0,'team_paused',episode.episode_id,NULL
-          FROM agent_org_runtime_pause_episodes episode
+          FROM agent_org_execution_pause_episodes episode
           WHERE episode.org_run_id=:run_id
           UNION ALL
           SELECT episode.resumed_at,40,episode.episode_id,1,'team_resumed',episode.episode_id,NULL
-          FROM agent_org_runtime_pause_episodes episode
+          FROM agent_org_execution_pause_episodes episode
           WHERE episode.org_run_id=:run_id AND episode.resumed_at IS NOT NULL
           UNION ALL
           SELECT intervention.cleared_at,50,
                  intervention.intervention_receipt_id || ':' || printf('%020lld',intervention.cleared_revision),
                  0,'member_returned',intervention.intervention_receipt_id,NULL
-          FROM agent_org_runtime_member_interventions intervention
+          FROM agent_org_execution_member_interventions intervention
           WHERE intervention.org_run_id=:run_id
             AND intervention.status='cleared'
             AND intervention.cleared_at IS NOT NULL
             AND intervention.cleared_revision IS NOT NULL
           UNION ALL
           SELECT certificate.created_at,60,certificate.id,0,'completion_certificate',certificate.id,NULL
-          FROM agent_org_runtime_run_completion_certificates certificate
+          FROM agent_org_execution_run_completion_certificates certificate
           WHERE certificate.org_run_id=:run_id
           UNION ALL
           SELECT event.created_at,61,receipt.receipt_id,0,'final_report',receipt.receipt_id,event.id
-          FROM agent_org_runtime_final_summary_receipts receipt
+          FROM agent_org_execution_final_summary_receipts receipt
           JOIN events event
             ON event.id=receipt.event_id
            AND event.session_id=receipt.coordinator_session_id
           WHERE receipt.org_run_id=:run_id AND receipt.status='persisted'
           UNION ALL
           SELECT receipt.terminal_at,61,receipt.receipt_id,0,'final_report_failed',receipt.receipt_id,NULL
-          FROM agent_org_runtime_final_summary_receipts receipt
+          FROM agent_org_execution_final_summary_receipts receipt
           WHERE receipt.org_run_id=:run_id AND receipt.status='failed'
           UNION ALL
           SELECT archive.archived_at,70,archive.archive_receipt_id,0,'team_archived',archive.archive_receipt_id,NULL
-          FROM agent_org_runtime_archive_episodes archive
+          FROM agent_org_execution_archive_episodes archive
           WHERE archive.org_run_id=:run_id
         )
         SELECT created_at,source_rank,stable_source_id,item_ordinal,row_kind,authority_id,event_id
@@ -477,16 +477,16 @@ fn hydrate_candidates(
                summary.coordinator_session_id,summary.turn_intent_id,
                pause.episode_id,archive.archive_receipt_id
         FROM requested
-        LEFT JOIN agent_org_runtime_initial_inputs initial
+        LEFT JOIN agent_org_execution_initial_inputs initial
           ON requested.row_kind IN ('initial_user','initial_reply')
          AND initial.org_run_id=requested.org_run_id
          AND initial.message_id=requested.authority_id
-        LEFT JOIN agent_org_runtime_runs initial_run
+        LEFT JOIN agent_org_execution_runs initial_run
           ON initial_run.id=initial.org_run_id
         LEFT JOIN session_turn_intents initial_intent
           ON initial_intent.session_id=initial_run.root_session_id
          AND initial_intent.turn_intent_id=initial.turn_intent_id
-        LEFT JOIN agent_org_runtime_turn_contexts context
+        LEFT JOIN agent_org_execution_turn_contexts context
           ON requested.row_kind IN (
                'group_root_user','group_root_reply','group_mention_user','group_mention_reply'
              )
@@ -495,42 +495,42 @@ fn hydrate_candidates(
         LEFT JOIN session_turn_intents context_intent
           ON context_intent.session_id=context.session_id
          AND context_intent.turn_intent_id=context.turn_intent_id
-        LEFT JOIN agent_org_runtime_user_directed_deliveries delivery
+        LEFT JOIN agent_org_execution_user_directed_deliveries delivery
           ON delivery.session_id=context.session_id
          AND delivery.turn_intent_id=context.turn_intent_id
-        LEFT JOIN agent_org_runtime_inbox inbox
+        LEFT JOIN agent_org_execution_inbox inbox
           ON context.source_kind='group_mention'
          AND inbox.id=CAST(context.source_id AS INTEGER)
          AND inbox.org_run_id=requested.org_run_id
          AND inbox.recipient_member_id=context.participant_id
          AND inbox.sender_agent_id='_user'
          AND inbox.delivery_class='user_directed'
-        LEFT JOIN agent_org_runtime_task_events task_event
+        LEFT JOIN agent_org_execution_task_events task_event
           ON requested.row_kind='task_event'
          AND task_event.id=requested.authority_id
          AND task_event.org_run_id=requested.org_run_id
-        LEFT JOIN agent_org_runtime_tasks task
+        LEFT JOIN agent_org_execution_tasks task
           ON task.org_run_id=task_event.org_run_id AND task.id=task_event.task_id
-        LEFT JOIN agent_org_runtime_tasks replaced
+        LEFT JOIN agent_org_execution_tasks replaced
           ON replaced.org_run_id=task.org_run_id AND replaced.id=task.replaces_task_id
-        LEFT JOIN agent_org_runtime_pause_episodes pause
+        LEFT JOIN agent_org_execution_pause_episodes pause
           ON requested.row_kind IN ('team_paused','team_resumed')
          AND pause.episode_id=requested.authority_id
          AND pause.org_run_id=requested.org_run_id
-        LEFT JOIN agent_org_runtime_member_interventions intervention
+        LEFT JOIN agent_org_execution_member_interventions intervention
           ON requested.row_kind='member_returned'
          AND intervention.intervention_receipt_id=requested.authority_id
          AND intervention.org_run_id=requested.org_run_id
          AND intervention.status='cleared'
-        LEFT JOIN agent_org_runtime_run_completion_certificates certificate
+        LEFT JOIN agent_org_execution_run_completion_certificates certificate
           ON requested.row_kind='completion_certificate'
          AND certificate.id=requested.authority_id
          AND certificate.org_run_id=requested.org_run_id
-        LEFT JOIN agent_org_runtime_final_summary_receipts summary
+        LEFT JOIN agent_org_execution_final_summary_receipts summary
           ON requested.row_kind IN ('final_report','final_report_failed')
          AND summary.receipt_id=requested.authority_id
          AND summary.org_run_id=requested.org_run_id
-        LEFT JOIN agent_org_runtime_archive_episodes archive
+        LEFT JOIN agent_org_execution_archive_episodes archive
           ON requested.row_kind='team_archived'
          AND archive.archive_receipt_id=requested.authority_id
          AND archive.org_run_id=requested.org_run_id

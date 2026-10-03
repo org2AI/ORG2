@@ -225,7 +225,7 @@ fn remove_unadmitted_group_root_source_event_with_connection(
     let admitted: bool = tx
         .query_row(
             "SELECT EXISTS(
-                   SELECT 1 FROM agent_org_runtime_turn_contexts
+                   SELECT 1 FROM agent_org_execution_turn_contexts
                    WHERE session_id=?1 AND turn_intent_id=?2
                      AND source_kind='group_root' AND source_id=?3
                  )",
@@ -482,7 +482,7 @@ fn resolve_group_turn_with_connection(
     let mut stmt = conn
         .prepare(
             "SELECT session_id,turn_intent_id,source_kind
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE org_run_id=?1 AND turn_intent_id=?2
                AND source_kind IN ('group_root','group_mention')
              ORDER BY context_id ASC
@@ -528,7 +528,7 @@ fn prepare_group_root_cancellation_with_connection(
         .query_row(
             "SELECT intent.status
              FROM session_turn_intents intent
-             JOIN agent_org_runtime_turn_contexts context
+             JOIN agent_org_execution_turn_contexts context
                ON context.session_id=intent.session_id
               AND context.turn_intent_id=intent.turn_intent_id
              WHERE context.org_run_id=?1 AND context.session_id=?2
@@ -599,11 +599,11 @@ fn load_retry_envelope_with_connection(
                           AND CAST(json_extract(reply.result_json,'$.agent_org_user_directed_reply.source_inbox_id') AS INTEGER)=CAST(context.source_id AS INTEGER)
                       )
                     END
-             FROM agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_turn_contexts context
              JOIN session_turn_intents intent
                ON intent.session_id=context.session_id
               AND intent.turn_intent_id=context.turn_intent_id
-             LEFT JOIN agent_org_runtime_user_directed_deliveries delivery
+             LEFT JOIN agent_org_execution_user_directed_deliveries delivery
                ON delivery.session_id=context.session_id
               AND delivery.turn_intent_id=context.turn_intent_id
              LEFT JOIN events event
@@ -844,7 +844,7 @@ mod tests {
                updated_at TEXT NOT NULL,
                PRIMARY KEY(session_id,turn_intent_id)
              );
-             CREATE TABLE agent_org_runtime_turn_contexts (
+             CREATE TABLE agent_org_execution_turn_contexts (
                context_id INTEGER PRIMARY KEY AUTOINCREMENT,
                session_id TEXT NOT NULL,
                turn_intent_id TEXT NOT NULL,
@@ -854,7 +854,7 @@ mod tests {
                source_id TEXT NOT NULL,
                UNIQUE(session_id,turn_intent_id)
              );
-             CREATE TABLE agent_org_runtime_user_directed_deliveries (
+             CREATE TABLE agent_org_execution_user_directed_deliveries (
                session_id TEXT NOT NULL,
                turn_intent_id TEXT NOT NULL,
                status TEXT NOT NULL,
@@ -898,7 +898,7 @@ mod tests {
         )
         .expect("insert Root intent");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                session_id,turn_intent_id,org_run_id,participant_id,source_kind,source_id
              ) VALUES ('session-root',?1,'run-actions','coordinator','group_root',?2)",
             params![turn_intent_id, source_id],
@@ -1001,7 +1001,7 @@ mod tests {
         )
         .expect("insert Member intent");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                session_id,turn_intent_id,org_run_id,participant_id,source_kind,source_id
              ) VALUES ('session-member','turn-member-retry','run-actions','reviewer',
                        'group_mention','42')",
@@ -1009,7 +1009,7 @@ mod tests {
         )
         .expect("insert Member context");
         conn.execute(
-            "INSERT INTO agent_org_runtime_user_directed_deliveries (
+            "INSERT INTO agent_org_execution_user_directed_deliveries (
                session_id,turn_intent_id,status,dispatch_content,display_content,images_json
              ) VALUES ('session-member','turn-member-retry','cancelled',
                        'Member frozen body','@Reviewer visible body','[\"member-image\"]')",
@@ -1168,7 +1168,7 @@ mod tests {
         assert_eq!(exact.session_id, "session-root");
 
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                session_id,turn_intent_id,org_run_id,participant_id,source_kind,source_id
              ) VALUES ('session-member','unique-turn','run-actions','reviewer',
                        'group_mention','42')",

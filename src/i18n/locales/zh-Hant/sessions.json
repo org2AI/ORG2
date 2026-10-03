@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "舊版本對話，僅供查看",
+    "savedContent": "已儲存的群聊和輸出",
+    "unknownMember": "未知成員",
+    "loading": "正在載入歷史…",
+    "retry": "重試",
+    "empty": "暫無已儲存的群聊內容",
+    "nextPage": "下一頁",
+    "firstPage": "第一頁"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "使用者請求",

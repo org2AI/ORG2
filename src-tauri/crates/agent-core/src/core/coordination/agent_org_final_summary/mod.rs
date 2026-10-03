@@ -25,7 +25,7 @@ pub(crate) fn is_finalizing_with_connection(
 ) -> Result<bool, String> {
     conn.query_row(
         "SELECT EXISTS(
-             SELECT 1 FROM agent_org_runtime_final_summary_receipts
+             SELECT 1 FROM agent_org_execution_final_summary_receipts
              WHERE org_run_id=?1 AND status IN ('pending','running','persisting')
          )",
         [org_run_id],

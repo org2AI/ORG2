@@ -581,7 +581,7 @@ impl TaskToolsContext {
         )?;
         if suppress_self_wake {
             conn.execute(
-                "UPDATE agent_org_runtime_inbox SET read_at=?2 WHERE id=?1 AND read_at IS NULL",
+                "UPDATE agent_org_execution_inbox SET read_at=?2 WHERE id=?1 AND read_at IS NULL",
                 rusqlite::params![record.id, chrono::Utc::now().to_rfc3339()],
             )
             .map_err(|error| error.to_string())?;

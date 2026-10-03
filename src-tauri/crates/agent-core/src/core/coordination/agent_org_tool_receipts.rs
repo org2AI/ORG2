@@ -16,7 +16,7 @@ use crate::coordination::agent_org_payload_limits::{
 };
 use crate::tools::traits::{CallContext, ToolError};
 
-pub(super) const TABLE_NAME: &str = "agent_org_runtime_tool_call_receipts";
+pub(super) const TABLE_NAME: &str = "agent_org_execution_tool_call_receipts";
 
 const TOOL_NAME_MAX_BYTES: usize = 128;
 const OPERATION_MAX_BYTES: usize = 128;
@@ -40,7 +40,7 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
              created_at TEXT NOT NULL,
              PRIMARY KEY (org_run_id, session_id, turn_intent_id, call_id),
              FOREIGN KEY (org_run_id)
-                 REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+                 REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
              CHECK (trim(org_run_id) <> '' AND org_run_id = trim(org_run_id)),
              CHECK (trim(session_id) <> '' AND session_id = trim(session_id)),
              CHECK (trim(turn_intent_id) <> '' AND turn_intent_id = trim(turn_intent_id)),
@@ -388,7 +388,7 @@ mod tests {
         .expect("shared Turn fixture schema");
         init_agent_org_schemas(&conn).expect("Agent Org schema");
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                  id,org_id,coordinator_agent_id,entry_mode,status,created_at,updated_at
              ) VALUES ('run-a','org-a','agent-a','standalone_session','running',?1,?1)",
             [chrono::Utc::now().to_rfc3339()],
@@ -605,7 +605,7 @@ mod tests {
             |_| Ok(Ok("created".to_string())),
         )
         .expect("receipt");
-        conn.execute("DELETE FROM agent_org_runtime_runs WHERE id='run-a'", [])
+        conn.execute("DELETE FROM agent_org_execution_runs WHERE id='run-a'", [])
             .expect("delete Team");
         let count: i64 = conn
             .query_row(&format!("SELECT COUNT(*) FROM {TABLE_NAME}"), [], |row| {

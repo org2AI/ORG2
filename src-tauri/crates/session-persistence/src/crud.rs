@@ -134,6 +134,12 @@ fn upsert_event_rows(
             seq,
         ])? > 0;
     }
+    let event_ids = events
+        .iter()
+        .filter(|event| !is_ts_placeholder_id(&event.id))
+        .map(|event| event.id.as_str())
+        .collect::<Vec<_>>();
+    agent_core::coordination::agent_org_history_store::mirror_events(conn, session_id, &event_ids)?;
     Ok(content_changed)
 }
 
@@ -673,7 +679,7 @@ pub fn clear_old_sessions(max_age_hours: i64) -> SqliteResult<i64> {
             let _ = tx.execute("DELETE FROM agent_snapshots WHERE session_id = ?1", [sid]);
             let _ = tx.execute("DELETE FROM goal_loop_state WHERE session_id = ?1", [sid]);
             let _ = tx.execute(
-                "DELETE FROM agent_org_runtime_member_interventions WHERE session_id = ?1",
+                "DELETE FROM agent_org_execution_member_interventions WHERE session_id = ?1",
                 [sid],
             );
         }

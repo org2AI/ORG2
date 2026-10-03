@@ -94,7 +94,7 @@ fn fixture() -> Fixture {
     })
     .to_string();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs(
+        "INSERT INTO agent_org_execution_runs(
             id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
             entry_mode,status,activation_generation,created_at,updated_at
          ) VALUES (?1,'task-store-contract-org','agent-coordinator',?2,?3,
@@ -140,7 +140,7 @@ fn insert_member_materialization(
 ) {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations(
+        "INSERT INTO agent_org_execution_member_materializations(
             org_run_id,member_id,agent_id,generation,session_id,
             authority_class,status,created_at,updated_at
          ) VALUES (?1,?2,?3,?4,?5,'formal','succeeded',?6,?6)",
@@ -164,7 +164,7 @@ fn insert_coordinator_context(conn: &rusqlite::Connection, turn_id: &str, genera
     insert_base_turn(conn, ROOT_SESSION, turn_id);
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             source_kind,source_id,activation_generation,created_at
          ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,?4,?5)",
@@ -186,7 +186,7 @@ fn insert_group_root_context(conn: &rusqlite::Connection, turn_id: &str, generat
     )
     .expect("GroupRoot source event");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             source_kind,source_id,activation_generation,created_at
          ) VALUES (?1,?2,?3,'coordinator','coordinator','group_root',?4,?5,?6)",
@@ -212,7 +212,7 @@ fn insert_user_coordinator_context(conn: &rusqlite::Connection, turn_id: &str, g
     )
     .expect("user Coordinator Turn");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             source_kind,source_id,activation_generation,created_at
          ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,?4,?5)",
@@ -233,7 +233,7 @@ fn insert_owner_context(
     let sequence: i64 = conn
         .query_row(
             "SELECT COALESCE(MAX(member_dispatch_sequence),0)+1
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE org_run_id=?1 AND dispatch_member_id=?2",
             params![RUN_ID, member_id],
             |row| row.get(0),
@@ -241,7 +241,7 @@ fn insert_owner_context(
         .expect("next sequence");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
             source_kind,source_id,activation_generation,created_at
@@ -255,7 +255,7 @@ fn insert_owner_context(
 fn grant_additional_writer(conn: &rusqlite::Connection, member_id: &str) {
     let snapshot: String = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id=?1",
             [RUN_ID],
             |row| row.get(0),
         )
@@ -264,7 +264,7 @@ fn grant_additional_writer(conn: &rusqlite::Connection, member_id: &str) {
         serde_json::from_str(&snapshot).expect("decode launch snapshot");
     snapshot["additionalTaskGraphWriterMemberIds"] = serde_json::json!([member_id]);
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?2 WHERE id=?1",
         params![RUN_ID, snapshot.to_string()],
     )
     .expect("grant additional Writer in immutable test snapshot");
@@ -301,14 +301,14 @@ fn insert_direct_context(
     let sequence: i64 = conn
         .query_row(
             "SELECT COALESCE(MAX(member_dispatch_sequence),0)+1
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE org_run_id=?1 AND dispatch_member_id=?2",
             params![RUN_ID, member_id],
             |row| row.get(0),
         )
         .expect("next direct sequence");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
              root_authority_turn_id,actor_version,created_at
@@ -499,7 +499,7 @@ fn insert_materialized_task_deliveries(
 
     for (inbox_id, suffix) in [(bound.id, "bound"), (formal.id, "formal")] {
         conn.execute(
-            "INSERT INTO agent_org_runtime_inbox_materializations(
+            "INSERT INTO agent_org_execution_inbox_materializations(
                 inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
              ) VALUES (?1,?2,?3,?4,?5)",
             params![
@@ -513,7 +513,7 @@ fn insert_materialized_task_deliveries(
         .expect("materialize exact Inbox row");
     }
     conn.execute(
-        "UPDATE agent_org_runtime_formal_trigger_receipts
+        "UPDATE agent_org_execution_formal_trigger_receipts
          SET status='materialized',current_attempt=1,
              materialized_input_id=?2,materialized_event_id=?3,updated_at=?4
          WHERE receipt_id=?1",
@@ -526,7 +526,7 @@ fn insert_materialized_task_deliveries(
     )
     .expect("materialize formal receipt");
     conn.execute(
-        "INSERT INTO agent_org_runtime_formal_trigger_attempts(
+        "INSERT INTO agent_org_execution_formal_trigger_attempts(
             receipt_id,attempt,session_id,turn_intent_id,status,
             materialized_input_id,materialized_event_id,queued_at,started_at,updated_at
          ) VALUES (?1,1,?2,?3,'running',?4,?5,?6,?6,?6)",
@@ -588,10 +588,10 @@ fn terminal_task_settles_only_its_exact_deliveries_and_formal_attempts() {
         let state: (bool, bool) = conn
             .query_row(
                 "SELECT EXISTS(
-                    SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions
+                    SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions
                     WHERE inbox_id=?1
                  ), EXISTS(
-                    SELECT 1 FROM agent_org_runtime_inbox_materializations
+                    SELECT 1 FROM agent_org_execution_inbox_materializations
                     WHERE inbox_id=?1
                  )",
                 [inbox_id],
@@ -603,8 +603,8 @@ fn terminal_task_settles_only_its_exact_deliveries_and_formal_attempts() {
     let task_a_formal: (String, String) = conn
         .query_row(
             "SELECT receipt.status,attempt.status
-             FROM agent_org_runtime_formal_trigger_receipts receipt
-             JOIN agent_org_runtime_formal_trigger_attempts attempt
+             FROM agent_org_execution_formal_trigger_receipts receipt
+             JOIN agent_org_execution_formal_trigger_attempts attempt
                ON attempt.receipt_id=receipt.receipt_id
              WHERE receipt.receipt_id=?1",
             [&task_a.formal_receipt_id],
@@ -620,10 +620,10 @@ fn terminal_task_settles_only_its_exact_deliveries_and_formal_attempts() {
         let state: (bool, bool) = conn
             .query_row(
                 "SELECT EXISTS(
-                    SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions
+                    SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions
                     WHERE inbox_id=?1
                  ), EXISTS(
-                    SELECT 1 FROM agent_org_runtime_inbox_materializations
+                    SELECT 1 FROM agent_org_execution_inbox_materializations
                     WHERE inbox_id=?1
                  )",
                 [inbox_id],
@@ -635,8 +635,8 @@ fn terminal_task_settles_only_its_exact_deliveries_and_formal_attempts() {
     let task_b_formal: (String, String) = conn
         .query_row(
             "SELECT receipt.status,attempt.status
-             FROM agent_org_runtime_formal_trigger_receipts receipt
-             JOIN agent_org_runtime_formal_trigger_attempts attempt
+             FROM agent_org_execution_formal_trigger_receipts receipt
+             JOIN agent_org_execution_formal_trigger_attempts attempt
                ON attempt.receipt_id=receipt.receipt_id
              WHERE receipt.receipt_id=?1",
             [&task_b.formal_receipt_id],
@@ -746,10 +746,10 @@ fn fail_cancel_replace_and_reassign_each_settle_the_exact_task_delivery() {
             let state: (bool, bool) = conn
                 .query_row(
                     "SELECT EXISTS(
-                        SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions
+                        SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions
                         WHERE inbox_id=?1
                      ), EXISTS(
-                        SELECT 1 FROM agent_org_runtime_inbox_materializations
+                        SELECT 1 FROM agent_org_execution_inbox_materializations
                         WHERE inbox_id=?1
                      )",
                     [inbox_id],
@@ -761,8 +761,8 @@ fn fail_cancel_replace_and_reassign_each_settle_the_exact_task_delivery() {
         let formal_state: (String, String) = conn
             .query_row(
                 "SELECT receipt.status,attempt.status
-                 FROM agent_org_runtime_formal_trigger_receipts receipt
-                 JOIN agent_org_runtime_formal_trigger_attempts attempt
+                 FROM agent_org_execution_formal_trigger_receipts receipt
+                 JOIN agent_org_execution_formal_trigger_attempts attempt
                    ON attempt.receipt_id=receipt.receipt_id
                  WHERE receipt.receipt_id=?1",
                 [&delivery.formal_receipt_id],
@@ -780,10 +780,10 @@ fn fail_cancel_replace_and_reassign_each_settle_the_exact_task_delivery() {
         let state: (bool, bool) = conn
             .query_row(
                 "SELECT EXISTS(
-                    SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions
+                    SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions
                     WHERE inbox_id=?1
                  ), EXISTS(
-                    SELECT 1 FROM agent_org_runtime_inbox_materializations
+                    SELECT 1 FROM agent_org_execution_inbox_materializations
                     WHERE inbox_id=?1
                  )",
                 [inbox_id],
@@ -802,7 +802,7 @@ fn task_terminal_write_rolls_back_when_exact_delivery_settlement_fails() {
     let delivery = insert_materialized_task_deliveries(&conn, "settlement-rollback");
     conn.execute_batch(
         "CREATE TRIGGER reject_exact_delivery_settlement
-         BEFORE INSERT ON agent_org_runtime_inbox_delivery_resolutions
+         BEFORE INSERT ON agent_org_execution_inbox_delivery_resolutions
          BEGIN SELECT RAISE(ABORT, 'settlement fault'); END;",
     )
     .unwrap();
@@ -830,10 +830,10 @@ fn task_terminal_write_rolls_back_when_exact_delivery_settlement_fails() {
     let state: (bool, bool) = conn
         .query_row(
             "SELECT EXISTS(
-                SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions
+                SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions
                 WHERE inbox_id=?1
              ), EXISTS(
-                SELECT 1 FROM agent_org_runtime_inbox_materializations
+                SELECT 1 FROM agent_org_execution_inbox_materializations
                 WHERE inbox_id=?1
              )",
             [delivery.bound_inbox_id],
@@ -871,14 +871,14 @@ fn coordinator_task_mutations_advance_exact_context_and_materialize_one_terminal
         .query_row(
             "SELECT progress.work_revision,context.coordinator_work_revision,
                     recheck.work_revision,recheck.status,recheck.inbox_id
-             FROM agent_org_runtime_runs run
-             JOIN agent_org_runtime_run_progress progress
+             FROM agent_org_execution_runs run
+             JOIN agent_org_execution_run_progress progress
                ON progress.org_run_id=run.id
-             JOIN agent_org_runtime_turn_contexts context
+             JOIN agent_org_execution_turn_contexts context
                ON context.org_run_id=run.id
               AND context.session_id=?2
               AND context.turn_intent_id=?3
-             JOIN agent_org_coordinator_completion_rechecks recheck
+             JOIN agent_org_execution_coordinator_completion_rechecks recheck
                ON recheck.org_run_id=run.id
               AND recheck.source_session_id=context.session_id
               AND recheck.source_turn_intent_id=context.turn_intent_id
@@ -930,12 +930,12 @@ fn coordinator_task_mutations_advance_exact_context_and_materialize_one_terminal
         .query_row(
             "SELECT intent.status,recheck.status,recheck.work_revision,
                     (SELECT COUNT(*)
-                     FROM agent_org_runtime_formal_trigger_receipts trigger
+                     FROM agent_org_execution_formal_trigger_receipts trigger
                      WHERE trigger.org_run_id=?1
                        AND trigger.source_kind='coordinator_completion_recheck'
                        AND trigger.source_turn_intent_id=?3)
              FROM session_turn_intents intent
-             JOIN agent_org_coordinator_completion_rechecks recheck
+             JOIN agent_org_execution_coordinator_completion_rechecks recheck
                ON recheck.source_session_id=intent.session_id
               AND recheck.source_turn_intent_id=intent.turn_intent_id
              WHERE intent.session_id=?2 AND intent.turn_intent_id=?3",
@@ -1009,7 +1009,7 @@ fn restart_reconciliation_keeps_provenance_owner_and_settles_only_duplicate_sour
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations(
+        "INSERT INTO agent_org_execution_inbox_materializations(
             inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
          ) VALUES (?1,?2,'duplicate-message','turn-duplicate-loser',?3)",
         params![source.id, MEMBER_A_SESSION, chrono::Utc::now().to_rfc3339()],
@@ -1035,7 +1035,7 @@ fn restart_reconciliation_keeps_provenance_owner_and_settles_only_duplicate_sour
         .query_row(
             "SELECT intent.status,reconciliation.reason_code
              FROM session_turn_intents intent
-             JOIN agent_org_task_execution_reconciliations reconciliation
+             JOIN agent_org_execution_task_execution_reconciliations reconciliation
                ON reconciliation.session_id=intent.session_id
               AND reconciliation.turn_intent_id=intent.turn_intent_id
              WHERE intent.session_id=?1
@@ -1056,10 +1056,10 @@ fn restart_reconciliation_keeps_provenance_owner_and_settles_only_duplicate_sour
         .query_row(
             "SELECT resolution.reason,
                     EXISTS(
-                        SELECT 1 FROM agent_org_runtime_inbox_materializations materialization
+                        SELECT 1 FROM agent_org_execution_inbox_materializations materialization
                         WHERE materialization.inbox_id=resolution.inbox_id
                     )
-             FROM agent_org_runtime_inbox_delivery_resolutions resolution
+             FROM agent_org_execution_inbox_delivery_resolutions resolution
              WHERE resolution.inbox_id=?1",
             [source.id],
             |row| Ok((row.get(0)?, row.get(1)?)),
@@ -1178,7 +1178,7 @@ fn idle_group_root_atomically_activates_formal_work_before_task_write() {
     let _fixture = fixture();
     let conn = get_connection().expect("Task Store contract test database");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='idle' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='idle' WHERE id=?1",
         [RUN_ID],
     )
     .expect("Idle Team");
@@ -1217,8 +1217,8 @@ fn idle_group_root_atomically_activates_formal_work_before_task_write() {
     let (status, generation, context_generation): (String, i64, i64) = conn
         .query_row(
             "SELECT run.status,run.activation_generation,context.activation_generation
-             FROM agent_org_runtime_runs run
-             JOIN agent_org_runtime_turn_contexts context ON context.org_run_id=run.id
+             FROM agent_org_execution_runs run
+             JOIN agent_org_execution_turn_contexts context ON context.org_run_id=run.id
              WHERE run.id=?1 AND context.session_id=?2 AND context.turn_intent_id=?3",
             params![RUN_ID, ROOT_SESSION, GROUP_ROOT_TURN],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -1373,7 +1373,7 @@ fn current_generation_certificate_freezes_every_task_write_path() {
     let conn = get_connection().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates(
+        "INSERT INTO agent_org_execution_run_completion_certificates(
              id,org_run_id,activation_generation,work_revision,request_id,request_digest,
              outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
              evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -1452,7 +1452,7 @@ fn recovery_attempts(task_id: &str) -> i64 {
     get_connection()
         .unwrap()
         .query_row(
-            "SELECT attempts FROM agent_org_runtime_recovery_attempts
+            "SELECT attempts FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind='task_failure_recovery'
                AND target_key=?2",
             params![RUN_ID, task_id],
@@ -1467,7 +1467,7 @@ fn recovery_event_count() -> i64 {
     get_connection()
         .unwrap()
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_recovery_attempts
+            "SELECT COUNT(*) FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind='task_failure_recovery_event'",
             [RUN_ID],
             |row| row.get(0),
@@ -1509,7 +1509,7 @@ fn canonical_schema_and_five_state_semantics_are_frozen() {
     let _fixture = fixture();
     let conn = get_connection().unwrap();
     let columns = conn
-        .prepare("PRAGMA table_info(agent_org_runtime_tasks)")
+        .prepare("PRAGMA table_info(agent_org_execution_tasks)")
         .unwrap()
         .query_map([], |row| row.get::<_, String>(1))
         .unwrap()
@@ -1603,7 +1603,7 @@ fn user_directed_graph_authority_is_denied_for_workers_allowed_for_writer_and_pa
     assert_eq!(written.source_turn_intent_id, "direct-writer-allowed");
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='paused' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='paused' WHERE id=?1",
         [RUN_ID],
     )
     .expect("pause Team");
@@ -1629,7 +1629,7 @@ fn idle_user_directed_writer_activates_team_and_task_atomically() {
     let conn = get_connection().expect("test sqlite connection");
     grant_additional_writer(&conn, MEMBER_A);
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='idle' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='idle' WHERE id=?1",
         [RUN_ID],
     )
     .expect("idle Team");
@@ -1656,9 +1656,9 @@ fn idle_user_directed_writer_activates_team_and_task_atomically() {
     let (status, generation, task_count): (String, i64, i64) = conn
         .query_row(
             "SELECT run.status,run.activation_generation,
-                    (SELECT COUNT(*) FROM agent_org_runtime_tasks task
+                    (SELECT COUNT(*) FROM agent_org_execution_tasks task
                      WHERE task.org_run_id=run.id AND task.id='direct-idle-activation')
-             FROM agent_org_runtime_runs run WHERE run.id=?1",
+             FROM agent_org_execution_runs run WHERE run.id=?1",
             [RUN_ID],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -1854,7 +1854,7 @@ fn repeated_owner_start_acknowledges_the_running_task_without_a_second_event() {
     assert!(first.status_changed);
     let event_count_before: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_task_events
+            "SELECT COUNT(*) FROM agent_org_execution_task_events
              WHERE org_run_id=?1 AND task_id=?2",
             rusqlite::params![RUN_ID, "idempotent-start"],
             |row| row.get(0),
@@ -1862,7 +1862,7 @@ fn repeated_owner_start_acknowledges_the_running_task_without_a_second_event() {
         .unwrap();
     let work_revision_before: i64 = conn
         .query_row(
-            "SELECT work_revision FROM agent_org_runtime_run_progress
+            "SELECT work_revision FROM agent_org_execution_run_progress
              WHERE org_run_id=?1",
             [RUN_ID],
             |row| row.get(0),
@@ -1878,7 +1878,7 @@ fn repeated_owner_start_acknowledges_the_running_task_without_a_second_event() {
     assert_eq!(acknowledged.current.status, TaskStatus::InProgress);
     let event_count_after: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_task_events
+            "SELECT COUNT(*) FROM agent_org_execution_task_events
              WHERE org_run_id=?1 AND task_id=?2",
             rusqlite::params![RUN_ID, "idempotent-start"],
             |row| row.get(0),
@@ -1886,7 +1886,7 @@ fn repeated_owner_start_acknowledges_the_running_task_without_a_second_event() {
         .unwrap();
     let work_revision_after: i64 = conn
         .query_row(
-            "SELECT work_revision FROM agent_org_runtime_run_progress
+            "SELECT work_revision FROM agent_org_execution_run_progress
              WHERE org_run_id=?1",
             [RUN_ID],
             |row| row.get(0),
@@ -2307,7 +2307,7 @@ fn run_view_cancel_records_user_scope_removal_with_exact_request_audit() {
     let receipt_audit: (String, String, String, String) = conn
         .query_row(
             "SELECT target_task_id,root_user_event_id,request_id,status
-             FROM agent_org_scope_removal_receipts
+             FROM agent_org_execution_scope_removal_receipts
              WHERE receipt_id=?1",
             [receipt_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
@@ -2368,7 +2368,7 @@ fn run_view_cancel_records_user_scope_removal_with_exact_request_audit() {
     ] {
         let resolution_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_scope_resolution_receipts
+                "SELECT COUNT(*) FROM agent_org_execution_scope_resolution_receipts
                  WHERE root_receipt_id=?1 AND resolution_kind=?2",
                 params![receipt_id, kind],
                 |row| row.get(0),
@@ -2379,7 +2379,7 @@ fn run_view_cancel_records_user_scope_removal_with_exact_request_audit() {
     let audit_exists: bool = conn
         .query_row(
             "SELECT EXISTS(
-                 SELECT 1 FROM agent_org_runtime_task_events
+                 SELECT 1 FROM agent_org_execution_task_events
                  WHERE org_run_id=?1 AND task_id='user-cancelled'
                    AND next_status='cancelled' AND actor_kind='system'
                    AND actor_member_id='user:task_handoff:ui-cancel-request-1'
@@ -2489,7 +2489,7 @@ fn stale_generation_and_wrong_turn_binding_fail_without_partial_write() {
         1,
     );
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id=?1",
         [RUN_ID],
     )
     .unwrap();
@@ -2628,7 +2628,7 @@ fn task_pages_keep_current_graph_order_and_show_recent_history_first() {
     let insert =
         |id: &str, status: &str, created_at: &str, updated_at: &str, output_json: Option<&str>| {
             conn.execute(
-                "INSERT INTO agent_org_runtime_tasks(
+                "INSERT INTO agent_org_execution_tasks(
                 id,org_run_id,activation_generation,subject,description,owner,status,execution_mode,
                 blocked_by_json,metadata_json,output_json,
                 created_by_participant_id,source_turn_intent_id,created_at,updated_at
@@ -2755,7 +2755,7 @@ fn ten_thousand_task_history_uses_bounded_keyset_pages() {
     {
         let mut insert = tx
             .prepare(
-                "INSERT INTO agent_org_runtime_tasks(
+                "INSERT INTO agent_org_execution_tasks(
                     id,org_run_id,activation_generation,subject,description,owner,status,execution_mode,
                     blocked_by_json,metadata_json,output_json,
                     created_by_participant_id,source_turn_intent_id,created_at,updated_at
@@ -2865,7 +2865,7 @@ fn ten_thousand_task_history_uses_bounded_keyset_pages() {
         })
         .to_string();
         conn.execute(
-            "UPDATE agent_org_runtime_tasks
+            "UPDATE agent_org_execution_tasks
              SET output_json=?1, updated_at=?2
              WHERE org_run_id=?3 AND id=?4",
             params![
@@ -2896,7 +2896,7 @@ fn ten_thousand_task_history_uses_bounded_keyset_pages() {
     let plan = conn
         .prepare(
             "EXPLAIN QUERY PLAN
-             SELECT id FROM agent_org_runtime_tasks
+             SELECT id FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND status='completed'
                AND (updated_at<?2 OR (updated_at=?2 AND id<?3))
              ORDER BY updated_at DESC,id DESC LIMIT 51",
@@ -2908,10 +2908,10 @@ fn ten_thousand_task_history_uses_bounded_keyset_pages() {
         .unwrap()
         .join("\n");
     assert!(
-        plan.contains("idx_agent_org_runtime_tasks_history_page"),
+        plan.contains("idx_agent_org_execution_tasks_history_page"),
         "query plan must use the keyset page index:\n{plan}"
     );
-    assert!(!plan.contains("SCAN agent_org_runtime_tasks"), "{plan}");
+    assert!(!plan.contains("SCAN agent_org_execution_tasks"), "{plan}");
 
     let after_history = create(pending("after-long-history", Some(MEMBER_B), vec![]));
     assert_eq!(after_history.status, TaskStatus::Pending);
@@ -2951,7 +2951,7 @@ fn recovery_budget_is_per_task_and_never_resets_on_owner_generation_or_reopen() 
 
     assign_pending("task-a", MEMBER_A);
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id=?1",
         [RUN_ID],
     )
     .unwrap();
@@ -3117,7 +3117,7 @@ fn recovery_replay_is_idempotent_and_only_mutates_the_bound_task() {
     assert_eq!(recovery_event_count(), 1);
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id=?1",
         [RUN_ID],
     )
     .unwrap();
@@ -3249,7 +3249,7 @@ fn crash_recovery_reassignment_uses_a_new_execution_epoch_for_same_or_new_member
         let leases = conn
             .prepare(
                 "SELECT execution_epoch,owner_member_id,state,prior_lease_id IS NOT NULL
-                 FROM agent_org_task_execution_leases
+                 FROM agent_org_execution_task_execution_leases
                  WHERE org_run_id=?1 AND task_id=?2
                  ORDER BY execution_epoch",
             )
@@ -3294,7 +3294,7 @@ fn recovery_mutation_failure_rolls_back_budget_and_concurrent_replay_counts_once
         1,
     );
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET metadata_json='{\"eligible_member_ids\":\"member-b\"}'
          WHERE org_run_id=?1 AND id='corrupt'",
         [RUN_ID],
@@ -3357,7 +3357,7 @@ fn startup_recovery_receipt_failure_rolls_back_task_turn_and_inbox_together() {
         "turn-atomic-startup-recovery",
         1,
     );
-    conn.execute_batch("DROP TABLE agent_org_runtime_formal_trigger_receipts")
+    conn.execute_batch("DROP TABLE agent_org_execution_formal_trigger_receipts")
         .expect("inject failure at formal receipt boundary");
 
     let error = AgentOrgTaskStore::recover_task_execution_failure_on_startup(
@@ -3368,7 +3368,7 @@ fn startup_recovery_receipt_failure_rolls_back_task_turn_and_inbox_together() {
     )
     .expect_err("receipt failure must abort the whole recovery transaction");
     assert!(
-        error.contains("agent_org_runtime_formal_trigger_receipts"),
+        error.contains("agent_org_execution_formal_trigger_receipts"),
         "{error}"
     );
     let task = AgentOrgTaskStore::get(RUN_ID, "atomic-startup-recovery")
@@ -3387,7 +3387,7 @@ fn startup_recovery_receipt_failure_rolls_back_task_turn_and_inbox_together() {
     assert_eq!(turn_status, "running");
     let recovery_inbox_rows: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox
+            "SELECT COUNT(*) FROM agent_org_execution_inbox
              WHERE org_run_id=?1 AND payload_kind='member_idle'",
             [RUN_ID],
             |row| row.get(0),

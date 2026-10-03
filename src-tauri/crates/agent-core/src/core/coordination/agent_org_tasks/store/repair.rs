@@ -47,20 +47,20 @@ impl AgentOrgTaskStore {
                     .prepare(
                         "SELECT task.org_run_id,task.id,task.owner,
                                 latest.id,materialization.agent_id
-                         FROM agent_org_runtime_tasks task
-                         JOIN agent_org_runtime_runs run
+                         FROM agent_org_execution_tasks task
+                         JOIN agent_org_execution_runs run
                            ON run.id=task.org_run_id AND run.status='running'
-                         JOIN agent_org_runtime_task_events latest
+                         JOIN agent_org_execution_task_events latest
                            ON latest.rowid=(
                                SELECT MAX(event.rowid)
-                               FROM agent_org_runtime_task_events event
+                               FROM agent_org_execution_task_events event
                                WHERE event.org_run_id=task.org_run_id
                                  AND event.task_id=task.id
                            )
-                         JOIN agent_org_runtime_member_materializations materialization
+                         JOIN agent_org_execution_member_materializations materialization
                            ON materialization.rowid=(
                                SELECT MAX(candidate.rowid)
-                               FROM agent_org_runtime_member_materializations candidate
+                               FROM agent_org_execution_member_materializations candidate
                                WHERE candidate.org_run_id=task.org_run_id
                                  AND candidate.member_id=task.owner
                                  AND candidate.status='succeeded'
@@ -68,19 +68,19 @@ impl AgentOrgTaskStore {
                          WHERE task.status='pending' AND task.owner IS NOT NULL
                            AND NOT EXISTS (
                                SELECT 1 FROM json_each(task.blocked_by_json) dependency
-                               LEFT JOIN agent_org_runtime_tasks blocker
+                               LEFT JOIN agent_org_execution_tasks blocker
                                  ON blocker.org_run_id=task.org_run_id
                                 AND blocker.id=dependency.value
                                WHERE blocker.id IS NULL OR blocker.status<>'completed'
                            )
                            AND NOT EXISTS (
-                               SELECT 1 FROM agent_org_task_execution_leases lease
+                               SELECT 1 FROM agent_org_execution_task_execution_leases lease
                                WHERE lease.org_run_id=task.org_run_id
                                  AND lease.task_id=task.id AND lease.state='active'
                            )
                            AND NOT EXISTS (
                                SELECT 1
-                               FROM agent_org_runtime_turn_contexts context
+                               FROM agent_org_execution_turn_contexts context
                                JOIN session_turn_intents intent
                                  ON intent.session_id=context.session_id
                                 AND intent.turn_intent_id=context.turn_intent_id
@@ -90,7 +90,7 @@ impl AgentOrgTaskStore {
                                  AND intent.status IN ('optimistic','queued','running')
                            )
                            AND NOT EXISTS (
-                               SELECT 1 FROM agent_org_runtime_inbox inbox
+                               SELECT 1 FROM agent_org_execution_inbox inbox
                                WHERE inbox.org_run_id=task.org_run_id
                                  AND inbox.recipient_member_id=task.owner
                                  AND inbox.payload_kind='task_assigned'
@@ -99,12 +99,12 @@ impl AgentOrgTaskStore {
                                  AND json_extract(inbox.payload_json,'$.task_id')=task.id
                                  AND NOT EXISTS (
                                      SELECT 1
-                                     FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                                     FROM agent_org_execution_inbox_delivery_resolutions resolution
                                      WHERE resolution.inbox_id=inbox.id
                                  )
                            )
                            AND NOT EXISTS (
-                               SELECT 1 FROM agent_org_runtime_recovery_attempts repaired
+                               SELECT 1 FROM agent_org_execution_recovery_attempts repaired
                                WHERE repaired.org_run_id=task.org_run_id
                                  AND repaired.action_kind=?1
                                  AND repaired.target_key=task.id
@@ -164,8 +164,8 @@ impl AgentOrgTaskStore {
                 let coordinator_receipt_id = tx
                     .query_row(
                         "SELECT receipt.receipt_id
-                         FROM agent_org_runtime_inbox observer
-                         JOIN agent_org_runtime_formal_trigger_receipts receipt
+                         FROM agent_org_execution_inbox observer
+                         JOIN agent_org_execution_formal_trigger_receipts receipt
                            ON receipt.inbox_id=observer.id
                          WHERE observer.causation_inbox_id=?1
                            AND observer.org_run_id=?2
@@ -188,7 +188,7 @@ impl AgentOrgTaskStore {
                     })?;
                 let now = chrono::Utc::now().to_rfc3339();
                 tx.execute(
-                    "INSERT INTO agent_org_runtime_recovery_attempts(
+                    "INSERT INTO agent_org_execution_recovery_attempts(
                          org_run_id,action_kind,target_key,reason_fingerprint,
                          attempts,next_allowed_at,updated_at,reservation_token
                      ) VALUES (?1,?2,?3,?4,1,?5,?5,NULL)

@@ -411,7 +411,7 @@ pub(super) fn list_distinct_plan_paths_after(
     let mut stmt = conn
         .prepare(
             "SELECT DISTINCT plan_path
-             FROM agent_org_runtime_plan_revisions
+             FROM agent_org_execution_plan_revisions
              WHERE (?1 IS NULL OR plan_path > ?1)
              ORDER BY plan_path ASC
              LIMIT ?2",

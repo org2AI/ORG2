@@ -55,7 +55,7 @@ fn load_rejected_request_draft_with_connection(
     let source: Option<(String, String)> = conn
         .query_row(
             "SELECT source_kind,source_id
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE org_run_id=?1 AND session_id=?2 AND turn_intent_id=?3
                AND turn_kind='coordinator' AND participant_id='coordinator'
                AND source_kind IN ('root_turn','group_root')",
@@ -71,7 +71,7 @@ fn load_rejected_request_draft_with_connection(
     let mut statement = conn
         .prepare(
             "SELECT result_text
-             FROM agent_org_runtime_tool_call_receipts
+             FROM agent_org_execution_tool_call_receipts
              WHERE org_run_id=?1 AND session_id=?2 AND turn_intent_id=?3
                AND tool_name IN ('task_create','task_graph_create')
                AND result_text IS NOT NULL
@@ -178,11 +178,11 @@ mod tests {
     fn fixture() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory database");
         conn.execute_batch(
-            "CREATE TABLE agent_org_runtime_turn_contexts(
+            "CREATE TABLE agent_org_execution_turn_contexts(
                  org_run_id TEXT,session_id TEXT,turn_intent_id TEXT,
                  turn_kind TEXT,participant_id TEXT,source_kind TEXT,source_id TEXT
              );
-             CREATE TABLE agent_org_runtime_tool_call_receipts(
+             CREATE TABLE agent_org_execution_tool_call_receipts(
                  org_run_id TEXT,session_id TEXT,turn_intent_id TEXT,call_id TEXT,
                  tool_name TEXT,result_text TEXT,created_at TEXT
              );
@@ -190,10 +190,10 @@ mod tests {
                  id TEXT,session_id TEXT,function_name TEXT,result_json TEXT,
                  meta_json TEXT,history_sequence INTEGER
              );
-             INSERT INTO agent_org_runtime_turn_contexts VALUES(
+             INSERT INTO agent_org_execution_turn_contexts VALUES(
                  'run','session','turn','coordinator','coordinator','root_turn','turn'
              );
-             INSERT INTO agent_org_runtime_tool_call_receipts VALUES(
+             INSERT INTO agent_org_execution_tool_call_receipts VALUES(
                  'run','session','turn','call','task_create',
                  '{\"created\":false,\"requires_episode_resolution\":true,\"rejected_request_turn_intent_id\":\"turn\"}',
                  'now'
@@ -219,7 +219,7 @@ mod tests {
         assert_eq!(draft.turn_intent_id, "turn");
 
         conn.execute(
-            "UPDATE agent_org_runtime_tool_call_receipts
+            "UPDATE agent_org_execution_tool_call_receipts
              SET result_text=replace(result_text,'\"turn\"','\"other-turn\"')",
             [],
         )

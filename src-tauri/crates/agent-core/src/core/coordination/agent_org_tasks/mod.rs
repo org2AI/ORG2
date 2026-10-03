@@ -673,14 +673,14 @@ pub fn init_schema(conn: &Connection) -> SqliteResult<()> {
 
 pub(crate) fn create_history_page_index(conn: &Connection) -> SqliteResult<()> {
     conn.execute_batch(
-        "CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_history_page
-         ON agent_org_runtime_tasks(org_run_id, status, updated_at, id);",
+        "CREATE INDEX IF NOT EXISTS idx_agent_org_execution_tasks_history_page
+         ON agent_org_execution_tasks(org_run_id, status, updated_at, id);",
     )
 }
 
 pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_tasks (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_tasks (
             id TEXT NOT NULL,
             org_run_id TEXT NOT NULL,
             activation_generation INTEGER NOT NULL CHECK(activation_generation >= 1),
@@ -705,7 +705,7 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
             updated_at TEXT NOT NULL,
             PRIMARY KEY (org_run_id, id),
             FOREIGN KEY (org_run_id, replaces_task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id, id),
+                REFERENCES agent_org_execution_tasks(org_run_id, id),
             CHECK(owner IS NULL OR (trim(owner) <> '' AND owner <> 'coordinator')),
             CHECK(replaces_task_id IS NULL OR replaces_task_id <> id),
             CHECK(json_valid(blocked_by_json)=1 AND json_type(blocked_by_json)='array'),
@@ -725,13 +725,13 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
                 OR (status='cancelled' AND output_json IS NULL AND failure_reason_json IS NULL AND cancel_reason_json IS NOT NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_page
-            ON agent_org_runtime_tasks(org_run_id, status, created_at, id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_owner
-            ON agent_org_runtime_tasks(org_run_id, owner, status);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_tasks_replacement
-            ON agent_org_runtime_tasks(org_run_id, replaces_task_id);
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_task_events (
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_tasks_page
+            ON agent_org_execution_tasks(org_run_id, status, created_at, id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_tasks_owner
+            ON agent_org_execution_tasks(org_run_id, owner, status);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_tasks_replacement
+            ON agent_org_execution_tasks(org_run_id, replaces_task_id);
+        CREATE TABLE IF NOT EXISTS agent_org_execution_task_events (
             id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             task_id TEXT NOT NULL,
@@ -745,11 +745,11 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
             source_turn_intent_id TEXT,
             created_at TEXT NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_task_events_run
-            ON agent_org_runtime_task_events(org_run_id, created_at, id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_task_events_task
-            ON agent_org_runtime_task_events(org_run_id, task_id, created_at, id);
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_task_annotations (
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_task_events_run
+            ON agent_org_execution_task_events(org_run_id, created_at, id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_task_events_task
+            ON agent_org_execution_task_events(org_run_id, task_id, created_at, id);
+        CREATE TABLE IF NOT EXISTS agent_org_execution_task_annotations (
             id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             task_id TEXT NOT NULL,
@@ -760,10 +760,10 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
             source_turn_intent_id TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY (org_run_id, task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id, id) ON DELETE CASCADE
+                REFERENCES agent_org_execution_tasks(org_run_id, id) ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_task_annotations_page
-            ON agent_org_runtime_task_annotations(org_run_id, task_id, created_at, id);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_task_annotations_page
+            ON agent_org_execution_task_annotations(org_run_id, task_id, created_at, id);",
     )?;
     create_history_page_index(conn)
 }
@@ -1010,7 +1010,7 @@ fn persist_task_assignment_fact_in_tx(
     // delivery cannot escape their settlement or create a new Coordinator wake.
     let (current_status, current_owner, current_generation): (String, Option<String>, i64) = conn
         .query_row(
-            "SELECT status,owner,activation_generation FROM agent_org_runtime_tasks
+            "SELECT status,owner,activation_generation FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND id=?2",
             rusqlite::params![&task.org_run_id, &task.id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -1022,7 +1022,7 @@ fn persist_task_assignment_fact_in_tx(
     if obsolete {
         let row = AgentInboxStore::insert_in_tx_without_formal_trigger(conn, owner_delivery)?;
         conn.execute(
-            "INSERT INTO agent_org_runtime_inbox_delivery_resolutions (
+            "INSERT INTO agent_org_execution_inbox_delivery_resolutions (
                 inbox_id,org_run_id,resolution_kind,resolved_by_member_id,reason,created_at
              ) VALUES (?1,?2,'cancelled','system:task_assignment',?3,?4)",
             rusqlite::params![
@@ -1072,7 +1072,7 @@ fn persist_task_assignment_fact_in_tx(
 
     let coordinator_agent_id: String = conn
         .query_row(
-            "SELECT coordinator_agent_id FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT coordinator_agent_id FROM agent_org_execution_runs WHERE id=?1",
             [&task.org_run_id],
             |row| row.get(0),
         )

@@ -214,6 +214,7 @@ export interface Session {
   orgMemberId?: string;
   /** Agent Team definition id for root/coordinator rows launched from a team. */
   agentOrgId?: string;
+  agentOrgMode?: "current" | "history_only";
   /** Agent Team display name for root/coordinator rows launched from a team. */
   agentOrgName?: string;
   /** Rust-native agent definition ID returned by the backend. */

@@ -406,6 +406,8 @@ impl ToolRegistry {
         mut params: Value,
         ctx: &crate::tools::call_context::CallContext,
     ) -> Result<ToolExecuteResult, String> {
+        crate::coordination::agent_org_history_store::require_writable_session(&ctx.session_id)
+            .await?;
         let Some(tool) = self.get(name) else {
             return Err(format!("Error: Tool '{}' not found", name));
         };
@@ -432,6 +434,8 @@ impl ToolRegistry {
         policy: &ResolvedToolPolicy,
         ctx: &crate::tools::call_context::CallContext,
     ) -> Result<ToolExecuteResult, String> {
+        crate::coordination::agent_org_history_store::require_writable_session(&ctx.session_id)
+            .await?;
         let mut refreshed_policy = policy
             .refreshed_for_execute_call(&ctx.session_id, &ctx.turn_intent_id)
             .map_err(|error| format!("Error: {error}"))?;

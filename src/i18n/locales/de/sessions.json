@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "Unterhaltung einer älteren Version, nur lesbar",
+    "savedContent": "Gespeicherte Gruppennachrichten und Ausgaben",
+    "unknownMember": "Unbekanntes Mitglied",
+    "loading": "Verlauf wird geladen…",
+    "retry": "Erneut versuchen",
+    "empty": "Keine gespeicherten Gruppeninhalte",
+    "nextPage": "Nächste Seite",
+    "firstPage": "Erste Seite"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "Benutzeranfrage",

@@ -24,7 +24,7 @@ fn fixture() -> Connection {
     create_schema(&conn).unwrap();
     crate::coordination::agent_org_tasks::create_schema(&conn).unwrap();
     conn.execute_batch(
-        "INSERT INTO agent_org_runtime_runs(
+        "INSERT INTO agent_org_execution_runs(
              id,org_id,coordinator_agent_id,root_session_id,entry_mode,status,
              activation_generation,created_at,updated_at
          ) VALUES ('run','org','coordinator','root','standalone_session','running',1,
@@ -43,7 +43,7 @@ fn insert_root_turn(conn: &Connection, turn_id: &str, source: &str, generation: 
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              source_kind,source_id,activation_generation,created_at
          ) VALUES ('root',?1,'run','coordinator','coordinator',
@@ -55,7 +55,7 @@ fn insert_root_turn(conn: &Connection, turn_id: &str, source: &str, generation: 
 
 fn insert_task(conn: &Connection, task_id: &str, generation: i64, turn_id: &str) {
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks(
+        "INSERT INTO agent_org_execution_tasks(
              id,org_run_id,activation_generation,subject,status,execution_mode,
              created_by_participant_id,source_turn_intent_id,created_at,updated_at
          ) VALUES (?1,'run',?2,?1,'pending','build','coordinator',?3,?4,?4)",
@@ -74,7 +74,7 @@ fn pause_resume_keeps_one_episode_and_next_mission_opens_another() {
 
     // Pause/Resume advances authorization but must not split the mission.
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=3 WHERE id='run'",
+        "UPDATE agent_org_execution_runs SET activation_generation=3 WHERE id='run'",
         [],
     )
     .unwrap();
@@ -101,7 +101,7 @@ fn pause_resume_keeps_one_episode_and_next_mission_opens_another() {
     )
     .unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=4 WHERE id='run'",
+        "UPDATE agent_org_execution_runs SET activation_generation=4 WHERE id='run'",
         [],
     )
     .unwrap();
@@ -200,7 +200,7 @@ fn terminal_replacement_after_certification_opens_the_next_episode() {
     .unwrap();
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id='run'",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id='run'",
         [],
     )
     .unwrap();

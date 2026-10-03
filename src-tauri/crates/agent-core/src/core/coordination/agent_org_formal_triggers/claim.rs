@@ -45,10 +45,10 @@ pub(crate) fn claim_for_coordinator_turn(
                 .prepare(
                     "SELECT receipt.receipt_id,receipt.inbox_id,
                             attempt.materialized_input_id
-                     FROM agent_org_runtime_formal_trigger_attempts attempt
-                     JOIN agent_org_runtime_formal_trigger_receipts receipt
+                     FROM agent_org_execution_formal_trigger_attempts attempt
+                     JOIN agent_org_execution_formal_trigger_receipts receipt
                        ON receipt.receipt_id=attempt.receipt_id
-                     JOIN agent_org_runtime_inbox inbox ON inbox.id=receipt.inbox_id
+                     JOIN agent_org_execution_inbox inbox ON inbox.id=receipt.inbox_id
                      WHERE attempt.session_id=?1 AND attempt.turn_intent_id=?2
                        AND attempt.status IN ('queued','running')
                        AND receipt.org_run_id=?3 AND receipt.status='materialized'
@@ -79,7 +79,7 @@ pub(crate) fn claim_for_coordinator_turn(
             }
             let now = chrono::Utc::now().to_rfc3339();
             tx.execute(
-                "UPDATE agent_org_runtime_formal_trigger_attempts
+                "UPDATE agent_org_execution_formal_trigger_attempts
                  SET status='running',started_at=COALESCE(started_at,?3),updated_at=?3
                  WHERE session_id=?1 AND turn_intent_id=?2 AND status='queued'",
                 params![session_id, turn_intent_id, &now],
@@ -88,7 +88,7 @@ pub(crate) fn claim_for_coordinator_turn(
             let has_more: bool = tx
                 .query_row(
                     "SELECT EXISTS(
-                         SELECT 1 FROM agent_org_runtime_formal_trigger_receipts receipt
+                         SELECT 1 FROM agent_org_execution_formal_trigger_receipts receipt
                          WHERE receipt.org_run_id=?1 AND receipt.status='pending'
                            AND receipt.doorbell_status IN ('missing','delivered')
                      )",
@@ -112,9 +112,9 @@ pub(crate) fn claim_for_coordinator_turn(
                         length(CAST(inbox.payload_json AS BLOB)),
                         attempt.attempt,attempt.session_id,attempt.turn_intent_id,
                         attempt.materialized_input_id
-                 FROM agent_org_runtime_formal_trigger_receipts receipt
-                 JOIN agent_org_runtime_inbox inbox ON inbox.id=receipt.inbox_id
-                 LEFT JOIN agent_org_runtime_formal_trigger_attempts attempt
+                 FROM agent_org_execution_formal_trigger_receipts receipt
+                 JOIN agent_org_execution_inbox inbox ON inbox.id=receipt.inbox_id
+                 LEFT JOIN agent_org_execution_formal_trigger_attempts attempt
                    ON attempt.receipt_id=receipt.receipt_id
                   AND attempt.status IN ('queued','running')
                  WHERE receipt.org_run_id=?1 AND receipt.status IN ('pending','materialized')
@@ -122,7 +122,7 @@ pub(crate) fn claim_for_coordinator_turn(
                    AND inbox.delivery_class='formal_work'
                    AND inbox.read_at IS NULL
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                       SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
                        WHERE resolution.inbox_id=inbox.id
                    )
                    AND attempt.receipt_id IS NULL
@@ -194,13 +194,13 @@ pub(crate) fn claim_for_coordinator_turn(
             let attempt: i64 = tx
                 .query_row(
                     "SELECT current_attempt + 1
-                     FROM agent_org_runtime_formal_trigger_receipts WHERE receipt_id=?1",
+                     FROM agent_org_execution_formal_trigger_receipts WHERE receipt_id=?1",
                     [receipt_id],
                     |row| row.get(0),
                 )
                 .map_err(|error| error.to_string())?;
             tx.execute(
-                "INSERT INTO agent_org_runtime_formal_trigger_attempts (
+                "INSERT INTO agent_org_execution_formal_trigger_attempts (
                      receipt_id,attempt,session_id,turn_intent_id,status,
                      materialized_input_id,materialized_event_id,typed_error,
                      queued_at,started_at,terminal_at,updated_at
@@ -216,7 +216,7 @@ pub(crate) fn claim_for_coordinator_turn(
             )
             .map_err(|error| error.to_string())?;
             tx.execute(
-                "UPDATE agent_org_runtime_formal_trigger_receipts
+                "UPDATE agent_org_execution_formal_trigger_receipts
                  SET current_attempt=?2,status='materialized',
                      materialized_input_id=?3,updated_at=?4
                  WHERE receipt_id=?1 AND status='pending'",
@@ -260,8 +260,8 @@ pub(crate) fn resolve_inbox_receipts_in_tx(
         let active: Option<(String, i64)> = tx
             .query_row(
                 "SELECT receipt.receipt_id,attempt.attempt
-                 FROM agent_org_runtime_formal_trigger_receipts receipt
-                 JOIN agent_org_runtime_formal_trigger_attempts attempt
+                 FROM agent_org_execution_formal_trigger_receipts receipt
+                 JOIN agent_org_execution_formal_trigger_attempts attempt
                    ON attempt.receipt_id=receipt.receipt_id
                   AND attempt.attempt=receipt.current_attempt
                  WHERE receipt.inbox_id=?1
@@ -276,7 +276,7 @@ pub(crate) fn resolve_inbox_receipts_in_tx(
             continue;
         };
         tx.execute(
-            "UPDATE agent_org_runtime_formal_trigger_attempts
+            "UPDATE agent_org_execution_formal_trigger_attempts
              SET status='resolved',materialized_event_id=?4,terminal_at=?5,updated_at=?5
              WHERE receipt_id=?1 AND attempt=?2
                AND session_id=?3 AND turn_intent_id=?6
@@ -293,7 +293,7 @@ pub(crate) fn resolve_inbox_receipts_in_tx(
         .map_err(|error| error.to_string())?;
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_formal_trigger_receipts
+                "UPDATE agent_org_execution_formal_trigger_receipts
                  SET status='resolved',materialized_event_id=?2,resolved_at=?3,updated_at=?3
                  WHERE receipt_id=?1 AND current_attempt=?4
                    AND status='materialized'",
@@ -326,7 +326,7 @@ pub(crate) fn fail_attempt_for_turn(
         let now = chrono::Utc::now().to_rfc3339();
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_formal_trigger_attempts
+                "UPDATE agent_org_execution_formal_trigger_attempts
                  SET status='failed',typed_error=?3,terminal_at=?4,updated_at=?4
                  WHERE session_id=?1 AND turn_intent_id=?2
                    AND status IN ('queued','running')",
@@ -335,13 +335,13 @@ pub(crate) fn fail_attempt_for_turn(
             .map_err(|error| error.to_string())?;
         if changed > 0 {
             tx.execute(
-                "UPDATE agent_org_runtime_formal_trigger_receipts
+                "UPDATE agent_org_execution_formal_trigger_receipts
                  SET status='pending',doorbell_status='missing',
                      doorbell_delivered_at=NULL,materialized_event_id=NULL,
                      resolved_at=NULL,updated_at=?3
                  WHERE receipt_id IN (
                      SELECT receipt_id
-                     FROM agent_org_runtime_formal_trigger_attempts
+                     FROM agent_org_execution_formal_trigger_attempts
                      WHERE session_id=?1 AND turn_intent_id=?2
                        AND status='failed' AND terminal_at=?3
                  ) AND status='materialized'",

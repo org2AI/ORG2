@@ -50,7 +50,7 @@ fn obsolete_assignment_keeps_its_unread_evidence_and_new_work_gets_admitted() {
     let conn = connection();
     let obsolete = insert_task_assignment(&conn, "task-a");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET status='completed' WHERE id='task-a'",
+        "UPDATE agent_org_execution_tasks SET status='completed' WHERE id='task-a'",
         [],
     )
     .unwrap();
@@ -62,13 +62,13 @@ fn obsolete_assignment_keeps_its_unread_evidence_and_new_work_gets_admitted() {
     }
     assert!(conn
         .query_row(
-            "SELECT read_at IS NULL FROM agent_org_runtime_inbox WHERE id=?1",
+            "SELECT read_at IS NULL FROM agent_org_execution_inbox WHERE id=?1",
             [obsolete],
             |r| r.get::<_, bool>(0)
         )
         .unwrap());
-    conn.execute_batch("INSERT INTO agent_org_runtime_tasks(org_run_id,id,owner,status) VALUES('run-a','task-new','member-a','pending');
-        INSERT INTO agent_org_runtime_work_episode_tasks(org_run_id,work_episode_id,task_id,associated_at) VALUES('run-a','episode-a','task-new','now');").unwrap();
+    conn.execute_batch("INSERT INTO agent_org_execution_tasks(org_run_id,id,owner,status) VALUES('run-a','task-new','member-a','pending');
+        INSERT INTO agent_org_execution_work_episode_tasks(org_run_id,work_episode_id,task_id,associated_at) VALUES('run-a','episode-a','task-new','now');").unwrap();
     insert_task_assignment(&conn, "task-new");
     let next = wake(&conn, "new-work", MEMBER_ID)
         .unwrap()
@@ -86,9 +86,9 @@ fn queued_wake_cannot_execute_or_inherit_a_replacement_task() {
         .unwrap()
         .into_ready()
         .unwrap();
-    conn.execute_batch("UPDATE agent_org_runtime_tasks SET status='cancelled' WHERE id='task-a';
-        INSERT INTO agent_org_runtime_tasks(org_run_id,id,owner,status) VALUES('run-a','task-new','member-a','pending');
-        INSERT INTO agent_org_runtime_work_episode_tasks(org_run_id,work_episode_id,task_id,associated_at) VALUES('run-a','episode-a','task-new','now');").unwrap();
+    conn.execute_batch("UPDATE agent_org_execution_tasks SET status='cancelled' WHERE id='task-a';
+        INSERT INTO agent_org_execution_tasks(org_run_id,id,owner,status) VALUES('run-a','task-new','member-a','pending');
+        INSERT INTO agent_org_execution_work_episode_tasks(org_run_id,work_episode_id,task_id,associated_at) VALUES('run-a','episode-a','task-new','now');").unwrap();
     insert_task_assignment(&conn, "task-new");
     assert!(!revalidate_wake_in_tx(&conn, MEMBER_SESSION_ID, "queued-old").unwrap());
     assert_eq!(
@@ -102,7 +102,7 @@ fn queued_wake_cannot_execute_or_inherit_a_replacement_task() {
     );
     assert_eq!(
         conn.query_row(
-            "SELECT COUNT(*) FROM agent_org_task_execution_leases WHERE state='active'",
+            "SELECT COUNT(*) FROM agent_org_execution_task_execution_leases WHERE state='active'",
             [],
             |r| r.get::<_, i64>(0)
         )
@@ -130,14 +130,14 @@ fn empty_wake_still_rejects_bad_identity_storage_and_payload() {
     assert!(wake(&conn, "bad-member", "not-a-member").is_err());
     let row = insert_task_assignment(&conn, "task-a");
     conn.execute(
-        "UPDATE agent_org_runtime_inbox SET payload_json='broken' WHERE id=?1",
+        "UPDATE agent_org_execution_inbox SET payload_json='broken' WHERE id=?1",
         [row],
     )
     .unwrap();
     assert!(wake(&conn, "bad-payload", MEMBER_ID).is_err());
-    conn.execute("DELETE FROM agent_org_runtime_inbox WHERE id=?1", [row])
+    conn.execute("DELETE FROM agent_org_execution_inbox WHERE id=?1", [row])
         .unwrap();
-    conn.execute("DROP TABLE agent_org_runtime_inbox", [])
+    conn.execute("DROP TABLE agent_org_execution_inbox", [])
         .unwrap();
     assert!(wake(&conn, "broken-storage", MEMBER_ID).is_err());
     assert_eq!(row_count(&conn, "session_turn_intents"), 0);
@@ -151,14 +151,14 @@ fn pause_and_old_generation_cannot_start_queued_work() {
         .unwrap()
         .into_ready()
         .unwrap();
-    conn.execute("UPDATE agent_org_runtime_runs SET status='paused'", [])
+    conn.execute("UPDATE agent_org_execution_runs SET status='paused'", [])
         .unwrap();
     assert!(matches!(
         wake(&conn, "paused-wake", MEMBER_ID).unwrap(),
         WakeAdmission::Deferred
     ));
     assert!(!revalidate_wake_in_tx(&conn, MEMBER_SESSION_ID, "queued-before-pause").unwrap());
-    conn.execute("UPDATE agent_org_runtime_runs SET status='running'", [])
+    conn.execute("UPDATE agent_org_execution_runs SET status='running'", [])
         .unwrap();
     assert!(matches!(
         wake(&conn, "consumed-assignment", MEMBER_ID).unwrap(),
@@ -172,7 +172,7 @@ fn pause_and_old_generation_cannot_start_queued_work() {
         .into_ready()
         .unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2",
+        "UPDATE agent_org_execution_runs SET activation_generation=2",
         [],
     )
     .unwrap();
@@ -186,20 +186,20 @@ fn coordinator_no_work_gate_preserves_resolved_rows_and_mixed_new_input() {
         wake(&conn, "empty-root", COORDINATOR_MEMBER_ID).unwrap(),
         WakeAdmission::NoReadyWork
     ));
-    conn.execute_batch("INSERT INTO agent_org_runtime_inbox(org_run_id,recipient_member_id,payload_kind,payload_json) VALUES('run-a','coordinator','plain','{}');
-        INSERT INTO agent_org_runtime_inbox_delivery_resolutions(inbox_id) VALUES(last_insert_rowid());").unwrap();
+    conn.execute_batch("INSERT INTO agent_org_execution_inbox(org_run_id,recipient_member_id,payload_kind,payload_json) VALUES('run-a','coordinator','plain','{}');
+        INSERT INTO agent_org_execution_inbox_delivery_resolutions(inbox_id) VALUES(last_insert_rowid());").unwrap();
     assert!(matches!(
         wake(&conn, "resolved-root", COORDINATOR_MEMBER_ID).unwrap(),
         WakeAdmission::NoReadyWork
     ));
-    conn.execute_batch("INSERT INTO agent_org_runtime_inbox(org_run_id,recipient_member_id,payload_kind,payload_json) VALUES('run-a','coordinator','plain','{}');").unwrap();
+    conn.execute_batch("INSERT INTO agent_org_execution_inbox(org_run_id,recipient_member_id,payload_kind,payload_json) VALUES('run-a','coordinator','plain','{}');").unwrap();
     wake(&conn, "mixed-root", COORDINATOR_MEMBER_ID)
         .unwrap()
         .into_ready()
         .unwrap();
     assert_eq!(
         conn.query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox WHERE recipient_member_id='coordinator' AND read_at IS NULL",
+            "SELECT COUNT(*) FROM agent_org_execution_inbox WHERE recipient_member_id='coordinator' AND read_at IS NULL",
             [],
             |r| r.get::<_, i64>(0)
         )
@@ -214,7 +214,7 @@ fn consumed_authority_lookup_is_bounded_by_the_unique_receipt_index() {
     let mut statement = conn
         .prepare(
             "EXPLAIN QUERY PLAN SELECT 1
-        FROM agent_org_task_execution_leases lease
+        FROM agent_org_execution_task_execution_leases lease
         JOIN session_turn_intents intent USING(session_id,turn_intent_id)
         WHERE lease.continuation_receipt_id='inbox:' || ?1
           AND intent.status NOT IN ('queued','running','optimistic')",

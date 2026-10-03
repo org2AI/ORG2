@@ -172,7 +172,7 @@ fn projection_context() -> AgentOrgRunContext {
 fn seed_run(conn: &Connection) {
     let now = "2026-01-01T00:00:00Z";
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs (
+        "INSERT INTO agent_org_execution_runs (
            id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
            entry_mode,status,created_at,updated_at
          ) VALUES ('run-projection','org-projection','agent-coordinator',
@@ -206,7 +206,7 @@ fn seed_initial_exchange(conn: &Connection) {
     )
     .expect("insert initial intent");
     conn.execute(
-        "INSERT INTO agent_org_runtime_initial_inputs (
+        "INSERT INTO agent_org_execution_initial_inputs (
            org_run_id,turn_intent_id,message_id,content,payload_json,status,created_at,updated_at
          ) VALUES ('run-projection','turn-initial','message-initial','Build the Team result',
                    '{}','dispatched','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')",
@@ -232,7 +232,7 @@ fn seed_initial_exchange(conn: &Connection) {
 
 fn seed_task_activity(conn: &Connection) {
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
            id,org_run_id,activation_generation,subject,description,owner,status,
            execution_mode,blocked_by_json,output_json,created_by_participant_id,
            source_turn_intent_id,created_at,updated_at
@@ -243,7 +243,7 @@ fn seed_task_activity(conn: &Connection) {
     )
     .expect("insert task");
     conn.execute_batch(
-        "INSERT INTO agent_org_runtime_task_events (
+        "INSERT INTO agent_org_execution_task_events (
            id,org_run_id,task_id,event_type,previous_owner,next_owner,
            previous_status,next_status,actor_member_id,actor_kind,source_turn_intent_id,created_at
          ) VALUES
@@ -327,7 +327,7 @@ fn task_lifecycle_is_merged_into_the_same_public_timeline() {
 fn seed_team_lifecycle(conn: &Connection) {
     let digest = "a".repeat(64);
     conn.execute(
-        "INSERT INTO agent_org_runtime_pause_episodes (
+        "INSERT INTO agent_org_execution_pause_episodes (
            episode_id,org_run_id,pause_request_id,pause_generation,status,
            resume_request_id,resume_generation,teardown_owner_id,created_at,updated_at,resumed_at
          ) VALUES ('pause-1','run-projection','pause-request-1',2,'consumed',
@@ -337,7 +337,7 @@ fn seed_team_lifecycle(conn: &Connection) {
     )
     .expect("insert pause/resume episode");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_interventions (
+        "INSERT INTO agent_org_execution_member_interventions (
            intervention_receipt_id,org_run_id,member_id,agent_id,session_id,status,
            source_event_id,entered_at,last_user_activity_at,return_request_id,
            return_outcome,cleared_revision,cleared_at,updated_at
@@ -349,7 +349,7 @@ fn seed_team_lifecycle(conn: &Connection) {
     )
     .expect("insert member Return receipt");
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates (
+        "INSERT INTO agent_org_execution_run_completion_certificates (
            id,org_run_id,activation_generation,work_revision,request_id,request_digest,
            outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
            evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -370,7 +370,7 @@ fn seed_team_lifecycle(conn: &Connection) {
     )
     .expect("insert final report event");
     conn.execute(
-        "INSERT INTO agent_org_runtime_final_summary_receipts (
+        "INSERT INTO agent_org_execution_final_summary_receipts (
            receipt_id,org_run_id,activation_generation,certificate_id,evidence_digest,
            attempt,status,coordinator_session_id,turn_intent_id,started_at,terminal_at,
            event_id,created_at,updated_at
@@ -382,7 +382,7 @@ fn seed_team_lifecycle(conn: &Connection) {
     )
     .expect("insert persisted final report receipt");
     conn.execute(
-        "INSERT INTO agent_org_runtime_final_summary_receipts (
+        "INSERT INTO agent_org_execution_final_summary_receipts (
            receipt_id,org_run_id,activation_generation,certificate_id,evidence_digest,
            attempt,status,coordinator_session_id,turn_intent_id,retry_request_id,
            started_at,terminal_at,typed_error,created_at,updated_at
@@ -394,7 +394,7 @@ fn seed_team_lifecycle(conn: &Connection) {
     )
     .expect("insert failed final report receipt");
     conn.execute(
-        "INSERT INTO agent_org_runtime_archive_episodes (
+        "INSERT INTO agent_org_execution_archive_episodes (
            archive_receipt_id,org_run_id,archive_request_id,archive_generation,
            teardown_status,deadline_at,archived_at,updated_at,quiesced_at
          ) VALUES ('archive-1','run-projection','archive-request-1',4,'quiesced',
@@ -454,7 +454,7 @@ fn cursor_v2_pages_identical_timestamps_without_duplicates() {
     seed_run(&conn);
     seed_task_activity(&conn);
     conn.execute(
-        "UPDATE agent_org_runtime_task_events SET created_at='2026-01-01T00:00:03Z'",
+        "UPDATE agent_org_execution_task_events SET created_at='2026-01-01T00:00:03Z'",
         [],
     )
     .expect("align fixture timestamps");
@@ -535,7 +535,7 @@ fn public_timeline_p90_stays_bounded_for_fifty_members_and_ten_thousand_events()
             context_index % 60
         );
         conn.execute(
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                delivery_class,recipient_agent_id,recipient_member_id,sender_agent_id,
                org_run_id,payload_kind,payload_json,created_at
              ) VALUES ('user_directed',?1,?2,'_user','run-projection','plain',?3,?4)",
@@ -562,7 +562,7 @@ fn public_timeline_p90_stays_bounded_for_fifty_members_and_ten_thousand_events()
         )
         .expect("insert performance Turn intent");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
                root_authority_turn_id,actor_version,created_at

@@ -26,7 +26,8 @@ export function sidebarCategoryForSession(
   );
   if (importedSource) return importedSource.listCategory;
   if (session.pinned) return "pinned_native";
-  if (session.agentOrgId) return "agent_org_root";
+  if (session.agentOrgId || session.agentOrgMode === "history_only")
+    return "agent_org_root";
   if (session.category === "cli_agent") return "cli_agent";
   if (session.category === "human_session") return "human_session";
   if (getRustAgentType(session.session_id) === RUST_AGENT_TYPE.OS) {

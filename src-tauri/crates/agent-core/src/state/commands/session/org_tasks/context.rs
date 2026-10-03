@@ -43,6 +43,8 @@ pub(super) async fn session_org_read_context(
     // durable identity in one blocking job instead of stalling Tokio's async
     // executor at every call site.
     tokio::task::spawn_blocking(move || -> Result<Option<SessionOrgReadContext>, String> {
+        let conn = get_connection().map_err(|error| error.to_string())?;
+        crate::coordination::agent_org_history_store::require_writable(&conn, &session_id)?;
         let persisted = persistence::get_session(&session_id).map_err(|err| err.to_string())?;
         let member_id = match persisted.as_ref() {
             Some(record) => Some(record.org_member_id.clone()),

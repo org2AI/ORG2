@@ -49,13 +49,13 @@ pub(crate) fn mark_started_unknown_after_restart_after(
                          SELECT 'm:' || printf('%020d',delivery_id) AS recovery_key,
                                 'member' AS recovery_kind,delivery_id AS row_id,
                                 org_run_id,session_id,turn_intent_id
-                         FROM agent_org_runtime_user_directed_deliveries
+                         FROM agent_org_execution_user_directed_deliveries
                          WHERE status='started'
                          UNION ALL
                          SELECT 'c:' || printf('%020d',binding_id) AS recovery_key,
                                 'coordinator' AS recovery_kind,binding_id AS row_id,
                                 org_run_id,session_id,turn_intent_id
-                         FROM agent_org_runtime_user_directed_coordinator_bindings
+                         FROM agent_org_execution_user_directed_coordinator_bindings
                          WHERE status='started'
                      )
                      SELECT recovery_key,recovery_kind,row_id,org_run_id,
@@ -88,14 +88,14 @@ pub(crate) fn mark_started_unknown_after_restart_after(
         {
             let changed = if recovery_kind == "member" {
                 tx.execute(
-                    "UPDATE agent_org_runtime_member_intervention_turns
+                    "UPDATE agent_org_execution_member_intervention_turns
                      SET status='abandoned',terminal_at=?3,failure_reason=?4
                      WHERE session_id=?1 AND turn_intent_id=?2 AND status='running'",
                     params![&session_id, &turn_intent_id, &now, reason],
                 )
                 .map_err(|error| error.to_string())?;
                 tx.execute(
-                    "UPDATE agent_org_runtime_user_directed_deliveries
+                    "UPDATE agent_org_execution_user_directed_deliveries
                      SET status='unknown',terminal_at=?2,failure_reason=?3
                      WHERE delivery_id=?1 AND status='started'",
                     params![row_id, &now, reason],
@@ -103,7 +103,7 @@ pub(crate) fn mark_started_unknown_after_restart_after(
                 .map_err(|error| error.to_string())?
             } else {
                 tx.execute(
-                    "UPDATE agent_org_runtime_user_directed_coordinator_bindings
+                    "UPDATE agent_org_execution_user_directed_coordinator_bindings
                      SET status='unknown',terminal_at=?2,failure_reason=?3
                      WHERE binding_id=?1 AND status='started'",
                     params![row_id, &now, reason],
@@ -113,7 +113,7 @@ pub(crate) fn mark_started_unknown_after_restart_after(
             if changed == 1 {
                 if recovery_kind == "member" {
                     tx.execute(
-                        "UPDATE agent_org_member_turn_admissions
+                        "UPDATE agent_org_execution_member_turn_admissions
                          SET status='unknown',reason_code=?3,terminal_at=?4,updated_at=?4
                          WHERE session_id=?1 AND turn_intent_id=?2 AND status='committed'",
                         params![&session_id, &turn_intent_id, reason, &now],
@@ -154,15 +154,15 @@ pub(crate) fn recoverable_pending_after(
                         delivery.org_run_id,delivery.dispatch_member_id,
                         delivery.session_id,delivery.turn_intent_id,
                         delivery.dispatch_content,delivery.display_content,delivery.images_json
-                 FROM agent_org_runtime_user_directed_deliveries delivery
-                 JOIN agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_user_directed_deliveries delivery
+                 JOIN agent_org_execution_turn_contexts context
                    ON context.session_id=delivery.session_id
                   AND context.turn_intent_id=delivery.turn_intent_id
                  JOIN session_turn_intents intent
                    ON intent.session_id=delivery.session_id
                   AND intent.turn_intent_id=delivery.turn_intent_id
-                 JOIN agent_org_runtime_runs run ON run.id=delivery.org_run_id
-                 JOIN agent_org_runtime_inbox inbox ON inbox.id=delivery.source_inbox_id
+                 JOIN agent_org_execution_runs run ON run.id=delivery.org_run_id
+                 JOIN agent_org_execution_inbox inbox ON inbox.id=delivery.source_inbox_id
                  WHERE delivery.status='pending'
                    AND delivery.source_kind IN ('group_mention','member_inbox')
                    AND context.turn_kind='user_directed_work'
@@ -174,15 +174,15 @@ pub(crate) fn recoverable_pending_after(
                         binding.org_run_id,'coordinator',binding.session_id,
                         binding.turn_intent_id,binding.dispatch_content,
                         binding.display_content,'[]'
-                 FROM agent_org_runtime_user_directed_coordinator_bindings binding
-                 JOIN agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_user_directed_coordinator_bindings binding
+                 JOIN agent_org_execution_turn_contexts context
                    ON context.session_id=binding.session_id
                   AND context.turn_intent_id=binding.turn_intent_id
                  JOIN session_turn_intents intent
                    ON intent.session_id=binding.session_id
                   AND intent.turn_intent_id=binding.turn_intent_id
-                 JOIN agent_org_runtime_runs run ON run.id=binding.org_run_id
-                 JOIN agent_org_runtime_inbox inbox ON inbox.id=binding.source_inbox_id
+                 JOIN agent_org_execution_runs run ON run.id=binding.org_run_id
+                 JOIN agent_org_execution_inbox inbox ON inbox.id=binding.source_inbox_id
                  WHERE binding.status='pending'
                    AND context.turn_kind='coordinator'
                    AND context.source_kind='member_inbox'

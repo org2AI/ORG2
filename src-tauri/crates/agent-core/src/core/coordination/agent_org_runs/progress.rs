@@ -28,7 +28,7 @@ pub struct AgentOrgRunProgress {
 
 pub(super) fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_run_progress (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_run_progress (
             org_run_id TEXT PRIMARY KEY,
             work_revision INTEGER NOT NULL DEFAULT 0 CHECK(work_revision >= 0),
             coordinator_presented_work_revision INTEGER,
@@ -39,14 +39,14 @@ pub(super) fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
             completion_summary TEXT,
             completion_candidate_json TEXT CHECK(completion_candidate_json IS NULL OR json_valid(completion_candidate_json)=1),
             updated_at TEXT NOT NULL,
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
         );",
     )?;
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_progress (org_run_id, updated_at)
-         SELECT run.id, run.updated_at FROM agent_org_runtime_runs run
+        "INSERT INTO agent_org_execution_run_progress (org_run_id, updated_at)
+         SELECT run.id, run.updated_at FROM agent_org_execution_runs run
          WHERE NOT EXISTS (
-             SELECT 1 FROM agent_org_runtime_run_progress progress
+             SELECT 1 FROM agent_org_execution_run_progress progress
              WHERE progress.org_run_id=run.id
          )",
         [],
@@ -56,7 +56,7 @@ pub(super) fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
 
 pub(super) fn ensure_progress_in_conn(conn: &Connection, org_run_id: &str) -> Result<(), String> {
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_progress (org_run_id, updated_at)
+        "INSERT INTO agent_org_execution_run_progress (org_run_id, updated_at)
          VALUES (?1, ?2)
          ON CONFLICT(org_run_id) DO NOTHING",
         params![org_run_id, chrono::Utc::now().to_rfc3339()],
@@ -71,7 +71,7 @@ pub(super) fn ensure_progress_in_conn(conn: &Connection, org_run_id: &str) -> Re
 pub(crate) fn bump_work_revision_in_tx(tx: &Connection, org_run_id: &str) -> Result<i64, String> {
     ensure_progress_in_conn(tx, org_run_id)?;
     tx.execute(
-        "UPDATE agent_org_runtime_run_progress
+        "UPDATE agent_org_execution_run_progress
          SET work_revision=work_revision+1,
              completion_requested=0,
              completion_requested_at=NULL,
@@ -84,7 +84,7 @@ pub(crate) fn bump_work_revision_in_tx(tx: &Connection, org_run_id: &str) -> Res
     )
     .map_err(|error| error.to_string())?;
     tx.query_row(
-        "SELECT work_revision FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+        "SELECT work_revision FROM agent_org_execution_run_progress WHERE org_run_id=?1",
         [org_run_id],
         |row| row.get(0),
     )
@@ -97,7 +97,7 @@ pub(crate) fn current_work_revision_in_tx(
 ) -> Result<i64, String> {
     ensure_progress_in_conn(conn, org_run_id)?;
     conn.query_row(
-        "SELECT work_revision FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+        "SELECT work_revision FROM agent_org_execution_run_progress WHERE org_run_id=?1",
         [org_run_id],
         |row| row.get(0),
     )
@@ -113,7 +113,7 @@ pub(super) fn load_progress_with_conn(
                 coordinator_observed_work_revision,completion_requested,
                 completion_requested_at,completion_requested_work_revision,
                 completion_summary,updated_at
-         FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+         FROM agent_org_execution_run_progress WHERE org_run_id=?1",
         [org_run_id],
         row_to_progress,
     )
@@ -129,8 +129,8 @@ pub(super) fn stage_coordinator_presented_with_conn(
     let revision = conn
         .query_row(
             "SELECT progress.work_revision
-             FROM agent_org_runtime_run_progress progress
-             JOIN agent_org_runtime_runs run ON run.id=progress.org_run_id
+             FROM agent_org_execution_run_progress progress
+             JOIN agent_org_execution_runs run ON run.id=progress.org_run_id
              WHERE progress.org_run_id=?1
                AND run.status IN ('running','idle')",
             [org_run_id],
@@ -142,7 +142,7 @@ pub(super) fn stage_coordinator_presented_with_conn(
         return Ok(None);
     };
     conn.execute(
-        "UPDATE agent_org_runtime_run_progress
+        "UPDATE agent_org_execution_run_progress
          SET coordinator_presented_work_revision=?2,updated_at=?3
          WHERE org_run_id=?1",
         params![org_run_id, revision, chrono::Utc::now().to_rfc3339()],
@@ -175,7 +175,7 @@ pub(super) fn stage_coordinator_presented_for_turn_with_conn(
     if let Some(revision) = revision {
         let updated = conn
             .execute(
-                "UPDATE agent_org_runtime_turn_contexts
+                "UPDATE agent_org_execution_turn_contexts
                  SET coordinator_work_revision=?4,terminal_reason=NULL
                  WHERE org_run_id=?1 AND session_id=?2 AND turn_intent_id=?3
                    AND turn_kind='coordinator'
@@ -206,7 +206,7 @@ pub(crate) fn mark_coordinator_observed_revision_with_conn(
     }
     let updated = conn
         .execute(
-            "UPDATE agent_org_runtime_run_progress
+            "UPDATE agent_org_execution_run_progress
              SET coordinator_observed_work_revision=CASE
                     WHEN coordinator_observed_work_revision IS NULL
                       OR ?2>coordinator_observed_work_revision THEN ?2
@@ -228,7 +228,7 @@ pub(crate) fn mark_coordinator_observed_revision_with_conn(
     }
     conn.query_row(
         "SELECT coordinator_observed_work_revision
-         FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+         FROM agent_org_execution_run_progress WHERE org_run_id=?1",
         [org_run_id],
         |row| row.get(0),
     )
@@ -251,7 +251,7 @@ pub(super) fn record_completion_request_in_tx(
     let now = chrono::Utc::now().to_rfc3339();
     let updated = tx
         .execute(
-            "UPDATE agent_org_runtime_run_progress
+            "UPDATE agent_org_execution_run_progress
              SET completion_requested=1,completion_requested_at=?2,
                  completion_requested_work_revision=work_revision,
                  completion_summary=?3,updated_at=?2

@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "Older-version conversation, view only",
+    "savedContent": "Saved group messages and outputs",
+    "unknownMember": "Unknown member",
+    "loading": "Loading history…",
+    "retry": "Retry",
+    "empty": "No saved group content",
+    "nextPage": "Next page",
+    "firstPage": "First page"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "User request",

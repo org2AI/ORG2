@@ -149,7 +149,7 @@ function durableRunIdForRootSession(sessionId) {
       "sqlite3",
       [
         join(ORGII_HOME, "sessions.db"),
-        `SELECT id FROM agent_org_runtime_runs WHERE root_session_id='${sessionId.replaceAll("'", "''")}' ORDER BY created_at DESC LIMIT 1;`,
+        `SELECT id FROM agent_org_execution_runs WHERE root_session_id='${sessionId.replaceAll("'", "''")}' ORDER BY created_at DESC LIMIT 1;`,
       ],
       { encoding: "utf8" }
     ).trim();
@@ -185,8 +185,8 @@ function convergenceSnapshot({
   const finalityMarker = sqlLiteral(`%${FINALITY_MARKER}%`);
   return sqliteRow(`
     SELECT
-      (SELECT status FROM agent_org_runtime_runs WHERE id=${run}) AS run_status,
-      (SELECT status FROM agent_org_runtime_tasks
+      (SELECT status FROM agent_org_execution_runs WHERE id=${run}) AS run_status,
+      (SELECT status FROM agent_org_execution_tasks
          WHERE org_run_id=${run} AND id=${task}) AS task_status,
       (SELECT status FROM session_turn_intents
          WHERE session_id=${session} AND turn_intent_id=${continuation}) AS continuation_status,
@@ -194,20 +194,20 @@ function convergenceSnapshot({
          WHERE org_run_id=${run} AND status IN ('queued','running')) AS active_intent_count,
       (SELECT COUNT(*) FROM session_turn_intents
          WHERE org_run_id=${run}) AS intent_count,
-      (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+      (SELECT COUNT(*) FROM agent_org_execution_turn_contexts
          WHERE org_run_id=${run}) AS context_count,
-      (SELECT COUNT(*) FROM agent_org_runtime_inbox inbox
+      (SELECT COUNT(*) FROM agent_org_execution_inbox inbox
          WHERE inbox.org_run_id=${run}
            AND inbox.payload_kind='task_assigned'
            AND json_extract(inbox.payload_json,'$.task_id')=${task}
            AND inbox.read_at IS NULL
            AND NOT EXISTS (
-             SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+             SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
              WHERE resolution.inbox_id=inbox.id
            )) AS unresolved_assignment_count,
       (SELECT COUNT(*)
-         FROM agent_org_runtime_inbox_materializations materialization
-         JOIN agent_org_runtime_inbox inbox ON inbox.id=materialization.inbox_id
+         FROM agent_org_execution_inbox_materializations materialization
+         JOIN agent_org_execution_inbox inbox ON inbox.id=materialization.inbox_id
          WHERE inbox.org_run_id=${run}
            AND inbox.payload_kind='task_assigned'
            AND json_extract(inbox.payload_json,'$.task_id')=${task}) AS assignment_materialization_count,
@@ -261,28 +261,28 @@ function archiveConvergenceSnapshot(runId) {
   const run = sqlLiteral(runId);
   return sqliteRow(`
     SELECT
-      (SELECT status FROM agent_org_runtime_runs WHERE id=${run}) AS run_status,
-      (SELECT teardown_status FROM agent_org_runtime_archive_episodes
+      (SELECT status FROM agent_org_execution_runs WHERE id=${run}) AS run_status,
+      (SELECT teardown_status FROM agent_org_execution_archive_episodes
          WHERE org_run_id=${run}) AS teardown_status,
-      (SELECT teardown_attempt_count FROM agent_org_runtime_archive_episodes
+      (SELECT teardown_attempt_count FROM agent_org_execution_archive_episodes
          WHERE org_run_id=${run}) AS teardown_attempt_count,
-      (SELECT retained_runtime_count FROM agent_org_runtime_archive_episodes
+      (SELECT retained_runtime_count FROM agent_org_execution_archive_episodes
          WHERE org_run_id=${run}) AS retained_runtime_count,
-      (SELECT COUNT(*) FROM agent_org_runtime_tasks
+      (SELECT COUNT(*) FROM agent_org_execution_tasks
          WHERE org_run_id=${run}) AS task_count,
-      (SELECT COUNT(*) FROM agent_org_runtime_tasks
+      (SELECT COUNT(*) FROM agent_org_execution_tasks
          WHERE org_run_id=${run} AND status NOT IN ('completed','failed','cancelled')) AS open_task_count,
       (SELECT COUNT(*) FROM session_turn_intents
          WHERE org_run_id=${run} AND status IN ('queued','running')) AS active_intent_count,
-      (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+      (SELECT COUNT(*) FROM agent_org_execution_turn_contexts
          WHERE org_run_id=${run}) AS context_count,
-      (SELECT COUNT(*) FROM agent_org_runtime_inbox
+      (SELECT COUNT(*) FROM agent_org_execution_inbox
          WHERE org_run_id=${run}) AS inbox_count,
       (SELECT COUNT(*) FROM agent_messages message
-         JOIN agent_org_runtime_member_materializations member
+         JOIN agent_org_execution_member_materializations member
            ON member.session_id=message.session_id
          WHERE member.org_run_id=${run}) AS member_message_count,
-      (SELECT MAX(updated_at) FROM agent_org_runtime_tasks
+      (SELECT MAX(updated_at) FROM agent_org_execution_tasks
          WHERE org_run_id=${run}) AS latest_task_updated_at
   `);
 }

@@ -48,7 +48,7 @@ fn canonical_schema_snapshot_contains_only_the_long_lived_run_states() {
     let run_ddl: String = conn
         .query_row(
             "SELECT sql FROM sqlite_master
-             WHERE type='table' AND name='agent_org_runtime_runs'",
+             WHERE type='table' AND name='agent_org_execution_runs'",
             [],
             |row| row.get(0),
         )
@@ -73,7 +73,7 @@ fn canonical_schema_snapshot_contains_only_the_long_lived_run_states() {
     let materialization_ddl: String = conn
         .query_row(
             "SELECT sql FROM sqlite_master
-             WHERE type='table' AND name='agent_org_runtime_member_materializations'",
+             WHERE type='table' AND name='agent_org_execution_member_materializations'",
             [],
             |row| row.get(0),
         )
@@ -84,7 +84,7 @@ fn canonical_schema_snapshot_contains_only_the_long_lived_run_states() {
     let initial_input_ddl: String = conn
         .query_row(
             "SELECT sql FROM sqlite_master
-             WHERE type='table' AND name='agent_org_runtime_initial_inputs'",
+             WHERE type='table' AND name='agent_org_execution_initial_inputs'",
             [],
             |row| row.get(0),
         )
@@ -241,14 +241,14 @@ fn seed_delivered_certificate_for_quiescence(run_id: &str) {
     let (root_session_id, generation): (String, i64) = conn
         .query_row(
             "SELECT root_session_id,activation_generation
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .expect("current run identity");
     let work_revision: i64 = conn
         .query_row(
-            "SELECT work_revision FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+            "SELECT work_revision FROM agent_org_execution_run_progress WHERE org_run_id=?1",
             [run_id],
             |row| row.get(0),
         )
@@ -267,7 +267,7 @@ fn seed_delivered_certificate_for_quiescence(run_id: &str) {
     let certificate_id = format!("quiescence-certificate-{run_id}");
     let request_id = format!("quiescence-request-{run_id}");
     conn.execute(
-        "INSERT INTO agent_org_runtime_run_completion_certificates (
+        "INSERT INTO agent_org_execution_run_completion_certificates (
              id,org_run_id,activation_generation,work_revision,request_id,request_digest,
              outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
              evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,
@@ -302,7 +302,7 @@ fn seed_delivered_certificate_for_quiescence(run_id: &str) {
     )
     .expect("close fixture work episode");
     conn.execute(
-        "INSERT INTO agent_org_runtime_final_summary_receipts (
+        "INSERT INTO agent_org_execution_final_summary_receipts (
             receipt_id,org_run_id,activation_generation,certificate_id,evidence_digest,
             attempt,status,coordinator_session_id,turn_intent_id,started_at,terminal_at,
             event_id,created_at,updated_at
@@ -468,7 +468,7 @@ fn starting_finish_requires_exact_member_and_input_durability_then_is_idempotent
     let context: (i64, String, String, Option<i64>) = conn
         .query_row(
             "SELECT COUNT(*), turn_kind, source_kind, member_dispatch_sequence
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE session_id='starting-root' AND turn_intent_id='starting-turn'",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
@@ -503,7 +503,7 @@ fn starting_without_initial_work_finishes_idle() {
     let conn = database::db::get_connection().expect("db");
     let context_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts WHERE org_run_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_turn_contexts WHERE org_run_id=?1",
             [&run.id],
             |row| row.get(0),
         )
@@ -612,7 +612,7 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     .expect("attach managed workspace to source session");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_revisions (
+        "INSERT INTO agent_org_execution_plan_revisions (
             plan_revision_id,org_run_id,source_task_id,source_member_id,
             source_session_id,source_turn_intent_id,root_session_id,
             revision_number,plan_title,plan_path,plan_content,content_digest,created_at
@@ -628,7 +628,7 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_decisions (
+        "INSERT INTO agent_org_execution_plan_decisions (
             approval_id,plan_revision_id,request_id,policy,status,created_at
          ) VALUES ('delete-approval','delete-revision','delete-request',
                    'coordinator','pending',?1)",
@@ -636,7 +636,7 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_revisions (
+        "INSERT INTO agent_org_execution_plan_revisions (
             plan_revision_id,org_run_id,source_task_id,source_member_id,
             source_session_id,source_turn_intent_id,root_session_id,
             revision_number,previous_plan_revision_id,plan_title,plan_path,
@@ -653,7 +653,7 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_decisions (
+        "INSERT INTO agent_org_execution_plan_decisions (
             approval_id,plan_revision_id,request_id,policy,status,decision_by,
             created_at,resolved_at
          ) VALUES ('external-approval','external-revision','external-request',
@@ -662,7 +662,7 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_recovery_attempts
+        "INSERT INTO agent_org_execution_recovery_attempts
          (org_run_id, action_kind, target_key, reason_fingerprint, attempts,
           next_allowed_at, updated_at)
          VALUES (?1,'member_rewake','member-w1','delete',1,?2,?2)",
@@ -670,7 +670,7 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_annotations
+        "INSERT INTO agent_org_execution_task_annotations
          (id, org_run_id, task_id, kind, body, actor_kind,
           actor_participant_id, created_at)
          VALUES ('delete-note', ?1, 'delete-task', 'audit_note', 'delete',
@@ -689,14 +689,14 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     AgentOrgRunStore::delete_by_id(&run.id).expect("delete run-owned state");
 
     for table in [
-        "agent_org_runtime_run_progress",
-        "agent_org_runtime_tasks",
-        "agent_org_runtime_task_events",
-        "agent_org_runtime_task_annotations",
-        "agent_org_runtime_inbox",
-        "agent_org_runtime_member_interventions",
-        "agent_org_runtime_plan_revisions",
-        "agent_org_runtime_recovery_attempts",
+        "agent_org_execution_run_progress",
+        "agent_org_execution_tasks",
+        "agent_org_execution_task_events",
+        "agent_org_execution_task_annotations",
+        "agent_org_execution_inbox",
+        "agent_org_execution_member_interventions",
+        "agent_org_execution_plan_revisions",
+        "agent_org_execution_recovery_attempts",
     ] {
         let count: i64 = conn
             .query_row(
@@ -709,7 +709,7 @@ fn delete_by_id_cascades_all_run_owned_state_and_plan_artifact() {
     }
     let decision_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_plan_decisions
+            "SELECT COUNT(*) FROM agent_org_execution_plan_decisions
              WHERE approval_id IN ('delete-approval','external-approval')",
             [],
             |row| row.get(0),
@@ -944,7 +944,7 @@ fn idle_run_stages_a_coordinator_read_snapshot() {
     let run = create_run_for_root(&org, "coord-root-idle-read-snapshot");
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='idle' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='idle' WHERE id=?1",
         [&run.id],
     )
     .expect("move run to Idle");
@@ -1440,7 +1440,7 @@ fn delivered_candidate_uses_stable_episode_across_pause_resume_generation() {
     let conn = database::db::get_connection().expect("test sqlite connection");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
              org_run_id,member_id,agent_id,generation,session_id,
              authority_class,status,error_code,error_json,created_at,updated_at
          ) VALUES (?1,?2,'agent-coord',1,?3,'formal','succeeded',NULL,NULL,?4,?4)",
@@ -1461,7 +1461,7 @@ fn delivered_candidate_uses_stable_episode_across_pause_resume_generation() {
     })
     .expect("create output-backed completed Task");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=3 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=3 WHERE id=?1",
         [&run.id],
     )
     .expect("simulate Pause/Resume authorization generations");
@@ -1534,7 +1534,7 @@ fn delivered_candidate_uses_stable_episode_across_pause_resume_generation() {
 
     let idled_at = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='idle',idled_at=?2,last_activity_outcome='completed'
          WHERE id=?1",
         params![&run.id, &idled_at],
@@ -1610,7 +1610,7 @@ fn quiescence_transitions_run_to_idle_when_all_tasks_completed() {
     )
     .expect("seed pending turn intent");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              source_kind,source_id,activation_generation,created_at
          ) VALUES (?1,'final-turn',?2,'coordinator','coordinator',
@@ -1661,7 +1661,7 @@ fn quiescence_transitions_run_to_idle_when_all_tasks_completed() {
             "a {terminal_status} turn intent must not keep the run open"
         );
         conn.execute(
-            "UPDATE agent_org_runtime_runs SET status='running', idled_at=NULL WHERE id=?1",
+            "UPDATE agent_org_execution_runs SET status='running', idled_at=NULL WHERE id=?1",
             params![&run.id],
         )
         .expect("reset run for next terminal status");
@@ -1796,7 +1796,7 @@ fn resolved_undeliverable_inbox_stays_unread_but_no_longer_blocks_quiescence() {
     };
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
              recipient_agent_id, recipient_member_id,
              sender_agent_id, sender_member_id, org_run_id,
              payload_kind, payload_json, created_at

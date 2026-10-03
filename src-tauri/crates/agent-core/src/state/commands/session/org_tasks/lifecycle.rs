@@ -264,7 +264,7 @@ async fn teardown_archive_receipt(state: &AgentAppState, receipt_id: &str) -> Re
             let conn = database::db::get_connection().map_err(|error| error.to_string())?;
             let run_id: String = conn
                 .query_row(
-                    "SELECT org_run_id FROM agent_org_runtime_archive_episodes
+                    "SELECT org_run_id FROM agent_org_execution_archive_episodes
                      WHERE archive_receipt_id=?1",
                     [&summary_receipt_id],
                     |row| row.get(0),

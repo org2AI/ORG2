@@ -31,6 +31,8 @@ use crate::definitions::orgs::{FlatOrgMember, OrgDefinition, PlanApprovalPolicy}
 use crate::session::{AgentExecMode, SessionStatus};
 use core_types::key_source::KeySource;
 
+#[path = "tests/history_read_only_tests.rs"]
+mod history_read_only_tests;
 #[path = "tests/pause_continuation_tests.rs"]
 mod pause_continuation_tests;
 
@@ -116,7 +118,7 @@ fn setup_wake_mode_fixture(execution_mode: &str, task_status: TaskStatus) -> Wak
     .expect("seed member session");
     let materialized_at = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
             org_run_id,member_id,agent_id,generation,session_id,
             authority_class,status,created_at,updated_at
          ) VALUES (?1,?2,'planner-agent',1,?3,'formal','succeeded',?4,?4)",
@@ -167,7 +169,7 @@ fn seed_task_execution_context(fixture: &WakeModeFixture, turn_intent_id: &str) 
     .expect("canonical Turn Intent test schema");
     let generation: i64 = conn
         .query_row(
-            "SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT activation_generation FROM agent_org_execution_runs WHERE id=?1",
             [&fixture.run_id],
             |row| row.get(0),
         )
@@ -182,7 +184,7 @@ fn seed_task_execution_context(fixture: &WakeModeFixture, turn_intent_id: &str) 
     )
     .expect("seed base Turn");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
             session_id, turn_intent_id, org_run_id, participant_id, turn_kind,
             task_id, owner_member_id, dispatch_member_id, member_dispatch_sequence,
             source_kind, source_id, activation_generation, created_at
@@ -349,7 +351,7 @@ fn queued_agent_org_wake_rechecks_run_member_and_intervention_at_turn_start() {
     )
     .expect("restore member idle");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='paused' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='paused' WHERE id=?1",
         rusqlite::params![&fixture.run_id],
     )
     .expect("pause run");
@@ -360,7 +362,7 @@ fn queued_agent_org_wake_rechecks_run_member_and_intervention_at_turn_start() {
     );
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='running' WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='running' WHERE id=?1",
         rusqlite::params![&fixture.run_id],
     )
     .expect("resume run");
@@ -431,7 +433,7 @@ fn task_execution_starts_after_materialized_input_before_provider_tools() {
     assert_eq!(task.status, TaskStatus::InProgress);
     let assignment_remains_unread: bool = conn
         .query_row(
-            "SELECT read_at IS NULL FROM agent_org_runtime_inbox WHERE id=?1",
+            "SELECT read_at IS NULL FROM agent_org_execution_inbox WHERE id=?1",
             [inbox_id],
             |row| row.get(0),
         )
@@ -443,7 +445,7 @@ fn task_execution_starts_after_materialized_input_before_provider_tools() {
     let start_event: (String, String, String, String) = conn
         .query_row(
             "SELECT previous_status,next_status,actor_kind,source_turn_intent_id
-             FROM agent_org_runtime_task_events
+             FROM agent_org_execution_task_events
              WHERE org_run_id=?1 AND task_id=?2
              ORDER BY rowid DESC LIMIT 1",
             rusqlite::params![&fixture.run_id, &fixture.task_id],
@@ -525,7 +527,7 @@ fn cancelled_task_cannot_start_after_assignment_materialization() {
     let inbox_id = enqueue_and_materialize_task_assignment(&fixture, turn_intent_id);
     let conn = database::db::get_connection().expect("test db");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET status='cancelled',cancel_reason_json=?3,updated_at=?4
          WHERE org_run_id=?1 AND id=?2",
         rusqlite::params![
@@ -568,7 +570,7 @@ fn paused_run_cannot_start_task_after_assignment_materialization() {
     let inbox_id = enqueue_and_materialize_task_assignment(&fixture, turn_intent_id);
     let conn = database::db::get_connection().expect("test db");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='paused',updated_at=?2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET status='paused',updated_at=?2 WHERE id=?1",
         rusqlite::params![&fixture.run_id, chrono::Utc::now().to_rfc3339()],
     )
     .expect("pause run before Provider boundary");
@@ -623,7 +625,7 @@ fn invalidated_queued_wake_does_not_start_its_task() {
     let started: bool = conn
         .query_row(
             "SELECT EXISTS(
-                 SELECT 1 FROM agent_org_runtime_task_events
+                 SELECT 1 FROM agent_org_execution_task_events
                  WHERE org_run_id=?1 AND task_id=?2
                    AND previous_status='pending' AND next_status='in_progress'
              )",
@@ -641,7 +643,7 @@ fn cancelled_queued_task_cannot_be_restarted_by_its_old_turn() {
     seed_task_execution_context(&fixture, turn_intent_id);
     let mut conn = database::db::get_connection().expect("test db");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET status='cancelled',cancel_reason_json=?3,updated_at=?4
          WHERE org_run_id=?1 AND id=?2",
         rusqlite::params![
@@ -705,7 +707,7 @@ fn user_directed_turn_allows_running_idle_and_paused_without_changing_team() {
         AgentOrgRunStatus::Archived,
     ] {
         conn.execute(
-            "UPDATE agent_org_runtime_runs
+            "UPDATE agent_org_execution_runs
              SET status=?1,
                  archived_at=CASE WHEN ?1='archived' THEN ?3 ELSE NULL END,
                  archive_receipt_id=CASE WHEN ?1='archived' THEN ?4 ELSE NULL END
@@ -744,7 +746,7 @@ fn user_directed_turn_allows_running_idle_and_paused_without_changing_team() {
         AgentOrgRunStatus::Paused,
     ] {
         conn.execute(
-            "UPDATE agent_org_runtime_runs
+            "UPDATE agent_org_execution_runs
              SET status=?1,archived_at=NULL,archive_receipt_id=NULL WHERE id=?2",
             rusqlite::params![status.as_str(), &fixture.run_id],
         )
@@ -765,7 +767,7 @@ fn user_directed_turn_allows_running_idle_and_paused_without_changing_team() {
         );
         let run_status: String = conn
             .query_row(
-                "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+                "SELECT status FROM agent_org_execution_runs WHERE id=?1",
                 [&fixture.run_id],
                 |row| row.get(0),
             )
@@ -905,7 +907,7 @@ fn task_wake_mode_fails_closed_for_corrupt_first_class_value() {
     conn.execute_batch("PRAGMA ignore_check_constraints=ON;")
         .expect("simulate corrupt canonical row");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET execution_mode='future_mode'
+        "UPDATE agent_org_execution_tasks SET execution_mode='future_mode'
          WHERE org_run_id=?1 AND id=?2",
         rusqlite::params![&fixture.run_id, &fixture.task_id],
     )

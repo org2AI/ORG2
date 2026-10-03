@@ -24,7 +24,7 @@ fn plan_request_receipt_binds_the_exact_revision_task_and_source_turn() {
         .query_row(
             "SELECT source_kind,task_id,owner_member_id,source_turn_intent_id,
                     plan_revision_id,task_output_digest
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND source_kind='plan_request'",
             [&context.run_id],
             |row| {
@@ -71,7 +71,7 @@ fn approved_plan_receipt_binds_the_canonical_task_output_digest() {
     let (inbox_id, source_turn, digest, revision_id): (i64, Option<String>, String, String) = conn
         .query_row(
             "SELECT inbox_id,source_turn_intent_id,task_output_digest,plan_revision_id
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND source_kind='plan_decision'",
             [&context.run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
@@ -126,7 +126,7 @@ fn user_request_changes_creates_a_pending_coordinator_decision_fact() {
     let (status, source_turn, digest): (String, Option<String>, Option<String>) = conn
         .query_row(
             "SELECT status,source_turn_intent_id,task_output_digest
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND source_kind='plan_decision'",
             [&context.run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -195,7 +195,7 @@ fn coordinator_decision_turn_resolves_its_own_plan_and_assignment_facts() {
     let mut stmt = conn
         .prepare(
             "SELECT source_kind,status,doorbell_status,source_turn_intent_id
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND source_kind IN ('plan_decision','task_assignment')
              ORDER BY source_kind",
         )

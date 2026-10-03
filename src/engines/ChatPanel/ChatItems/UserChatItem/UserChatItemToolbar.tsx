@@ -59,16 +59,16 @@ export function UserChatItemToolbar({
     return null;
   }
   return (
-    <div className="relative mt-1 flex min-h-6 items-center px-1 text-[11px] leading-none text-text-3">
+    <div className="pointer-events-none relative mt-1 flex min-h-6 w-full items-center px-1 text-[11px] leading-none text-text-3">
       {(rawPrompt.trim() ||
         isEditableDisplay ||
         toolbarActions ||
         timestampLabel ||
         modelLabel) && (
         <div
-          className={`absolute top-1/2 flex -translate-y-1/2 items-center gap-1 group-hover/msg:opacity-100 focus-within:opacity-100 ${
+          className={`pointer-events-auto absolute top-1/2 flex -translate-y-1/2 items-center gap-1 group-hover/msg:opacity-100 focus-within:opacity-100 ${
             isRawPromptOpen || canEditFailed ? "opacity-100" : "opacity-0"
-          } ${isRemoteSharedMessage ? "left-full ml-1" : "right-full mr-1"}`}
+          } ${isRemoteSharedMessage ? "left-full ml-1" : "right-0"}`}
         >
           {(timestampLabel || modelLabel) && (
             <span className="inline-flex items-center gap-1 text-[11px] whitespace-nowrap text-text-3">

@@ -34,6 +34,14 @@ fn invokable_canonical_tool_names() -> BTreeSet<&'static str> {
         names::CONTROL_INTERNAL_BROWSER,
         names::CONTROL_DESKTOP_WITH_PEEKABOO,
         names::CONTROL_ORGII,
+        names::OPEN_IN_ORG2,
+        names::GET_ORG2_CONTEXT,
+        names::LIST_ORG2_TABS,
+        names::LIST_ORG2_TERMINALS,
+        names::READ_ORG2_TERMINAL,
+        names::WRITE_ORG2_TERMINAL,
+        names::GET_ORG2_UI_DOCS,
+        names::GET_ORG2_UI_RESULT,
         names::SPOTLIGHT,
         names::REPLY_SESSION_COMMENT,
         names::AGENT,
@@ -184,6 +192,8 @@ fn revise_canvas_has_its_own_chat_row_labels() {
 
 #[test]
 fn every_renderable_tool_has_non_default_chat_block() {
+    // App UI tools render bounded state/receipt text, like control_orgii. They
+    // do not supply the process-stream or artifact shape of specialized blocks.
     let exempt_fallback_tools = HashSet::from([
         names::MANAGE_WORKSPACE,
         names::MANAGE_LSP,
@@ -198,6 +208,14 @@ fn every_renderable_tool_has_non_default_chat_block() {
         names::CONTROL_BROWSER_WITH_PLAYWRIGHT,
         names::CONTROL_INTERNAL_BROWSER,
         names::CONTROL_ORGII,
+        names::OPEN_IN_ORG2,
+        names::GET_ORG2_CONTEXT,
+        names::LIST_ORG2_TABS,
+        names::LIST_ORG2_TERMINALS,
+        names::READ_ORG2_TERMINAL,
+        names::WRITE_ORG2_TERMINAL,
+        names::GET_ORG2_UI_DOCS,
+        names::GET_ORG2_UI_RESULT,
         names::SPOTLIGHT,
         names::REPLY_SESSION_COMMENT,
         names::MANAGE_AGENT_DEF,

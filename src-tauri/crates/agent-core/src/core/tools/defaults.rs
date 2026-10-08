@@ -103,6 +103,9 @@ pub fn derive_disabled_tools(restrict_to: &[String], excluded: &[String]) -> Has
 /// Runtime availability is still enforced by `excluded_tools`, but this
 /// keeps Settings/Wizard affordances aligned with the default harness role.
 pub fn supported_agents_for(tool_name: &str) -> Vec<AgentKind> {
+    if app_ui::agent_tools::Kind::from_name(tool_name).is_some() {
+        return vec![AgentKind::Os, AgentKind::Custom];
+    }
     match tool_name {
         tool_names::CONTROL_ORGII | tool_names::MANAGE_SESSION | tool_names::MANAGE_AGENT_DEF => {
             vec![AgentKind::Os, AgentKind::Custom]

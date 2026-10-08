@@ -86,9 +86,10 @@ export async function cancelSession(
 }
 
 export async function loadMessages(
-  sessionId: string
+  sessionId: string,
+  forNativeTransfer?: boolean
 ): Promise<SessionMessage[]> {
-  return rpc.agentSession.loadMessages({ sessionId });
+  return rpc.agentSession.loadMessages({ sessionId, forNativeTransfer });
 }
 
 export async function getSession(

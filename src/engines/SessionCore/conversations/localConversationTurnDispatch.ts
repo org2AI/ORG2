@@ -43,7 +43,10 @@ import {
   supportsNativeConversationTarget,
 } from "./nativeConversationMaterializer";
 import { nativeTurnFailureDiagnostic } from "./nativeTerminalDiagnostic";
-import { QueuedConversationRecoveryPendingError } from "./queuedConversationContract";
+import {
+  QueuedConversationRecoveryBlockedError,
+  QueuedConversationRecoveryPendingError,
+} from "./queuedConversationContract";
 
 const TURN_WAIT_WINDOW_MS = 60_000;
 const log = createLogger("localConversationContinuation");
@@ -163,7 +166,18 @@ export async function finishConversationTurn(params: {
     params.turnIntentId,
     params.providerRequest,
     terminalStatus
-  );
+  ).catch((error: unknown) => {
+    if (
+      params.settleAdoptedLifecycle &&
+      error instanceof QueuedConversationRecoveryBlockedError
+    ) {
+      // This renderer adopted a terminal turn after restart. Its irreparable
+      // transcript mismatch retires the queue owner, so release only this
+      // adopted generation too; transient recovery keeps it reserved.
+      settleUserIntentLifecycle(params, terminalStatus);
+    }
+    throw error;
+  });
   // Fresh sends are closed only by the CLI/Agent lifecycle coordinator.
   // Crash recovery created a synthetic frontend lifecycle after the original
   // terminal event, so it alone closes that adopted generation here.

@@ -20,8 +20,14 @@ use super::common::review_session_ids;
 
 /// Load conversation messages for a session.
 #[tauri::command]
-pub async fn agent_load_messages(session_id: String) -> Result<Vec<serde_json::Value>, String> {
+pub async fn agent_load_messages(
+    session_id: String,
+    for_native_transfer: Option<bool>,
+) -> Result<Vec<serde_json::Value>, String> {
     shared::spawn_blocking_cmd(move || {
+        if for_native_transfer.unwrap_or(false) {
+            return session_persistence::load_messages_for_native_transfer(&session_id);
+        }
         let messages = session_persistence::load_messages(&session_id)?;
         messages.into_iter().map(shared::to_json_value).collect()
     })

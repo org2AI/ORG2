@@ -31,7 +31,10 @@ import {
   isNativeTerminalDiagnosticOrEcho,
   nativeTerminalDiagnosticSources,
 } from "./nativeTerminalDiagnostic";
-import { QueuedConversationRecoveryPendingError } from "./queuedConversationContract";
+import {
+  QueuedConversationRecoveryBlockedError,
+  QueuedConversationRecoveryPendingError,
+} from "./queuedConversationContract";
 
 const log = createLogger("localConversationContinuation");
 
@@ -316,7 +319,10 @@ export async function loadSettledTail(
     true
   );
   if (agentTail) return { agentTail, events };
-  throw new Error(
+  // Durable completed output plus bounded authoritative rereads cannot be
+  // repaired by indefinitely retrying the same accepted intent. Retire its
+  // execution owner through the queue's visible failure boundary.
+  throw new QueuedConversationRecoveryBlockedError(
     `conversation turn ${turnIntentId} is missing its native transcript anchor`
   );
 }

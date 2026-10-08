@@ -73,8 +73,23 @@ pub fn load_native_history(
     prefix: &str,
     session_id: &str,
 ) -> rusqlite::Result<Vec<serde_json::Value>> {
+    let messages = load_native_message_rows(prefix, session_id)?;
+    Ok(reconstruct_with_projection(&messages, true))
+}
+
+/// Effective message frame shared by native verification and the IPC reader.
+pub fn load_native_message_rows(
+    prefix: &str,
+    session_id: &str,
+) -> rusqlite::Result<Vec<AgentMessageRow>> {
     let mut messages = visible_rows(&load_messages(prefix, session_id)?);
-    for message in &mut messages {
+    embed_native_message_images(&mut messages)?;
+    Ok(messages)
+}
+
+/// Exact-transfer projection; disk references remain valid persisted data.
+fn embed_native_message_images(messages: &mut [AgentMessageRow]) -> rusqlite::Result<()> {
+    for message in messages {
         if message.role != message_role::USER {
             continue;
         }
@@ -96,7 +111,7 @@ pub fn load_native_history(
                 Some(serde_json::to_string(&embedded).expect("string array serialization"));
         }
     }
-    Ok(reconstruct_with_projection(&messages, true))
+    Ok(())
 }
 
 /// Turns elapsed since the given tool was last called in this session,

@@ -281,9 +281,20 @@ export async function recoverLocalConversationTurn(
     );
   }
 
-  const timeline = params.timeline.filter(
-    (event) => conversationTurnIdOf(event) !== params.turnIntentId
+  // A restarted local root already contains the accepted user and its output.
+  // Filtering just that user's id leaves its answer in the supposed pre-turn
+  // prefix and makes every authoritative reread fail deterministically.
+  const currentUserIndex = params.timeline.findIndex(
+    (event) =>
+      event.source === "user" &&
+      conversationTurnIdOf(event) === params.turnIntentId
   );
+  const timeline =
+    currentUserIndex >= 0
+      ? params.timeline.slice(0, currentUserIndex)
+      : params.timeline.filter(
+          (event) => conversationTurnIdOf(event) !== params.turnIntentId
+        );
   const { events } = await loadAuthoritativeSessionEvents(
     params.runnerSessionId
   );
@@ -330,7 +341,12 @@ export async function recoverLocalConversationTurn(
       agentTail: finished.agentTail,
     };
   } catch (error) {
-    if (error instanceof QueuedConversationRecoveryPendingError) throw error;
+    if (
+      error instanceof QueuedConversationRecoveryPendingError ||
+      error instanceof QueuedConversationRecoveryBlockedError
+    ) {
+      throw error;
+    }
     throw new QueuedConversationRecoveryPendingError(
       error instanceof Error ? error.message : String(error)
     );

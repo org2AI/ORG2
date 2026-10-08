@@ -1046,6 +1046,33 @@ describe("useQueueDispatch Agent Org intervention", () => {
     );
   });
 
+  it("dispatches the next queued turn after retiring a completed anchor mismatch", async () => {
+    const dispatched: string[] = [];
+    mocks.dispatchCanonicalConversation.mockImplementation(
+      async (_store, message, callbacks) => {
+        dispatched.push(message.id);
+        await callbacks.onAccepted(`runner-${message.id}`);
+        if (message.id === "missing-anchor") {
+          throw new QueuedConversationRecoveryBlockedError(
+            "missing native anchor"
+          );
+        }
+      }
+    );
+    await mountWithMessages([
+      makeCanonicalMessage("missing-anchor"),
+      makeCanonicalMessage("next-request"),
+    ]);
+    await vi.waitFor(() =>
+      expect(dispatched).toEqual(["missing-anchor", "next-request"])
+    );
+    await vi.waitFor(() =>
+      expect(store.get(activeMessageDeliveriesAtom)).toEqual([])
+    );
+    expect(store.get(messageQueueAtom)).toEqual([]);
+    expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledTimes(2);
+  });
+
   it.each(["recovery-blocked", "turn-closed", "accepted-turn-closed"])(
     "restores a reconciled-away failed row before retiring its %s owner",
     async (verdict) => {

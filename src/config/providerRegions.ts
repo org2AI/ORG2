@@ -190,7 +190,6 @@ export function getRestrictedProviders(countryCode: string): string[] {
 // prettier-ignore
 const SANCTIONED_COUNTRIES: readonly string[] = [
   "IR",   // Iran
-  "SY",   // Syria
   "KP",   // North Korea
   "CU",   // Cuba
   "RU",   // Russia

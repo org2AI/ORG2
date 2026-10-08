@@ -8,7 +8,10 @@ import {
   nativeSourceEventId,
   projectNativeConversationItems,
 } from "./nativeConversationMaterializer";
-import { QueuedConversationRecoveryPendingError } from "./queuedConversationContract";
+import {
+  QueuedConversationRecoveryBlockedError,
+  QueuedConversationRecoveryPendingError,
+} from "./queuedConversationContract";
 import {
   recordEmptyFailedAttempt,
   retryLineageForMessage,
@@ -448,6 +451,26 @@ describe("native settled tail lifecycle boundary", () => {
         "failed"
       )
     ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+  });
+
+  it("blocks a completed turn after bounded rereads when no durable user anchor exists", async () => {
+    const raw = [
+      ...before,
+      event("orphan-answer", "assistant", "orphan output", "assistant"),
+    ];
+    mocks.reconcile.mockResolvedValueOnce(raw);
+    mocks.recover.mockResolvedValueOnce(raw);
+    await expect(
+      loadSettledTail(
+        "runner",
+        before,
+        "force-send-intent",
+        { text: "accepted request", images: [] },
+        "completed"
+      )
+    ).rejects.toBeInstanceOf(QueuedConversationRecoveryBlockedError);
+    expect(mocks.reconcile).toHaveBeenCalledOnce();
+    expect(mocks.recover).toHaveBeenCalledOnce();
   });
 
   it("does not certify a failed prompt when a later concurrent user exists", async () => {

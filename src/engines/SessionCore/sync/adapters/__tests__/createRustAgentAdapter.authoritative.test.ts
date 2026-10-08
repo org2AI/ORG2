@@ -97,6 +97,40 @@ describe("Rust Agent authoritative history", () => {
     });
   });
 
+  it("requests embedded native rows and preserves durable force-send identity", async () => {
+    const loadMessages = vi.fn(async (_sessionId: string, native?: boolean) => [
+      row("persisted-image-user", "user", {
+        content: "expanded provider payload",
+        images: JSON.stringify([
+          native
+            ? "data:image/png;base64,QUJD"
+            : "C:\\Users\\fixture\\image.png",
+        ]),
+        ...(native ? { turnIntentId: "force-send-intent" } : {}),
+      }),
+    ]);
+    const adapter = createRustAgentAdapter({
+      category: "agent",
+      features: {},
+      loadMessages,
+      cancel: async () => {},
+    });
+    const events = await adapter.loadAuthoritativeHistory!(
+      "sdeagent-parent",
+      new AbortController().signal
+    );
+    expect(loadMessages).toHaveBeenCalledWith("sdeagent-parent", true);
+    expect(projectNativeConversationItems(events)).toMatchObject([
+      {
+        kind: "message",
+        role: "user",
+        text: "expanded provider payload",
+        images: ["data:image/png;base64,QUJD"],
+        turnId: "force-send-intent",
+      },
+    ]);
+  });
+
   it("keeps display backfills out of canonical tool arguments across repeated reads", async () => {
     const args = {
       description: "Fast echo reply",

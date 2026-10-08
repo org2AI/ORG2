@@ -48,7 +48,11 @@ export const agentSession = {
     .output(z.boolean())
     .build(),
   loadMessages: defineProcedure("agent_load_messages")
-    .input(schemas.agentSession.SessionIdInput)
+    .input(
+      schemas.agentSession.SessionIdInput.extend({
+        forNativeTransfer: z.boolean().optional(),
+      })
+    )
     .output(z.array(schemas.agentSession.SessionMessageSchema))
     .build(),
   getSession: defineProcedure("agent_get_session")

@@ -65,7 +65,10 @@ export interface RustAgentConfig {
   category: string;
 
   /** Async function to load persisted messages */
-  loadMessages: (sessionId: string) => Promise<PersistedMessage[]>;
+  loadMessages: (
+    sessionId: string,
+    forNativeTransfer?: boolean
+  ) => Promise<PersistedMessage[]>;
 
   /** Async function to cancel/stop the session */
   cancel: (sessionId: string, reason: CancelReason) => Promise<void>;
@@ -116,7 +119,7 @@ export function createRustAgentAdapter(
     sessionId: string,
     signal: AbortSignal
   ): Promise<SessionEvent[]> => {
-    const messages = await loadMessages(sessionId);
+    const messages = await loadMessages(sessionId, true);
     if (signal.aborted || !messages?.length) return [];
     // Match Rust load_native_history's complete effective frame.
     // The boundary is appended after its retained tail, so simply clearing
@@ -233,8 +236,10 @@ export function createRustAgentAdapter(
 /** Unified agent configuration — handles all Rust-native agents (OS, SDE, custom). */
 export const AGENT_CONFIG: RustAgentConfig = {
   category: "agent",
-  loadMessages: (sessionId) =>
-    loadMessages(sessionId) as Promise<unknown> as Promise<PersistedMessage[]>,
+  loadMessages: (sessionId, forNativeTransfer) =>
+    loadMessages(sessionId, forNativeTransfer) as Promise<unknown> as Promise<
+      PersistedMessage[]
+    >,
   cancel: (sessionId, reason) =>
     cancelSession(sessionId, reason) as unknown as Promise<void>,
   tokenUsageCommand: "get_session_token_usage_records",

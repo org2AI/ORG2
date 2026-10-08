@@ -54,6 +54,8 @@ export interface PersistedMessage {
   sequence: number;
   createdAt: string;
   images: string | null;
+  /** Producing user event identity, restored for exact native transfer. */
+  turnIntentId?: string;
   /**
    * Set on compact-boundary rows: sequence number the preserved tail starts
    * at. Serialized by Rust's `AgentMessageRow` (serde camelCase); non-null
@@ -290,6 +292,7 @@ export function persistedMessageToSessionEvent(
     result = {
       type: "user",
       message: { content: msg.content, role: "user" },
+      ...(msg.turnIntentId ? { turnIntentId: msg.turnIntentId } : {}),
       ...(displayImages && displayImages.length > 0
         ? { images: displayImages }
         : {}),

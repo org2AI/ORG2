@@ -795,7 +795,11 @@ describe("local native conversation continuation", () => {
     const result = await recoverLocalConversationTurn({
       root,
       title: "Shared",
-      timeline: [...history, currentUser],
+      timeline: [
+        ...history,
+        currentUser,
+        event("canonical-answer", "assistant", "recovered answer"),
+      ],
       displayText: "continue",
       target,
       turnIntentId: "turn-recover-adopted",
@@ -825,6 +829,46 @@ describe("local native conversation continuation", () => {
     expect(mocks.reconcileNative).toHaveBeenCalledWith("agentsession-child", {
       preserveInterruptedSuffix: false,
     });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("retires an irreparable completed anchor without reserving the adopted turn forever", async () => {
+    const history = [event("prior", "user", "prior request")];
+    childEvents = [
+      ...history,
+      event("orphan-answer", "assistant", "orphan output"),
+    ];
+    mocks.invokeTauri.mockResolvedValue([
+      { sessionId: "agentsession-child", updatedAt: "now" },
+    ]);
+    mocks.getAgentSession.mockResolvedValue({
+      status: "completed",
+      workspacePath: "/repo",
+      accountId: "account-1",
+      model: "model-1",
+      agentDefinitionId: "builtin:sde",
+    });
+    mocks.turnIntentStatus.mockResolvedValue({
+      status: "completed",
+      turnIntentId: "orphan-intent",
+    });
+    await expect(
+      recoverLocalConversationTurn({
+        root,
+        title: "Shared",
+        timeline: history,
+        displayText: "accepted request",
+        target,
+        turnIntentId: "orphan-intent",
+        runnerSessionId: "agentsession-child",
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationRecoveryBlockedError);
+    expect(mocks.markTerminal).toHaveBeenCalledWith(
+      "agentsession-child",
+      "completed",
+      { generation: 3 }
+    );
+    expect(mocks.recoverNativeAfterMismatch).toHaveBeenCalledOnce();
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 

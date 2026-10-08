@@ -13,6 +13,8 @@
 mod crud;
 pub(crate) mod linked_work_item;
 mod messages;
+mod native_transfer;
+pub use native_transfer::load_messages_for_native_transfer;
 mod sidebar;
 
 // Re-exports kept at the `session::persistence::` surface — these are

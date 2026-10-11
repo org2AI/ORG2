@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -43,6 +44,7 @@ interface AgentOrgGroupProjectionViewProps {
   actionPendingTurns: ReadonlySet<string>;
   overviewPanel: React.ReactNode;
   overviewScopeKey: string;
+  pinnedHeaderPortalHost?: HTMLDivElement | null;
   surfaceBgClass: string;
   bottomInset: number;
   viewportSessionKey: string;
@@ -101,6 +103,7 @@ const AgentOrgGroupProjectionView: React.FC<
   actionPendingTurns,
   overviewPanel,
   overviewScopeKey,
+  pinnedHeaderPortalHost,
   surfaceBgClass,
   bottomInset,
   viewportSessionKey,
@@ -164,6 +167,25 @@ const AgentOrgGroupProjectionView: React.FC<
     });
   }, [followTail, onScrollNavChange, showScrollToBottom]);
 
+  const navigation = (
+    <header className="shrink-0">
+      <div
+        className={`flex h-10 min-h-10 min-w-0 items-center gap-1.5 overflow-hidden px-2 text-xs text-text-3 ${CHAT_PANEL_WIDTH_TOKENS.contentWidth}`}
+      >
+        <AgentOrgSurfaceSwitcher
+          members={members}
+          overviewAvailable={Boolean(overviewPanel)}
+          overviewOpen={overviewOpen}
+          setOverviewOpen={setOverviewOpen}
+          onMemberSelect={onMemberSelect}
+          groupChatActive
+          groupChatAvailable
+          onGroupChatToggle={handleGroupChatToggle}
+        />
+      </div>
+    </header>
+  );
+
   return (
     <ViewportLayoutMutationProvider value={preserveForLayoutMutation}>
       <section
@@ -171,22 +193,9 @@ const AgentOrgGroupProjectionView: React.FC<
         data-testid="agent-org-group-projection"
         aria-label={t("groupChat.projection.title")}
       >
-        <header className="shrink-0 border-b border-border-1">
-          <div
-            className={`flex h-10 min-h-10 max-w-full min-w-0 items-center gap-1.5 overflow-hidden px-2 text-xs text-text-3 ${CHAT_PANEL_WIDTH_TOKENS.contentWidth}`}
-          >
-            <AgentOrgSurfaceSwitcher
-              members={members}
-              overviewAvailable={Boolean(overviewPanel)}
-              overviewOpen={overviewOpen}
-              setOverviewOpen={setOverviewOpen}
-              onMemberSelect={onMemberSelect}
-              groupChatActive
-              groupChatAvailable
-              onGroupChatToggle={handleGroupChatToggle}
-            />
-          </div>
-        </header>
+        {pinnedHeaderPortalHost
+          ? createPortal(navigation, pinnedHeaderPortalHost)
+          : navigation}
 
         {overviewOpen && overviewPanel && (
           <AgentOrgOverviewTray surfaceBgClass={surfaceBgClass}>

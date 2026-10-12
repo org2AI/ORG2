@@ -151,6 +151,13 @@ pub fn classify_streaming_error_message(message: &str) -> StreamingErrorCode {
 impl From<ProviderError> for StreamingError {
     fn from(err: ProviderError) -> Self {
         match err {
+            ProviderError::InvalidRequest {
+                status,
+                parameter,
+                message,
+            } => Self::new(message, StreamingErrorCode::Unknown).with_details(serde_json::json!({
+                "reason": "invalid_request", "status": status, "parameter": parameter
+            })),
             ProviderError::AuthError(msg) => Self::new(msg, StreamingErrorCode::AuthError),
             ProviderError::UsageLimitReached(msg) => {
                 Self::new(msg, StreamingErrorCode::RateLimited).with_details(serde_json::json!({

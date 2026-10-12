@@ -6,13 +6,12 @@ use tracing::{info, warn};
 use super::super::client::OpenAICompatClient;
 use super::super::types::{ChatCompletionRequest, ChatCompletionResponse, RequestBuilderExt};
 use super::think_split::ThinkTagSplitter;
-use super::translate_tool_choice_for_openai;
+use super::tool_params::build_tool_params;
 use crate::providers::openai_policy::ChatTokenLimitField;
 use crate::providers::registry::provider_id;
 use crate::providers::traits::{finish_reason as finish, LLMResponse, ProviderError};
 use crate::providers::wire_sanitize::{
     coalesce_system_messages_to_front, sanitize_deepseek_messages, sanitize_openai_compat_messages,
-    strip_tool_schema_cache_scopes,
 };
 use crate::utils::http_retry::extract_retry_after_secs;
 use crate::utils::safe_truncate_utf8;
@@ -69,29 +68,13 @@ pub(super) async fn run_chat(
         this.config.is_azure,
     );
 
-    let wire_tools = tools.map(strip_tool_schema_cache_scopes);
-    // Extract forced tool_choice from side_query structured output
-    let (tool_choice_override, clean_wire_tools) = if let Some(ref wt) = wire_tools {
-        let (ovr, cleaned) = crate::core::side_query::extract_tool_choice_override(wt);
-        (ovr, Some(cleaned))
-    } else {
-        (None, None)
-    };
-    let wire_tools_final = clean_wire_tools.or(wire_tools);
-
     let wire_policy = this.chat_wire_policy(&base_model);
+    let (wire_tools, tool_choice) = build_tool_params(tools, wire_policy.send_tool_choice_auto)?;
     let request_body = ChatCompletionRequest {
         model: base_model.clone(),
         messages: wire_messages,
-        tools: wire_tools_final,
-        tool_choice: if let Some(ovr) = tool_choice_override {
-            // Map Anthropic-style {"type":"tool","name":"x"} → OpenAI {"type":"function","function":{"name":"x"}}
-            Some(translate_tool_choice_for_openai(&ovr))
-        } else if wire_policy.send_tool_choice_auto {
-            tools.map(|_| Value::String("auto".to_string()))
-        } else {
-            None
-        },
+        tools: wire_tools,
+        tool_choice,
         max_tokens: match wire_policy.token_limit_field {
             ChatTokenLimitField::MaxTokens => Some(max_tokens),
             ChatTokenLimitField::MaxCompletionTokens => None,

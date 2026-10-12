@@ -547,6 +547,12 @@ pub trait LLMProvider: Send + Sync {
 /// Error type for LLM provider operations.
 #[derive(Debug)]
 pub enum ProviderError {
+    /// A rejected request must be corrected before retrying the same provider.
+    InvalidRequest {
+        status: Option<u16>,
+        parameter: Option<String>,
+        message: String,
+    },
     /// HTTP request failed.
     RequestFailed(String),
     /// Response parsing failed.
@@ -586,6 +592,15 @@ pub enum ProviderError {
 impl std::fmt::Display for ProviderError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            ProviderError::InvalidRequest {
+                status, message, ..
+            } => {
+                write!(formatter, "Request failed: ")?;
+                if let Some(status) = status {
+                    write!(formatter, "HTTP {status}: ")?;
+                }
+                write!(formatter, "{message}")
+            }
             ProviderError::RequestFailed(msg) => write!(formatter, "Request failed: {}", msg),
             ProviderError::ParseError(msg) => write!(formatter, "Parse error: {}", msg),
             ProviderError::AuthError(msg) => write!(formatter, "Auth error: {}", msg),

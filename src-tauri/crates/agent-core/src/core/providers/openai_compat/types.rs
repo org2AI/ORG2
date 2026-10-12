@@ -338,8 +338,8 @@ pub(super) struct ApiError {
     pub error_type: Option<String>,
     /// Google-style status string (e.g. "RESOURCE_EXHAUSTED", "NOT_FOUND")
     pub status: Option<String>,
-    /// Google-style numeric error code
-    pub code: Option<i32>,
+    /// Compatible APIs use numeric codes or strings such as invalid_request_error.
+    pub code: Option<Value>,
 }
 
 impl ApiError {
@@ -351,12 +351,12 @@ impl ApiError {
             }
         }
         if let Some(ref status) = self.status {
-            if let Some(code) = self.code {
+            if let Some(ref code) = self.code {
                 return format!("{} (code {})", status, code);
             }
             return status.clone();
         }
-        if let Some(code) = self.code {
+        if let Some(ref code) = self.code {
             return format!("Error code {}", code);
         }
         "Unknown error".to_string()

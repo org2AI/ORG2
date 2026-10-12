@@ -303,6 +303,15 @@ pub async fn side_query_typed_with_options(
             warn!("[side-query] thinking:disabled rejected (400), retrying with padded max_tokens");
             None
         }
+        Err(ProviderError::InvalidRequest {
+            status: Some(400),
+            ref message,
+            ..
+        }) if message.to_lowercase().contains("thinking") => {
+            observe_always_on_thinking(config, model);
+            warn!("[side-query] thinking:disabled rejected (400), retrying with padded max_tokens");
+            None
+        }
         Err(err) => return Err(SideQueryError::Provider(err)),
     };
 

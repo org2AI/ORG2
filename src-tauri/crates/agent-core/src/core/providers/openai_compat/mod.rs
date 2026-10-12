@@ -12,6 +12,11 @@ pub mod streaming;
 pub mod types;
 pub mod wire_expand;
 
+#[cfg(test)]
+mod recovery_contract_tests;
+#[cfg(test)]
+mod request_contract_tests;
+
 pub use client::OpenAICompatClient;
 pub use streaming::STREAM_PARSE_ERROR_KEY;
 // `expand_tool_images_for_openai_wire` is reached only through the

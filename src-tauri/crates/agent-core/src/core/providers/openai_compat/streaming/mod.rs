@@ -20,6 +20,7 @@ mod index_resolver;
 mod parse;
 mod sse_stream;
 mod think_split;
+mod tool_params;
 
 // Re-export the public constant used by `turn_executor::tool_execution::*`
 // (via `openai_compat::STREAM_PARSE_ERROR_KEY`) to detect the synthetic

@@ -176,6 +176,7 @@ impl ReliableProvider {
     /// failure.
     fn error_kind(err: &ProviderError) -> &'static str {
         match err {
+            ProviderError::InvalidRequest { .. } => "invalid_request",
             ProviderError::RateLimited { .. } => "rate_limited",
             ProviderError::UsageLimitReached(_) => "usage_limit_reached",
             ProviderError::Overloaded { .. } => "overloaded",
@@ -202,6 +203,9 @@ impl ReliableProvider {
     /// `_ => false` catch-all would have made any new error variant
     /// silently retryable, including ones that should fail fast.
     fn is_non_retryable(err: &ProviderError) -> bool {
+        if matches!(err, ProviderError::InvalidRequest { .. }) {
+            return true;
+        }
         // An explicit server directive (`x-should-retry` response header)
         // overrides the status-code heuristics below. The >10min rate-limit
         // fail-fast still applies afterwards: a server "true" on a
@@ -211,6 +215,7 @@ impl ReliableProvider {
         }
         match err {
             ProviderError::AuthError(_)
+            | ProviderError::InvalidRequest { .. }
             | ProviderError::UsageLimitReached(_)
             | ProviderError::ModelNotFound(_)
             | ProviderError::ContextTooLong(_)
@@ -282,6 +287,7 @@ impl ReliableProvider {
             | ProviderError::MediaTooLarge(_)
             | ProviderError::Cancelled
             | ProviderError::RequestFailed(_)
+            | ProviderError::InvalidRequest { .. }
             | ProviderError::ParseError(_)
             | ProviderError::Other(_) => None,
         }

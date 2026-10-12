@@ -190,6 +190,7 @@ impl OpenAICompatClient {
                 }
 
                 return match status {
+                    400 => Self::invalid_request(body, message),
                     401 => ProviderError::AuthError(message),
                     429 => ProviderError::RateLimited {
                         message,
@@ -205,11 +206,33 @@ impl OpenAICompatClient {
             }
         }
 
+        if status == 400 {
+            return Self::invalid_request(
+                body,
+                crate::providers::http_error_body::clean_error_message(status, body),
+            );
+        }
         ProviderError::RequestFailed(format!(
             "HTTP {}: {}",
             status,
             crate::providers::http_error_body::clean_error_message(status, body)
         ))
+    }
+
+    fn invalid_request(body: &str, message: String) -> ProviderError {
+        let parameter = serde_json::from_str::<Value>(body).ok().and_then(|value| {
+            let error = value.get("error").unwrap_or(&value);
+            error
+                .get("param")
+                .and_then(Value::as_str)
+                .or_else(|| error.get("parameter").and_then(Value::as_str))
+                .map(str::to_owned)
+        });
+        ProviderError::InvalidRequest {
+            status: Some(400),
+            parameter,
+            message,
+        }
     }
 
     /// Reassemble an SSE-streamed body (sent by providers that ignore `stream:false`)

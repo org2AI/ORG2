@@ -70,7 +70,9 @@ impl OpenAiAdaptiveClient {
 
     fn should_try_responses(&self, err: &ProviderError) -> bool {
         match err {
-            ProviderError::RequestFailed(body) | ProviderError::ModelNotFound(body) => {
+            ProviderError::RequestFailed(body)
+            | ProviderError::ModelNotFound(body)
+            | ProviderError::InvalidRequest { message: body, .. } => {
                 openai_error_requires_responses(body)
             }
             _ => false,
@@ -84,7 +86,9 @@ impl OpenAiAdaptiveClient {
         current_policy: OpenAiChatWirePolicy,
     ) -> bool {
         let body = match err {
-            ProviderError::RequestFailed(body) | ProviderError::ModelNotFound(body) => body,
+            ProviderError::RequestFailed(body)
+            | ProviderError::ModelNotFound(body)
+            | ProviderError::InvalidRequest { message: body, .. } => body,
             _ => return false,
         };
         let Some(preference) = openai_chat_wire_preference_from_error(body, current_policy) else {

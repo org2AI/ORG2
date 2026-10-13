@@ -8,6 +8,8 @@ members = [
     "crates/app-platform",
     "crates/app-utils",
     "crates/app-window",
+    "crates/app-ui",
+    "crates/org2-ui-cli",
     "crates/bin-gateway-chat-cli",
     "crates/bin-provider-key-check",
     "crates/bin-telegram-smoke",
@@ -178,6 +180,8 @@ tauri-build = { version = "2.5.6", features = [] }
 cc = "1.0"
 
 [dependencies]
+app_ui = { path = "crates/app-ui" }
+org2_ui_cli = { path = "crates/org2-ui-cli" }
 fs2 = "0.4" # Profile/source coordination and macOS singleton admission
 async-trait = "0.1"
 market-connect = { path = "crates/market-connect", optional = true }

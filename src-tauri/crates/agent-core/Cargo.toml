@@ -25,6 +25,7 @@ webdriver = []
 # Workspace dependencies
 # ---------------------------------------------------------------------------
 [dependencies]
+app_ui = { path = "../app-ui" }
 # Pure data / leaf crates.
 core_types = { path = "../types" }
 app_paths = { path = "../app-paths" }

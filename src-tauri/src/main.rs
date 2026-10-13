@@ -6,6 +6,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    let cli_args: Vec<String> = std::env::args().skip(1).collect();
+    if cli_args
+        .first()
+        .is_some_and(|arg| matches!(arg.as_str(), "ui" | "rulebook"))
+    {
+        std::process::exit(org2_ui_cli::run(cli_args));
+    }
     let mut args = std::env::args().skip(1);
     if args.next().as_deref() == Some("--session-provenance-hook") {
         if let Some(source) = args.next() {

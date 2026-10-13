@@ -50,6 +50,8 @@
     "analyze": "webpack --config config/webpack.config.js --mode production --profile --json > build/stats.json && webpack-bundle-analyzer build/stats.json",
     "typecheck": "tsc --noEmit --pretty false",
     "typecheck:fast": "tsgo --noEmit --pretty false",
+    "ui:catalog": "node --experimental-strip-types scripts/ui/generate-catalog.mjs",
+    "check:ui-catalog": "node --experimental-strip-types scripts/ui/generate-catalog.mjs --check",
     "lint": "pnpm lint:fast && eslint src/ --ext .ts,.tsx,.js,.jsx --max-warnings 0 --report-unused-disable-directives",
     "lint:fast": "oxlint -c src/.oxlintrc.json --max-warnings 0 src",
     "lint:fix": "eslint src/ --ext .ts,.tsx,.js,.jsx --fix --report-unused-disable-directives",

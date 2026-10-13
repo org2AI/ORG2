@@ -1,4 +1,4 @@
-const AGENT_PTY_SESSION_PREFIX = "agent-pty-";
+export const AGENT_PTY_SESSION_PREFIX = "agent-pty-";
 
 export function isAgentPtySessionId(sessionId: string): boolean {
   return sessionId.startsWith(AGENT_PTY_SESSION_PREFIX);

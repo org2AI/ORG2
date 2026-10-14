@@ -153,7 +153,7 @@
     "clsx": "^2.1.1",
     "codemirror": "^6.0.2",
     "dayjs": "^1.11.10",
-    "dompurify": "^3.4.13",
+    "dompurify": "^3.4.16",
     "framer-motion": "^12.23.24",
     "i18next": "^25.8.1",
     "ignore": "^7.0.5",

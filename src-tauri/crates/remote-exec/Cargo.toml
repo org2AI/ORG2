@@ -1,0 +1,30 @@
+[package]
+name = "remote_exec"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85.0"
+description = "Runs a CLI agent on an SSH host as a detached, log-backed process and bridges its stdio locally, resuming from a byte offset after any disconnect."
+publish = false
+
+[lib]
+name = "remote_exec"
+path = "src/lib.rs"
+
+# Spawned by the CLI session runner in place of the agent binary, so the
+# runner keeps its concrete `tokio::process::Child` while the process itself
+# lives on the remote host.
+[[bin]]
+name = "org2-ssh-bridge"
+path = "src/main.rs"
+
+# No Tauri, no DB, no HTTP: this crate shells out to the system `ssh` so the
+# user's ~/.ssh/config, agent, ProxyJump and hardware keys keep working.
+[dependencies]
+tokio = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = { workspace = true }
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3.13"

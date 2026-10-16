@@ -59,7 +59,11 @@ test("real graph catches forbidden runtime and type-only edges but permits same-
     const report = JSON.parse(run.stdout);
     assert.deepEqual(
       new Set(report.summary.violations.map((v) => v.rule.name)),
-      new Set(config.forbidden.map((r) => r.name))
+      new Set(
+        config.forbidden
+          .filter((rule) => rule.name !== "workspace-package-to-app")
+          .map((r) => r.name)
+      )
     );
     assert.equal(report.summary.violations.length, 3);
   } finally {

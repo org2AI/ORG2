@@ -78,6 +78,7 @@ schemars = { workspace = true }
 # ---------------------------------------------------------------------------
 rusqlite = { workspace = true }
 parking_lot = "0.12"
+fs2 = "0.4" # Cross-process advisory lease for workspace memory consolidation.
 
 # ---------------------------------------------------------------------------
 # Time / IDs

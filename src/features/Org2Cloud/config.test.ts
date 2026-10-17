@@ -86,6 +86,35 @@ describe("buildCloudAuthCallbackUrl", () => {
     );
   });
 
+  it("uses only fork-owned return schemes for fork production and dev builds", () => {
+    expect(
+      configureCloudAuthCallbackForIdentifier("com.theerasakping.tpagentstudio")
+    ).toBe("tpagentstudio://auth/callback");
+    expect(
+      new URL(buildOrg2CloudLoginUrl()).searchParams.get("return_to")
+    ).toBe("tpagentstudio://auth/callback");
+
+    expect(
+      configureCloudAuthCallbackForIdentifier(
+        "com.theerasakping.tpagentstudio.dev"
+      )
+    ).toBe("tpagentstudio-dev://auth/callback");
+    expect(
+      new URL(buildOrg2CloudLoginUrl()).searchParams.get("return_to")
+    ).toBe("tpagentstudio-dev://auth/callback");
+  });
+
+  it("derives the numbered and E2E fork callback scheme without using orgii", () => {
+    for (const identifier of [
+      "com.theerasakping.tpagentstudio.instance2",
+      "com.theerasakping.tpagentstudio.e2e.instance2",
+    ]) {
+      expect(configureCloudAuthCallbackForIdentifier(identifier)).toBe(
+        "tpagentstudio-instance2://auth/callback"
+      );
+    }
+  });
+
   it("derives an isolated callback from the runtime Tauri identifier", () => {
     expect(
       configureCloudAuthCallbackForIdentifier("org2ai.org2.instance2")

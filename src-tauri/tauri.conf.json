@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "ORG2",
+  "productName": "TP Agent Studio",
   "version": "2.0.8",
-  "identifier": "org2ai.org2",
+  "identifier": "com.theerasakping.tpagentstudio",
   "build": {
     "frontendDist": "../build",
     "devUrl": "http://localhost:1998",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "ORG2",
+        "title": "TP Agent Studio",
         "width": 1200,
         "height": 800,
         "minWidth": 450,
@@ -38,12 +38,19 @@
       "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' 'nonce-orgii-codemirror-style'; style-src-attr 'unsafe-inline'; img-src 'self' asset: http://asset.localhost https: data: blob:; font-src 'self' data:; connect-src 'self' asset: http://asset.localhost ipc: http://ipc.localhost ipc://localhost https: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* wss:; media-src 'self' asset: http://asset.localhost blob:; worker-src 'self' blob:; frame-src 'self' blob: asset: http://asset.localhost https: http://canvas-artifact.localhost canvas-artifact:; object-src 'none'; base-uri 'self'",
       "assetProtocol": {
         "enable": true,
-        "scope": ["$HOME/.orgii/**", "$HOME/.cursor/plugins/cache/**"]
+        "scope": [
+          "$HOME/.tp-agent-studio/**",
+          "$HOME/.tp-agent-studio-dev/**",
+          "$HOME/.tp-agent-studio-instance*/**",
+          "$HOME/.cursor/plugins/cache/**"
+        ]
       }
     }
   },
   "bundle": {
-    "externalBin": ["binaries/org2-pm"],
+    "externalBin": [
+      "binaries/org2-pm"
+    ],
     "resources": {
       "resources/drag-icons/": "resources/drag-icons/"
     },
@@ -56,7 +63,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": false
   },
   "plugins": {
     "fs": {
@@ -64,14 +71,14 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["yorgai", "orgii"]
+        "schemes": [
+          "tpagentstudio"
+        ]
       }
     },
     "updater": {
-      "active": true,
-      "endpoints": [
-        "https://github.com/org2AI/ORG2/releases/latest/download/latest.json"
-      ],
+      "active": false,
+      "endpoints": [],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExNEQ5NjIzMjA1ODI5OUMKUldTY0tWZ2dJNVpORWFiWXB3NW5UaWwyOHVxRXhzVmRVbXl2WktZNnhiN2tqcXlVY3gxTTlPV3EK"
     },

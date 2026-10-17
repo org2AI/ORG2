@@ -259,12 +259,10 @@ pub async fn ack_pty_data(
         if !session.owns_stream(owner_id) {
             return Ok(());
         }
-        let prev = session
-            .unacked_bytes
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
-                Some(value.saturating_sub(byte_count))
-            })
-            .unwrap_or(0);
+        let prev = crate::agent_tool::saturating_atomic_sub(
+            &session.unacked_bytes,
+            byte_count,
+        );
         let new_val = prev.saturating_sub(byte_count);
 
         // Update render telemetry so the reader can adapt emit rate.

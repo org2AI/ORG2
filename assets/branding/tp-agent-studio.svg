@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TP Agent Studio two-tone icon">
+  <!-- Two colors only: midnight navy #101D33 and electric cyan #4DD8F5. -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#101D33"/>
+  <g fill="none" stroke="#4DD8F5" stroke-width="38" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M210 160 133 256 210 352"/>
+    <path d="M302 160 379 256 302 352"/>
+    <path d="M227 256h58" stroke-width="28"/>
+    <circle cx="256" cy="256" r="31" stroke-width="22"/>
+  </g>
+</svg>

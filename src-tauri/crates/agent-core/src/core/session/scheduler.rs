@@ -121,6 +121,45 @@ pub struct ScheduledMessage {
     pub execute: ExecuteFn,
 }
 
+/// Decrement a pending-message counter only when nonzero, retaining
+/// exactly the old checked_sub + fetch_update semantics on Rust MSRV 1.85.
+fn decrement_pending(counter: &AtomicUsize) {
+    let mut current = counter.load(Ordering::Acquire);
+    while current > 0 {
+        match counter.compare_exchange_weak(
+            current,
+            current - 1,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(_) => return,
+            Err(actual) => current = actual,
+        }
+    }
+}
+
+#[cfg(test)]
+mod atomic_pending_tests {
+    use super::decrement_pending;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    #[test]
+    fn pending_counter_never_underflows() {
+        let count = Arc::new(AtomicUsize::new(7));
+        let tasks: Vec<_> = (0..20)
+            .map(|_| {
+                let count = Arc::clone(&count);
+                std::thread::spawn(move || decrement_pending(&count))
+            })
+            .collect();
+        for handle in tasks {
+            handle.join().unwrap();
+        }
+        assert_eq!(count.load(Ordering::Acquire), 0);
+    }
+}
+
 pub(crate) fn panic_payload_to_string(payload: &(dyn Any + Send)) -> String {
     if let Some(message) = payload.downcast_ref::<String>() {
         return message.clone();
@@ -181,6 +220,8 @@ pub struct EnqueueResult {
 /// Inner state initialized lazily on first enqueue.
 struct SchedulerInner {
     tx: mpsc::Sender<ScheduledMessage>,
+    /// Retain the worker handle to detect unexpected task termination.
+    worker: tokio::task::JoinHandle<()>,
 }
 
 /// Per-session FIFO message queue with a single background worker.
@@ -253,10 +294,57 @@ impl DialogScheduler {
     async fn ensure_initialized(&self) -> mpsc::Sender<ScheduledMessage> {
         let mut guard = self.inner.lock().await;
         if let Some(inner) = guard.as_ref() {
-            return inner.tx.clone();
+            if !inner.worker.is_finished() && !inner.tx.is_closed() {
+                return inner.tx.clone();
+            }
+
+            // A previous worker died (for example, from a panic outside the
+            // turn executor). Its receiver is gone, but the retained sender
+            // makes the scheduler appear initialized forever. Reset only the
+            // now-orphaned in-memory queue, never replay dropped tool effects.
+            warn!(
+                session_id = %self.session_id,
+                "[scheduler] worker terminated unexpectedly; replacing closed queue"
+            );
+            self.generation.fetch_add(1, Ordering::AcqRel);
+            self.pending.store(0, Ordering::Release);
+            let was_running_turn = self.processing_turn.swap(false, Ordering::AcqRel);
+            self.processing.store(false, Ordering::Release);
+            self.client_message_ids.lock().await.clear();
+            let interrupted = {
+                let mut control = self.turn_control.lock();
+                control.cancelled.clear();
+                control.current.take()
+            };
+            if let Some(ref turn_id) = interrupted {
+                crate::foundation::session_bridge::update_turn_intent_status(
+                    &self.session_id,
+                    turn_id,
+                    crate::foundation::session_bridge::TurnIntentBridgeStatus::Failed,
+                );
+            }
+            crate::foundation::session_bridge::mark_pending_turn_intents_stale(&self.session_id);
+            if was_running_turn {
+                if let Err(err) = crate::session::persistence::update_status(
+                    &self.session_id,
+                    crate::session::SessionStatus::Abandoned,
+                ) {
+                    warn!(
+                        session_id = %self.session_id,
+                        error = %err,
+                        "[scheduler] could not persist interrupted session status"
+                    );
+                }
+                let streaming_error = StreamingError::new(
+                    "Session worker stopped unexpectedly; the interrupted turn was not replayed. Send a new message to retry.".to_string(),
+                    classify_streaming_error_message("Session worker stopped unexpectedly"),
+                );
+                broadcast_agent_error_structured(&self.session_id, &streaming_error);
+            }
+            self.broadcast_queue_status();
         }
 
-        // First enqueue — spawn the worker now
+        // First enqueue or replace a dead worker — spawn a new receiver
         let (tx, rx) = mpsc::channel::<ScheduledMessage>(self.capacity);
 
         let worker = WorkerTask {
@@ -269,14 +357,17 @@ impl DialogScheduler {
             client_message_ids: Arc::clone(&self.client_message_ids),
             turn_control: Arc::clone(&self.turn_control),
         };
-        tokio::spawn(worker.run());
+        let worker = tokio::spawn(worker.run());
 
         info!(
             "[scheduler] Worker spawned for session={} (capacity={})",
             self.session_id, self.capacity
         );
 
-        *guard = Some(SchedulerInner { tx: tx.clone() });
+        *guard = Some(SchedulerInner {
+            tx: tx.clone(),
+            worker,
+        });
         tx
     }
 
@@ -478,11 +569,7 @@ impl WorkerTask {
                 }
             };
             if targeted_cancelled {
-                let _ = self
-                    .pending
-                    .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
-                        count.checked_sub(1)
-                    });
+                decrement_pending(&self.pending);
                 crate::foundation::session_bridge::update_turn_intent_status(
                     &self.session_id,
                     &msg.turn_intent_id,
@@ -524,11 +611,7 @@ impl WorkerTask {
                 continue;
             }
 
-            let _ = self
-                .pending
-                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
-                    count.checked_sub(1)
-                });
+            decrement_pending(&self.pending);
 
             let is_turn = msg.kind == ScheduledKind::Turn;
             self.processing.store(true, Ordering::Relaxed);
@@ -566,8 +649,11 @@ impl WorkerTask {
             let client_message_id = msg.client_message_id.clone();
             let turn_intent_id = msg.turn_intent_id.clone();
             let org_run_id = msg.org_run_id.clone();
-            let execute_future = (msg.execute)();
-            let result = std::panic::AssertUnwindSafe(execute_future)
+            // The factory itself can panic before it returns a Future.
+            // Place its invocation INSIDE the catch boundary so an otherwise
+            // valid per-session worker cannot disappear with a live sender.
+            let execute = msg.execute;
+            let result = std::panic::AssertUnwindSafe(async move { execute().await })
                 .catch_unwind()
                 .await
                 .unwrap_or_else(|panic_payload| {
@@ -692,6 +778,28 @@ impl WorkerTask {
                             &turn_intent_id,
                             crate::foundation::session_bridge::TurnIntentBridgeStatus::Failed,
                         );
+                    }
+                    // If the callback failed before its normal finalizer
+                    // ran, the session DB can still say "running" while the
+                    // in-memory worker has already moved on. Clear that
+                    // phantom status for ordinary failed turns. Never alter
+                    // previously terminal, stale, or intervention-owned work.
+                    if is_turn
+                        && !already_terminal
+                        && !stale_callback
+                        && !user_directed_waiting
+                        && !user_directed_cancelled
+                    {
+                        if let Err(error) = crate::session::persistence::update_status(
+                            &self.session_id,
+                            crate::session::SessionStatus::Failed,
+                        ) {
+                            warn!(
+                                session_id = %self.session_id,
+                                error = %error,
+                                "[scheduler] failed to persist failed turn session status"
+                            );
+                        }
                     }
                     // Turn-only: an `agent:error` renders as a chat bubble.
                     // Maintenance jobs report failures through their own
@@ -822,12 +930,173 @@ async fn reconcile_agent_org_run_after_terminal(run_id: &str) {
 }
 
 #[cfg(test)]
+mod stress_tests;
+
+#[cfg(test)]
+mod fault_injection_tests;
+
+#[cfg(test)]
 mod final_summary_tests;
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[tokio::test]
+    async fn executor_factory_panic_does_not_kill_the_session_worker() {
+        let scheduler = DialogScheduler::new("session-factory-panic", 8);
+        scheduler
+            .enqueue(ScheduledMessage {
+                kind: ScheduledKind::Turn,
+                message_id: "factory-panics".into(),
+                generation: 0,
+                client_message_id: None,
+                turn_intent_id: String::new(),
+                org_run_id: None,
+                content: "panic".into(),
+                execute: Box::new(|| panic!("factory failed before creating a future")),
+            })
+            .await
+            .expect("factory panic must not occur on the caller");
+
+        let completed = Arc::new(AtomicUsize::new(0));
+        let completed_in_turn = Arc::clone(&completed);
+        scheduler
+            .enqueue(ScheduledMessage {
+                kind: ScheduledKind::Turn,
+                message_id: "after-factory-panic".into(),
+                generation: 0,
+                client_message_id: None,
+                turn_intent_id: String::new(),
+                org_run_id: None,
+                content: "continue".into(),
+                execute: Box::new(move || {
+                    Box::pin(async move {
+                        completed_in_turn.fetch_add(1, Ordering::SeqCst);
+                        Ok(ExecutionCompletion::Finished)
+                    })
+                }),
+            })
+            .await
+            .expect("enqueue after factory panic");
+
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while completed.load(Ordering::SeqCst) == 0 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("factory panic must not poison the worker or later queue items");
+        assert_eq!(scheduler.pending_count(), 0);
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn failed_executor_reconciles_persisted_running_session() {
+        use crate::session::persistence::{self, UnifiedSessionRecord};
+        use core_types::key_source::KeySource;
+
+        let _sandbox = test_helpers::test_env::sandbox();
+        let session_id = "session-failed-executor-status";
+        {
+            let conn = database::db::get_connection().expect("test DB");
+            crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+            persistence::init(&conn).expect("session tables");
+        }
+        let record = UnifiedSessionRecord {
+            session_id: session_id.to_string(),
+            name: "status regression".to_string(),
+            status: crate::session::SessionStatus::Running.as_str().to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            updated_at: "2024-01-01T00:00:00Z".to_string(),
+            session_type: "sde".to_string(),
+            key_source: KeySource::OwnKey,
+            ..Default::default()
+        };
+        persistence::upsert_session(&record).expect("seed running session");
+
+        let scheduler = DialogScheduler::new(session_id, 8);
+        scheduler
+            .enqueue(ScheduledMessage {
+                kind: ScheduledKind::Turn,
+                message_id: "failing-turn".into(),
+                generation: 0,
+                client_message_id: None,
+                turn_intent_id: String::new(),
+                org_run_id: None,
+                content: "fail".into(),
+                execute: Box::new(|| Box::pin(async { Err("provider failed".to_string()) })),
+            })
+            .await
+            .expect("enqueue");
+
+        tokio::time::timeout(std::time::Duration::from_secs(3), async {
+            loop {
+                if persistence::get_session(session_id)
+                    .expect("query session")
+                    .is_some_and(|row| row.status == crate::session::SessionStatus::Failed.as_str())
+                {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("failed callback must clear durable running status");
+    }
+
+    #[tokio::test]
+    async fn a_dead_worker_is_recreated_on_the_next_enqueue() {
+        let scheduler = DialogScheduler::new("session-aborted-worker", 8);
+        scheduler.ensure_initialized().await;
+        {
+            let guard = scheduler.inner.lock().await;
+            guard.as_ref().expect("worker started").worker.abort();
+        }
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                let finished = {
+                    let guard = scheduler.inner.lock().await;
+                    guard.as_ref().expect("worker exists").worker.is_finished()
+                };
+                if finished {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("aborted worker eventually stops");
+
+        let completed = Arc::new(AtomicUsize::new(0));
+        let completed_in_turn = Arc::clone(&completed);
+        scheduler
+            .enqueue(ScheduledMessage {
+                kind: ScheduledKind::Maintenance,
+                message_id: "after-worker-abort".into(),
+                generation: 0,
+                client_message_id: None,
+                turn_intent_id: String::new(),
+                org_run_id: None,
+                content: String::new(),
+                execute: Box::new(move || {
+                    Box::pin(async move {
+                        completed_in_turn.fetch_add(1, Ordering::SeqCst);
+                        Ok(ExecutionCompletion::Finished)
+                    })
+                }),
+            })
+            .await
+            .expect("dead worker must be replaced");
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while completed.load(Ordering::SeqCst) == 0 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("replacement worker processes a fresh queue item");
+    }
 
     #[test]
     fn targeted_cancellation_registry_is_bounded_and_keeps_the_latest_fence() {

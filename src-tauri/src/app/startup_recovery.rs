@@ -26,25 +26,54 @@ pub(crate) fn run_persistence_startup_recovery() -> Result<PersistenceStartupRec
 {
     let conn = database::db::get_connection()
         .map_err(|error| format!("open sessions database for startup recovery failed: {error}"))?;
-    let ordinary_turn_intents_reconciled =
+    // Each recovery phase owns different durable state. Do not short-circuit
+    // the stale-session sweep if an auxiliary turn-intent table is missing or
+    // corrupt: that leaves phantom "running" rows on *every* later restart.
+    // Retain errors and report them after the independent cleanup attempts.
+    let ordinary_result =
         session_persistence::turn_intents::reconcile_in_flight_after_restart(&conn)
-            .map_err(|error| format!("ordinary turn-intent recovery failed: {error}"))?;
-    let agent_org_turn_intents_reconciled =
+            .map_err(|error| format!("ordinary turn-intent recovery failed: {error}"));
+    let agent_org_intents_result =
         agent_core::coordination::reconcile_agent_org_turns_after_restart(&conn)
-            .map_err(|error| format!("Agent Org turn-intent recovery failed: {error}"))?;
+            .map_err(|error| format!("Agent Org turn-intent recovery failed: {error}"));
     drop(conn);
 
-    // A durable terminal marker is stronger evidence than a stale session
-    // status. Preserve it before classifying all remaining in-flight sessions
-    // as abandoned.
-    let terminal_sessions_reconciled =
+    // Terminal markers are stronger evidence than the stale in-flight flag,
+    // so preserve their ordering even when either operation fails.
+    let terminal_result =
         agent_core::session::persistence::reconcile_sessions_with_terminal_turn_markers()
-            .map_err(|error| format!("terminal session-marker recovery failed: {error}"))?;
-    let sessions_abandoned =
+            .map_err(|error| format!("terminal session-marker recovery failed: {error}"));
+    let abandon_result =
         agent_core::session::persistence::mark_stale_running_sessions_abandoned()
-            .map_err(|error| format!("stale session recovery failed: {error}"))?;
-    let agent_org = AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
-        .map_err(|error| format!("Agent Org TaskExecution recovery failed: {error}"))?;
+            .map_err(|error| format!("stale session recovery failed: {error}"));
+
+    // Log every failed phase; the first error remains the caller's result.
+    // Attempt the Agent Org requeue independently, after session repair.
+    let agent_org_result = AgentOrgRunStore::requeue_abandoned_member_tasks_on_startup()
+        .map_err(|error| format!("Agent Org TaskExecution recovery failed: {error}"));
+
+    let mut errors = Vec::new();
+    for result in [
+        ordinary_result.as_ref().map(|_| ()),
+        agent_org_intents_result.as_ref().map(|_| ()),
+        terminal_result.as_ref().map(|_| ()),
+        abandon_result.as_ref().map(|_| ()),
+        agent_org_result.as_ref().map(|_| ()),
+    ] {
+        if let Err(error) = result {
+            tracing::warn!(error = %error, "[StartupRecovery] recovery phase failed");
+            errors.push(error.to_string());
+        }
+    }
+    if !errors.is_empty() {
+        return Err(errors.join("; "));
+    }
+
+    let ordinary_turn_intents_reconciled = ordinary_result.expect("recovery phase checked");
+    let agent_org_turn_intents_reconciled = agent_org_intents_result.expect("recovery phase checked");
+    let terminal_sessions_reconciled = terminal_result.expect("recovery phase checked");
+    let sessions_abandoned = abandon_result.expect("recovery phase checked");
+    let agent_org = agent_org_result.expect("recovery phase checked");
 
     Ok(PersistenceStartupRecoveryReport {
         ordinary_turn_intents_reconciled,

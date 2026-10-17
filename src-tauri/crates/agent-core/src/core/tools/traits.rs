@@ -90,6 +90,8 @@ use super::params::ensure_object_schema;
 /// Each tool provides a name, description, JSON Schema parameters,
 /// and an async execute method. Tools are registered in a [`ToolRegistry`]
 /// and invoked by the agent loop when the LLM requests a tool call.
+// async_trait's boxed Future is already must_use; scope this lint to this trait.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait Tool: Send + Sync {
     /// Tool name used in function calls (e.g., "read_file", "exec").

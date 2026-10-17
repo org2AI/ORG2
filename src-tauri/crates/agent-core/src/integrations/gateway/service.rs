@@ -23,6 +23,8 @@ use super::workers::{spawn_inbound_processor, spawn_outbound_dispatcher};
 ///
 /// The gateway delegates message processing to this handler, which is implemented
 /// by the agent layer. This decouples the gateway from any specific agent.
+// async_trait's generated boxed Future already has must_use semantics.
+#[allow(clippy::double_must_use)]
 #[async_trait::async_trait]
 pub trait InboundMessageHandler: Send + Sync + 'static {
     async fn handle_message(&self, msg: InboundMessage) -> Result<Option<OutboundMessage>, String>;

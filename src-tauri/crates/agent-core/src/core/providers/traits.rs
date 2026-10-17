@@ -437,6 +437,8 @@ pub struct ChatOptions {
 ///
 /// Implementations handle the specifics of each provider's API
 /// while maintaining a consistent interface for the agent loop.
+// async_trait expands async methods into boxed Futures already marked must_use.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 #[allow(clippy::too_many_arguments)]
 pub trait LLMProvider: Send + Sync {

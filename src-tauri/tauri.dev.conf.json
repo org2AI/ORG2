@@ -1,10 +1,12 @@
 {
-  "productName": "ORG2 Dev",
-  "identifier": "org2ai.org2.dev",
+  "productName": "TP Agent Studio Dev",
+  "identifier": "com.theerasakping.tpagentstudio.dev",
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["yorgai-dev", "orgii-dev"]
+        "schemes": [
+          "tpagentstudio-dev"
+        ]
       }
     },
     "updater": {

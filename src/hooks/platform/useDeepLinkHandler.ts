@@ -109,7 +109,7 @@ export function reArmTrackedShareUrls(
  * @param deepLinkUrl - The deep link URL (e.g., yorgai://marketplace/callback?code=xxx)
  * @returns Object with path and search, or null if invalid
  */
-function parseDeepLink(
+export function parseDeepLink(
   deepLinkUrl: string
 ): { path: string; search: string } | null {
   try {
@@ -128,7 +128,10 @@ function parseDeepLink(
     // earlier (see `parseCloudInviteDeepLink` / `parseCloudShareDeepLink`)
     // and never reach this generic conversion.
 
-    const withoutProtocol = deepLinkUrl.replace(/^(?:yorgai|orgii):\/\//, "");
+    const supportedScheme =
+      /^(?:tpagentstudio(?:-dev|-instance\d+)?|yorgai|orgii):\/\//i;
+    if (!supportedScheme.test(deepLinkUrl)) return null;
+    const withoutProtocol = deepLinkUrl.replace(supportedScheme, "");
 
     // Split path and query
     const [pathPart, ...queryParts] = withoutProtocol.split("?");
@@ -156,7 +159,8 @@ function parseDeepLink(
 // Only correct when called AFTER the dedicated cloud parsers had their turn.
 export function isUnclaimedCloudDeepLink(url: string): boolean {
   const trimmed = url.trim();
-  if (!trimmed.toLowerCase().startsWith("orgii://")) return false;
+  if (!/^(?:orgii|tpagentstudio(?:-dev|-instance\d+)?):\/\//i.test(trimmed))
+    return false;
   try {
     return (
       new URL(trimmed).hostname.toLowerCase() === CLOUD_INVITE_DEEP_LINK_HOST

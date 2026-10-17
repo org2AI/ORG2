@@ -37,6 +37,55 @@ use crate::pty_commands::pty::{encode_pty_output_frame, PtySession, PtySessionId
 use crate::pty_commands::shell_integration;
 use crate::pty_commands::shells::ShellKind;
 
+#[cfg(test)]
+mod atomic_sub_tests {
+    use super::saturating_atomic_sub;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn subtract_is_saturating_and_returns_previous_counter() {
+        let counter = AtomicUsize::new(100);
+        assert_eq!(saturating_atomic_sub(&counter, 40), 100);
+        assert_eq!(counter.load(Ordering::Relaxed), 60);
+        assert_eq!(saturating_atomic_sub(&counter, 1_000), 60);
+        assert_eq!(counter.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn simultaneous_subtractions_never_underflow() {
+        use std::sync::Arc;
+        let counter = Arc::new(AtomicUsize::new(100));
+        let mut joins = Vec::new();
+        for _ in 0..16 {
+            let counter = counter.clone();
+            joins.push(std::thread::spawn(move || {
+                saturating_atomic_sub(&counter, 30);
+            }));
+        }
+        for join in joins {
+            join.join().expect("atomic decrement thread");
+        }
+        assert_eq!(counter.load(Ordering::Relaxed), 0);
+    }
+}
+
+/// Atomically subtract acknowledged/dropped output bytes without underflow.
+/// A CAS loop keeps this compatible with the project's declared Rust MSRV.
+pub(crate) fn saturating_atomic_sub(counter: &AtomicUsize, bytes: usize) -> usize {
+    let mut before = counter.load(Ordering::Relaxed);
+    loop {
+        match counter.compare_exchange_weak(
+            before,
+            before.saturating_sub(bytes),
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            Ok(previous) => return previous,
+            Err(actual) => before = actual,
+        }
+    }
+}
+
 // ============================================
 // Constants
 // ============================================
@@ -781,11 +830,7 @@ pub async fn create_session(params: CreateSessionParams) -> Result<PtySessionIde
                             // flow-control window — an undelivered chunk is
                             // never ACKed and would shrink the window forever.
                             if !delivered {
-                                let _ = unacked_bytes.fetch_update(
-                                    Ordering::Relaxed,
-                                    Ordering::Relaxed,
-                                    |value| Some(value.saturating_sub(data_len)),
-                                );
+                                let _ = saturating_atomic_sub(&unacked_bytes, data_len);
                             }
                         }
 

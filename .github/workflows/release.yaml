@@ -60,6 +60,8 @@ permissions:
 jobs:
   build-and-release:
     name: Build & Release (macOS aarch64)
+    # The upstream signing/release pipeline must never publish from a derivative fork.
+    if: ${{ github.repository == 'org2AI/ORG2' }}
     runs-on: macos-latest
     env:
       HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
@@ -248,6 +250,8 @@ jobs:
   # ── Windows x64 build ─────────────────────────────────────────────────
   build-windows:
     name: Build & Release (Windows x64)
+    # The upstream signing/release pipeline must never publish from a derivative fork.
+    if: ${{ github.repository == 'org2AI/ORG2' }}
     runs-on: windows-latest
     needs: build-and-release
     # This makes GitHub's OIDC subject stable across all release tags:
@@ -469,6 +473,8 @@ jobs:
   # ── Linux x64 build ───────────────────────────────────────────────────
   build-linux:
     name: Build & Release (Linux x64)
+    # The upstream signing/release pipeline must never publish from a derivative fork.
+    if: ${{ github.repository == 'org2AI/ORG2' }}
     runs-on: ubuntu-22.04
     needs: build-windows
     steps:

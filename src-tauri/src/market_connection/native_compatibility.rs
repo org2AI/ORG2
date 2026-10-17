@@ -257,10 +257,23 @@ fn inspect(bundle: &Path, agent: &str) -> Result<ResolvedNativeClient, String> {
     // digest: bindings and model caches live in this same process. A new local
     // generation avoids reading hundreds of MB from executable/App archives.
     static GENERATION: AtomicU64 = AtomicU64::new(1);
-    let generation = GENERATION
-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
-        .map_err(|_| "Native App generation exhausted")?
-        .to_string();
+    // CAS loop is supported by our Rust MSRV and avoids both the deprecated
+    // fetch_update API and the new try_update API (stable only since 1.95).
+    let mut observed = GENERATION.load(Ordering::Relaxed);
+    let generation = loop {
+        let next = observed
+            .checked_add(1)
+            .ok_or("Native App generation exhausted")?;
+        match GENERATION.compare_exchange_weak(
+            observed,
+            next,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            Ok(previous) => break previous.to_string(),
+            Err(current) => observed = current,
+        }
+    };
     #[cfg(not(any(target_os = "macos", test)))]
     let _ = (&version, &generation);
     let resolved = ResolvedNativeClient {

@@ -85,12 +85,32 @@ fn apply_linux_webkit_cpu_guards() {}
 /// builder, given the identifier embedded in the generated Tauri context.
 pub(crate) fn bootstrap(identifier: &str) {
     let runtime_profile = runtime_instance::RuntimeInstanceProfile::from_identifier(identifier);
+    if runtime_profile.is_fork() {
+        // Preserve explicit absolute test/portable roots, but never allow the
+        // independently branded app to use the original ~/.orgii store.
+        if let Some(explicit) = std::env::var_os("ORGII_HOME") {
+            if let Err(reason) = runtime_profile.validate_explicit_home(
+                &app_paths::home_dir(),
+                std::path::Path::new(&explicit),
+            ) {
+                eprintln!("TP Agent Studio refused unsafe profile override: {reason}");
+                std::process::exit(1);
+            }
+        }
+    }
     if std::env::var_os("ORGII_HOME").is_none() {
         if let Some(data_home) = runtime_profile.default_orgii_home(&app_paths::home_dir()) {
             std::env::set_var("ORGII_HOME", data_home);
         }
     }
-    if std::env::var_os("ORGII_EXTERNAL_HISTORY_HOME").is_none() {
+    if runtime_profile.is_fork() {
+        // Keep external discovery and provider-native transcript publication
+        // out of the user's upstream/default CLI homes until an opt-in
+        // import/migration UI has been designed and tested.
+        let history_home = app_paths::orgii_root().join("external-history-home");
+        std::env::set_var("ORGII_EXTERNAL_HISTORY_HOME", &history_home);
+        std::env::set_var("ORGII_NATIVE_TRANSCRIPT_HOME", &history_home);
+    } else if std::env::var_os("ORGII_EXTERNAL_HISTORY_HOME").is_none() {
         let resolved_orgii_home = app_paths::orgii_root();
         if let Some(external_history_home) =
             runtime_profile.default_external_history_home(&resolved_orgii_home)

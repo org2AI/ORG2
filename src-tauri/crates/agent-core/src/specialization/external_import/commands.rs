@@ -50,7 +50,10 @@ pub async fn external_import_apply(
     selections: Vec<ImportSelection>,
     state: tauri::State<'_, std::sync::Arc<AgentDefinitionsStore>>,
 ) -> Result<ImportReport, String> {
-    Ok(apply_selections(selections, &state))
+    let store = state.inner().clone();
+    tokio::task::spawn_blocking(move || apply_selections(selections, &store))
+        .await
+        .map_err(|err| format!("External import worker failed: {err}"))
 }
 
 /// Internal entry-point: same behaviour as the Tauri command, exposed
@@ -487,25 +490,11 @@ fn apply_agent_definition_import(
         ..Default::default()
     };
 
-    let mut agents = store
-        .agents
-        .lock()
-        .map_err(|err| format!("Lock error on agent-definitions store: {}", err))?;
-
-    if let Some(idx) = agents.iter().position(|a| a.id == selection.target_name) {
-        if !selection.overwrite {
-            return Err(format!(
-                "Agent definition '{}' already exists; pass `overwrite: true` to replace it",
-                selection.target_name
-            ));
-        }
-        agents[idx] = new_agent;
+    if selection.overwrite {
+        store.upsert(new_agent)
     } else {
-        agents.push(new_agent);
+        store.insert(new_agent).map(|_| ())
     }
-
-    store.persist(&agents);
-    Ok(())
 }
 
 /// Tear off `---\n…---\n` YAML frontmatter for the apply path. Returns

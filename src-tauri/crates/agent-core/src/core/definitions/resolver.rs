@@ -80,12 +80,12 @@ fn get_raw_definition(
     }
 
     if let Some(store) = store {
-        let agents = store
-            .agents
-            .lock()
-            .map_err(|err| format!("Lock error: {}", err))?;
-        if let Some(agent) = agents.iter().find(|a| a.id == agent_id) {
-            return Ok(agent.clone());
+        if let Some(agent) = store
+            .snapshot()
+            .into_iter()
+            .find(|agent| agent.id == agent_id)
+        {
+            return Ok(agent);
         }
     }
 

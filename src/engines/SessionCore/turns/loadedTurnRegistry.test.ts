@@ -103,6 +103,40 @@ describe("loadedTurnRegistry lifecycle", () => {
     });
   });
 
+  it.each(["resolve", "reject"] as const)(
+    "stops an old eviction sweep after clear when its pending unload %ss",
+    async (outcome) => {
+      const sessionId = "codexapp-large";
+      const oldGeneration = captureLoadedTurnRegistryGeneration(sessionId);
+      for (const turnId of ["turn-1", "turn-2", "turn-3"]) {
+        markTurnBodyLoaded(sessionId, turnId, oldGeneration);
+      }
+      let settle!: () => void;
+      unloadTurnBody.mockImplementationOnce(
+        () =>
+          new Promise<number>((resolve, reject) => {
+            settle = () =>
+              outcome === "resolve"
+                ? resolve(1)
+                : reject(new Error("old store replaced"));
+          })
+      );
+      const pruning = pruneLoadedTurnBodies(sessionId, ["turn-3"]);
+      expect(unloadTurnBody).toHaveBeenCalledTimes(1);
+
+      clearLoadedTurnRegistry(sessionId);
+      const newGeneration = captureLoadedTurnRegistryGeneration(sessionId);
+      markTurnBodyLoaded(sessionId, "turn-2", newGeneration);
+      settle();
+      await pruning;
+
+      expect(unloadTurnBody).toHaveBeenCalledTimes(1);
+      expect(unloadTurnBody).toHaveBeenCalledWith(sessionId, "turn-1");
+      expect(isTurnBodyLoaded(sessionId, "turn-2")).toBe(true);
+      expect(getLoadedTurnRegistryStats().loadedTurns).toBe(1);
+    }
+  );
+
   describe("isTurnBodyLoaded", () => {
     it("is false before a turn body has ever been marked loaded", () => {
       expect(isTurnBodyLoaded("session-a", "turn-1")).toBe(false);

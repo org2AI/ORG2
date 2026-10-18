@@ -11,7 +11,10 @@ interface LoadedPayloadEntry {
 }
 
 const loadedPayloads = new Map<string, LoadedPayloadEntry>();
-const pendingLoads = new Map<string, Promise<string | null>>();
+interface PendingPayloadLoad {
+  promise: Promise<string | null>;
+}
+const pendingLoads = new Map<string, PendingPayloadLoad>();
 
 function estimateStringBytes(value: string): number {
   return value.length * 2;
@@ -22,7 +25,7 @@ export function getPayloadRegistryKey(
   eventId: string,
   fieldPath: string
 ): string {
-  return `${sessionId}:${eventId}:${fieldPath}`;
+  return JSON.stringify([sessionId, eventId, fieldPath]);
 }
 
 export function getLoadedPayload(key: string): string | null {
@@ -35,23 +38,35 @@ export function getLoadedPayload(key: string): string | null {
 export function getPendingPayloadLoad(
   key: string
 ): Promise<string | null> | null {
-  return pendingLoads.get(key) ?? null;
+  return pendingLoads.get(key)?.promise ?? null;
 }
 
-export async function trackPendingPayloadLoad(
+export function trackPendingPayloadLoad(
   key: string,
-  load: Promise<string | null>
+  load: () => Promise<string | null>
 ): Promise<string | null> {
-  pendingLoads.set(key, load);
-  try {
-    const body = await load;
-    if (body !== null) {
-      markPayloadLoaded(key, body);
-    }
-    return body;
-  } finally {
-    pendingLoads.delete(key);
-  }
+  const existing = pendingLoads.get(key);
+  if (existing) return existing.promise;
+  const flight: PendingPayloadLoad = {
+    promise: Promise.resolve()
+      .then(() => (pendingLoads.get(key) === flight ? load() : null))
+      .then(
+        (body) => {
+          if (pendingLoads.get(key) !== flight) return null;
+          if (body !== null) markPayloadLoaded(key, body);
+          return body;
+        },
+        (error: unknown) => {
+          if (pendingLoads.get(key) !== flight) return null;
+          throw error;
+        }
+      )
+      .finally(() => {
+        if (pendingLoads.get(key) === flight) pendingLoads.delete(key);
+      }),
+  };
+  pendingLoads.set(key, flight);
+  return flight.promise;
 }
 
 export function markPayloadLoaded(key: string, body: string): void {
@@ -66,6 +81,7 @@ export function markPayloadLoaded(key: string, body: string): void {
 
 export function unloadPayload(key: string): void {
   loadedPayloads.delete(key);
+  pendingLoads.delete(key);
 }
 
 export function clearLoadedPayloads(): void {

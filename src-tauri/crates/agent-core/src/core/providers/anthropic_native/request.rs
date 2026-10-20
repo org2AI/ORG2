@@ -91,8 +91,22 @@ pub(super) fn prepare_request(
         max_tokens,
         temperature,
     );
-    let thinking = outcome.thinking;
-    let effort = outcome.effort;
+    // Flash always thinks; it accepts adaptive thinking and five effort levels.
+    // Old `-none` selections retain the model's default instead of sending an
+    // unsupported disabled/none request. M3 keeps its protocol-native default.
+    let minimax_flash = client.provider_spec.name
+        == crate::providers::registry::provider_id::MINIMAX
+        && resolved_model.eq_ignore_ascii_case("MiniMax-M3.1-Flash");
+    let thinking = if minimax_flash {
+        Some(json!({ "type": "adaptive" }))
+    } else {
+        outcome.thinking
+    };
+    let effort = if minimax_flash {
+        Some(crate::providers::thinking_mode::minimax_flash_effort(parsed.level).to_string())
+    } else {
+        outcome.effort
+    };
     let mut effective_temp = outcome.temperature;
     let effective_max_tokens = outcome.max_tokens;
 

@@ -564,14 +564,8 @@ fn build_non_streaming_response(parsed: MessagesResponse) -> LLMResponse {
                 signature,
             } => {
                 if let Some(ref thought) = thinking {
-                    if let Some(sig) = signature {
-                        pending_anthropic_thinking = Some(serde_json::json!({
-                            "anthropic": {
-                                "thinking": thought,
-                                "signature": sig,
-                            }
-                        }));
-                    }
+                    pending_anthropic_thinking =
+                        super::messages::thinking_history(thought, signature.as_deref());
                     // Empty summaries still carry signed history (Fable 5.1).
                     if thought.is_empty() {
                         continue;

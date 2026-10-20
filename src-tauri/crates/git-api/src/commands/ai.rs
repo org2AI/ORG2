@@ -103,7 +103,7 @@ fn default_model_for(agent_type: &ModelType) -> &'static str {
         ModelType::ZenmuxApi => "deepseek/deepseek-chat",
         ModelType::DashscopeApi => "qwen-turbo",
         ModelType::MoonshotApi => "moonshot-v1-8k",
-        ModelType::MinimaxApi => "MiniMax-M3",
+        ModelType::MinimaxApi => "MiniMax-M3.1-Flash",
         ModelType::ZhipuApi => "glm-4-flash",
         ModelType::VllmApi => "default",
         _ => "gpt-4o-mini",
@@ -291,8 +291,15 @@ pub async fn generate_commit_message(
             json!({ "role": "user", "content": diff_summary }),
         ];
 
+        // Flash always thinks, and reasoning counts toward the output budget.
+        // Leave enough room for both reasoning and the commit message.
+        let max_tokens = if model == "MiniMax-M3.1-Flash" {
+            8192
+        } else {
+            256
+        };
         let response = client
-            .chat(&messages, None, model, 256, 0.3)
+            .chat(&messages, None, model, max_tokens, 0.3)
             .await
             .map_err(|err| format!("LLM request failed: {}", err))?;
 
@@ -374,7 +381,7 @@ mod tests {
         (ModelType::ZenmuxApi, "zenmux", "deepseek/deepseek-chat"),
         (ModelType::DashscopeApi, "dashscope", "qwen-turbo"),
         (ModelType::MoonshotApi, "moonshot", "moonshot-v1-8k"),
-        (ModelType::MinimaxApi, "minimax", "MiniMax-M3"),
+        (ModelType::MinimaxApi, "minimax", "MiniMax-M3.1-Flash"),
         (ModelType::ZhipuApi, "zhipu", "glm-4-flash"),
         (ModelType::VllmApi, "vllm", "default"),
     ];

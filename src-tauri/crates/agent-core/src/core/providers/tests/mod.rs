@@ -10,3 +10,4 @@ pub mod registry_tests;
 mod custom_model_requests_tests;
 
 mod auxiliary_model_tests;
+mod minimax_requests_tests;

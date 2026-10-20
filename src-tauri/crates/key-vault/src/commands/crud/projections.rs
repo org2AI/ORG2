@@ -155,6 +155,18 @@ impl From<ModelKey> for KeyInfo {
         let can_launch_cli = can_launch_cli(&entry);
         let can_refresh_quota = key_can_refresh_quota(&entry);
 
+        let explicit_models: Vec<String> = entry
+            .enabled_models
+            .iter()
+            .cloned()
+            .chain(entry.model_aliases.iter().map(|alias| alias.alias.clone()))
+            .collect();
+        let available_models = crate::model_catalog::current_minimax_catalog(
+            entry.model_type.as_str(),
+            &entry.available_models,
+            &explicit_models,
+        );
+
         KeyInfo {
             id: entry.id.clone(),
             name: entry.name.clone(),
@@ -170,7 +182,7 @@ impl From<ModelKey> for KeyInfo {
             env_vars: entry.env_vars.keys().cloned().collect(),
             env_vars_masked,
             account_metadata: entry.account_metadata.clone(),
-            available_models: entry.available_models.clone(),
+            available_models,
             enabled_models: entry.enabled_models.clone(),
             model_aliases: entry
                 .model_aliases

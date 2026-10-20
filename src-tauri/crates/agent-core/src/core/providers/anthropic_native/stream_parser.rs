@@ -447,14 +447,8 @@ pub(super) fn finalize_blocks(
                 }
             }
             BlockAcc::Thinking { text, signature } => {
-                if let Some(sig) = signature {
-                    pending_anthropic_thinking = Some(serde_json::json!({
-                        "anthropic": {
-                            "thinking": text,
-                            "signature": sig,
-                        }
-                    }));
-                }
+                pending_anthropic_thinking =
+                    super::messages::thinking_history(&text, signature.as_deref());
                 if !text.is_empty() {
                     blocks.push(AssistantBlock::Reasoning { text });
                 }

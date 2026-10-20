@@ -139,7 +139,7 @@ fn preferences(spec: &ProviderSpec, codex_oauth: bool) -> &'static [&'static str
             "glm-4.7-flashx",
         ],
         provider_id::DASHSCOPE => &["qwen-flash", "qwen-turbo", "qwen3.5-flash"],
-        provider_id::MINIMAX => &["minimax-m2.5", "minimax-m2.1", "minimax-m2"],
+        provider_id::MINIMAX => &["minimax-m3.1-flash", "minimax-m3"],
         provider_id::LONGCAT => &["longcat-flash-chat", "longcat-flash"],
         provider_id::MOONSHOT => &["kimi-k2-0905-preview", "kimi-k2.5", "kimi-k2"],
         provider_id::OPENROUTER

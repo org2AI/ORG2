@@ -57,7 +57,7 @@ pub async fn run_validate_key(
     let agent_type_lower = agent_type.to_lowercase();
     let protocol_lower = protocol.as_deref().map(str::to_lowercase);
 
-    match agent_type_lower.as_str() {
+    let mut result = match agent_type_lower.as_str() {
         // GitHub Copilot
         "copilot" | "github_copilot" => {
             let validator = CopilotValidator::new();
@@ -172,7 +172,16 @@ pub async fn run_validate_key(
             "Unknown agent type: {}. Supported: copilot, cursor_cli, openai, anthropic, google, codex, claude_code, kiro, opencode, openai_api, atlascloud_api, anthropic_api, gemini_api, deepseek_api, groq_api, xai_api, zhipu_api, dashscope_api, moonshot_api, minimax_api, longcat_api, openrouter_api, zenmux_api, siliconflow_api, modelscope_api, aihubmix_api, cherryin_api, bedrock_api, custom_api, vllm_api, azure_openai_api, azure_anthropic_api",
             agent_type
         )),
+    }?;
+    if result.valid {
+        let explicit: Vec<String> = test_model.into_iter().collect();
+        result.models_available = crate::model_catalog::current_minimax_catalog(
+            &agent_type_lower,
+            &result.models_available,
+            &explicit,
+        );
     }
+    Ok(result)
 }
 
 /// Validate a key for a given agent type

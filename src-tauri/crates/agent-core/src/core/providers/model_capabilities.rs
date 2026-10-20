@@ -728,6 +728,21 @@ fn resolve_with_keyvault_variants(model: &str, variants: &[ModelVariant]) -> Mod
 
 fn resolve_from_family_table(model: &str) -> ModelCapabilities {
     let base_model = parse_model_variant_id(model).base_model;
+    // Direct IDs only: gateway routes (including :free / -free) must use
+    // their own reported limits instead of inheriting direct API metadata.
+    if base_model.eq_ignore_ascii_case("MiniMax-M3.1-Flash")
+        || base_model.eq_ignore_ascii_case("MiniMax-M3")
+    {
+        return ModelCapabilities {
+            context_window: 1_000_000,
+            thinking: if base_model.eq_ignore_ascii_case("MiniMax-M3.1-Flash") {
+                ThinkingSupport::AlwaysOn
+            } else {
+                ThinkingSupport::Optional
+            },
+            omit_temperature_with_thinking: true,
+        };
+    }
     let normalized = super::model_hints::normalize_claude_shorthand(&base_model);
     let model_lower = normalize_claude_release_separators(&normalized.to_lowercase());
     for rule in FAMILY_RULES {

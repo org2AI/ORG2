@@ -14,6 +14,12 @@ fn account(model_type: ModelType, model: &str) -> ModelKey {
 fn auxiliary_model_respects_account_access_and_enabled_models() {
     for (family, model_type, parent, fast) in [
         (
+            provider_id::MINIMAX,
+            ModelType::MinimaxApi,
+            "MiniMax-M3",
+            "MiniMax-M3.1-Flash",
+        ),
+        (
             provider_id::OPENAI,
             ModelType::OpenaiApi,
             "gpt-5.6-luna-medium",

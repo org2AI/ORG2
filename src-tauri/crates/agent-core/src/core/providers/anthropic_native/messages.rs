@@ -69,7 +69,11 @@ pub(super) fn extract_system(
                 }
             }
             "assistant" => {
-                let mut content_blocks: Vec<Value> = Vec::new();
+                let mut content_blocks: Vec<Value> = msg
+                    .get("content")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
 
                 let text = msg.get("content").and_then(|c| c.as_str()).unwrap_or("");
                 if !text.is_empty() {
@@ -434,17 +438,24 @@ fn finalize_wire_hygiene(messages: &mut Vec<Value>) {
 fn anthropic_thinking_block(tool_call: &Value) -> Option<Value> {
     let anthropic = tool_call.get("extra_content")?.get("anthropic")?;
     let thinking = anthropic.get("thinking")?.as_str()?;
-    let signature = anthropic.get("signature")?.as_str()?;
-    // Fable 5.1 can sign an empty visible summary. The opaque signature,
-    // not the amount of display text, determines whether to replay it.
-    if signature.is_empty() {
+    let mut block = thinking_history(thinking, anthropic.get("signature").and_then(Value::as_str))?
+        ["anthropic"]
+        .clone();
+    block["type"] = Value::String("thinking".into());
+    Some(block)
+}
+
+/// MiniMax returns unsigned reasoning; Claude may sign even an empty summary.
+/// Preserve whichever fields the provider supplied without fabricating a signature.
+pub(super) fn thinking_history(thinking: &str, signature: Option<&str>) -> Option<Value> {
+    if thinking.is_empty() && signature.is_none_or(str::is_empty) {
         return None;
     }
-    Some(serde_json::json!({
-        "type": "thinking",
-        "thinking": thinking,
-        "signature": signature,
-    }))
+    let mut block = serde_json::json!({ "thinking": thinking });
+    if let Some(signature) = signature {
+        block["signature"] = Value::String(signature.into());
+    }
+    Some(serde_json::json!({ "anthropic": block }))
 }
 
 /// Convert a single content block from OpenAI format to Anthropic format.

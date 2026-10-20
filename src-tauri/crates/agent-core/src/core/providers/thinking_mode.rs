@@ -314,7 +314,11 @@ mod reasoning_trigger_tests {
     #[test]
     fn escalate_leaves_custom_provider_ids_literal() {
         use crate::providers::registry::provider_id;
-        for model in ["my-deployment", "deployment-high", "new-provider/model-2026-09-01"] {
+        for model in [
+            "my-deployment",
+            "deployment-high",
+            "new-provider/model-2026-09-01",
+        ] {
             assert_eq!(
                 escalate_model_reasoning(model, ReasoningLevel::Max, provider_id::CUSTOM),
                 model
@@ -552,14 +556,25 @@ pub fn zhipu_thinking(level: Option<ReasoningLevel>) -> Option<Value> {
 /// paths (`openai_compat::streaming::chat` / `sse_stream`) so they cannot
 /// drift on the strip + dispatch logic.
 ///
-/// At most one of `reasoning_effort` (OpenAI) and `thinking` (Zhipu GLM) is
-/// set — never both, never for a non-reasoning model.
+/// OpenAI uses `reasoning_effort`; Zhipu uses `thinking`. MiniMax Flash
+/// requires adaptive `thinking` together with its supported effort value.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OpenAiCompatThinking {
     /// Real model id providers accept (suffix stripped).
     pub base_model: String,
     pub reasoning_effort: Option<String>,
     pub thinking: Option<Value>,
+}
+
+/// MiniMax Flash rejects `none`; unsupported saved rungs use its default max.
+pub fn minimax_flash_effort(level: Option<ReasoningLevel>) -> &'static str {
+    match level {
+        Some(ReasoningLevel::Low) => "low",
+        Some(ReasoningLevel::Medium) => "medium",
+        Some(ReasoningLevel::High) => "high",
+        Some(ReasoningLevel::ExtraHigh) => "xhigh",
+        _ => "max",
+    }
 }
 
 pub fn resolve_openai_compat_thinking(
@@ -571,13 +586,19 @@ pub fn resolve_openai_compat_thinking(
     } else {
         parse_model_variant(resolved_model)
     };
+    let minimax_flash = provider_name == crate::providers::registry::provider_id::MINIMAX
+        && parsed.base_model.eq_ignore_ascii_case("MiniMax-M3.1-Flash");
     let mode = resolve_thinking_mode(&parsed.base_model, provider_name);
-    let reasoning_effort = if mode == ThinkingMode::OpenAiEffort {
+    let reasoning_effort = if minimax_flash {
+        Some(minimax_flash_effort(parsed.level).to_string())
+    } else if mode == ThinkingMode::OpenAiEffort {
         openai_effort(parsed.level).map(str::to_string)
     } else {
         None
     };
-    let thinking = if mode == ThinkingMode::ZhipuToggle {
+    let thinking = if minimax_flash {
+        Some(json!({ "type": "adaptive" }))
+    } else if mode == ThinkingMode::ZhipuToggle {
         zhipu_thinking(parsed.level)
     } else {
         None

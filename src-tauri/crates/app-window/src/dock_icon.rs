@@ -14,11 +14,11 @@ use tauri::AppHandle;
 /// `src/config/settingsSchema/registry/general.ts`.
 pub const DOCK_ICON_SETTING_KEY: &str = "general.dockIcon";
 
-/// Bundled 512×512 PNGs rendered from `src/assets/appIcons/*.svg`.
+/// Bundled 512×512 PNGs (the default is the fork-owned two-tone icon).
 /// All variants omit the circle behind the mark; light keeps a soft inset
 /// edge so the white tile still reads on a light Dock.
 const DEV_ICON_PNG: &[u8] = include_bytes!("../../../icons/dev/icon.png");
-const DEV_IDENTIFIER: &str = "org2ai.org2.dev";
+const DEV_IDENTIFIER: &str = "com.theerasakping.tpagentstudio.dev";
 
 const DARK_ICON_PNG: &[u8] = include_bytes!("../../../icons/dock/dark.png");
 const LIGHT_ICON_PNG: &[u8] = include_bytes!("../../../icons/dock/light.png");
@@ -64,7 +64,7 @@ impl DockIconVariant {
     }
 }
 
-/// Dev shares settings with the installed app, so its visual identity must
+/// Dev has its own isolated settings store; its visual identity must
 /// win over every stored/live preference without changing that preference.
 fn process_icon_png(identifier: &str, variant: DockIconVariant) -> &'static [u8] {
     if identifier == DEV_IDENTIFIER {
@@ -233,10 +233,10 @@ mod tests {
             DockIconVariant::Rainbow,
         ] {
             assert_eq!(
-                super::process_icon_png("org2ai.org2.dev", variant),
+                super::process_icon_png("com.theerasakping.tpagentstudio.dev", variant),
                 super::DEV_ICON_PNG
             );
-            for identifier in ["org2ai.org2", "org2ai.org2.instance2"] {
+            for identifier in ["com.theerasakping.tpagentstudio", "com.theerasakping.tpagentstudio.instance2"] {
                 assert_eq!(super::process_icon_png(identifier, variant), variant.png());
             }
         }

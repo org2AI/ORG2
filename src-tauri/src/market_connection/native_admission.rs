@@ -15,6 +15,7 @@ const MAX_WAITERS: usize = 128;
 const FRESHNESS: Duration = Duration::from_secs(30);
 const WAIT_BUDGET: Duration = Duration::from_secs(90);
 
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub(super) trait CapacitySource: Send + Sync {
     async fn buyer_capacity(&self, metadata: &ConnectionMetadata) -> Result<usize, String>;

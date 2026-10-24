@@ -262,6 +262,10 @@ pub struct SyncStatusReport {
 /// Every adapter is a unit-struct implementing this trait. Registration
 /// goes through [`super::adapters::registry`] at boot so commands can
 /// look up adapters by ID without hard-coding any.
+// async_trait materializes async methods as boxed Future-returning functions.
+// Current Clippy sees the macro's #[must_use] on those already must-use Futures.
+// Scope the compatibility waiver to this trait only, not the entire crate.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait SyncAdapter: Send + Sync {
     /// Stable identifier (snake_case). Used as the registry key and

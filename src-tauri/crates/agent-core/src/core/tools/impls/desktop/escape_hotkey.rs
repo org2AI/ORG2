@@ -35,6 +35,24 @@ pub fn notify_expected_escape() {
     EXPECTED_ESCAPES.fetch_add(1, Ordering::Relaxed);
 }
 
+/// Consume one expected synthetic Escape without underflow. A CAS loop
+/// avoids deprecated fetch_update and works on the project's minimum Rust.
+fn consume_expected_escape(counter: &AtomicU32) -> bool {
+    let mut remaining = counter.load(Ordering::SeqCst);
+    while remaining > 0 {
+        match counter.compare_exchange_weak(
+            remaining,
+            remaining - 1,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        ) {
+            Ok(_) => return true,
+            Err(actual) => remaining = actual,
+        }
+    }
+    false
+}
+
 /// Enable or disable the abort action (the tap itself keeps running).
 pub fn set_enabled(enabled: bool) {
     ENABLED.store(enabled, Ordering::Relaxed);
@@ -133,16 +151,7 @@ extern "C" fn escape_tap_callback(
     if is_synthetic {
         return event;
     }
-    if EXPECTED_ESCAPES
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
-            if n > 0 {
-                Some(n - 1)
-            } else {
-                None
-            }
-        })
-        .is_ok()
-    {
+    if consume_expected_escape(&EXPECTED_ESCAPES) {
         return event;
     }
 
@@ -191,3 +200,19 @@ fn run_event_tap() {
         CFRelease(tap);
     }
 }
+
+#[cfg(test)]
+mod atomic_escape_tests {
+    use super::consume_expected_escape;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    #[test]
+    fn expected_escapes_are_consumed_once() {
+        let count = AtomicU32::new(2);
+        assert!(consume_expected_escape(&count));
+        assert!(consume_expected_escape(&count));
+        assert!(!consume_expected_escape(&count));
+        assert_eq!(count.load(Ordering::SeqCst), 0);
+    }
+}
+

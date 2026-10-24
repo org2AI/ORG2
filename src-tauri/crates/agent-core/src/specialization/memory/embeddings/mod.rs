@@ -29,6 +29,8 @@ pub struct EmbeddingResult {
 }
 
 /// Trait for embedding providers.
+// async_trait generates a boxed Future already considered must_use.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait EmbeddingProvider: Send + Sync {
     /// Generate an embedding for a single text.

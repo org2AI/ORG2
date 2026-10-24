@@ -220,7 +220,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         app,
         &[],
         "Open App",
-        "Quit ORG2",
+        "Quit TP Agent Studio",
         "Show Kanban",
         "Show Runtime",
     )?;

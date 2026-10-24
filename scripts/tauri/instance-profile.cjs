@@ -1,8 +1,8 @@
 const path = require("path");
 const os = require("os");
 
-const PRIMARY_IDE_PORT = 13847;
-const PRIMARY_PROXY_PORT = 17888;
+const PRIMARY_IDE_PORT = 23847;
+const PRIMARY_PROXY_PORT = 27888;
 const MAX_INSTANCE_ID = 99;
 // Reserve the next service slot for dev; numbered bundles remain 2..99.
 const DEV_INSTANCE_ID = 100;
@@ -14,11 +14,11 @@ function createDevInstanceProfile() {
     productName: devConfig.productName,
     identifier: devConfig.identifier,
     deepLinkSchemes: devConfig.plugins["deep-link"].desktop.schemes,
-    authDeepLinkScheme: "orgii-dev",
+    authDeepLinkScheme: "tpagentstudio-dev",
     ideServerPort: PRIMARY_IDE_PORT + DEV_INSTANCE_ID - 1,
     cliProxyPort: PRIMARY_PROXY_PORT + DEV_INSTANCE_ID - 1,
-    // Share sessions.db and its related files with the bundled app.
-    dataHome: path.join(os.homedir(), ".orgii"),
+    // The fork dev build must never share sessions.db with production or upstream.
+    dataHome: path.join(os.homedir(), ".tp-agent-studio-dev"),
   };
 }
 
@@ -52,13 +52,13 @@ function createInstanceProfile(value) {
   const suffix = `instance${id}`;
   return {
     id,
-    productName: `ORG2 Instance ${id}`,
-    identifier: `org2ai.org2.${suffix}`,
-    deepLinkSchemes: [`yorgai-${suffix}`, `orgii-${suffix}`],
-    authDeepLinkScheme: `orgii-${suffix}`,
+    productName: `TP Agent Studio Instance ${id}`,
+    identifier: `com.theerasakping.tpagentstudio.${suffix}`,
+    deepLinkSchemes: [`tpagentstudio-${suffix}`],
+    authDeepLinkScheme: `tpagentstudio-${suffix}`,
     ideServerPort: PRIMARY_IDE_PORT + id - 1,
     cliProxyPort: PRIMARY_PROXY_PORT + id - 1,
-    dataHome: path.join(os.homedir(), `.orgii-${suffix}`),
+    dataHome: path.join(os.homedir(), `.tp-agent-studio-${suffix}`),
   };
 }
 

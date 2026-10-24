@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 /// Transport adapter trait - All platforms must implement this interface
+// async_trait generates boxed Future return values, already #[must_use].
+// Narrow the current Clippy double_must_use compatibility guard to this trait.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait TransportAdapter: Send + Sync + Debug {
     /// Emit agent event to frontend

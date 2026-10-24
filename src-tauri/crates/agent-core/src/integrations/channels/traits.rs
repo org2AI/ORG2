@@ -9,6 +9,8 @@ use crate::bus::{InboundMessage, OutboundMessage};
 ///
 /// Each channel implementation handles connecting to an external service
 /// (Telegram, Discord, etc.), receiving messages, and sending responses.
+// async_trait's boxed Future is already must_use; keep the lint exception local.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait Channel: Send + Sync {
     /// Channel name including account ID (e.g., "telegram:default", "discord:work").

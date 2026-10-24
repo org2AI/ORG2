@@ -1,4 +1,4 @@
-//! The `~/.orgii/` data root and the files and directories that live directly
+//! The fork-local `~/.tp-agent-studio/` data root and the files and directories that live directly
 //! under it: databases, caches, settings, the OS Agent ("personal") family,
 //! sync stores, policy/MCP config, and the file-based session registry.
 
@@ -6,17 +6,17 @@ use std::path::{Path, PathBuf};
 
 use crate::home::home_dir;
 
-/// Application data root: `~/.orgii/`.
+/// Independent fork data root: `~/.tp-agent-studio/` by default.
 ///
-/// Test override: setting `ORGII_HOME` redirects every path under the data
-/// root to that directory. Production code must never set it.
-///
-/// Fallback: `$TMPDIR/.orgii/` (only reached if `dirs::home_dir()` fails).
+/// `ORGII_HOME` is still the internal compatibility override for child tools,
+/// tests and the bootstrap layer. Never point it to the upstream `~/.orgii/`.
+/// Fork-specific Tauri startup selects distinct primary/dev/numbered roots.
+/// Fallback: `$TMPDIR/.tp-agent-studio/` when user home is unavailable.
 pub fn orgii_root() -> PathBuf {
     if let Ok(override_path) = std::env::var("ORGII_HOME") {
         return PathBuf::from(override_path);
     }
-    home_dir().join(".orgii")
+    home_dir().join(".tp-agent-studio")
 }
 
 /// Provider keys file: `~/.orgii/credentials.json`.

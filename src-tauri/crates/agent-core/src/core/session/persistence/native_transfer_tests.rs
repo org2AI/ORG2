@@ -47,7 +47,7 @@ async fn native_ipc_embeds_disk_images_without_cli_refs_and_preserves_display_ro
     let sid = "sdeagent-transfer-images";
     seed(sid);
     let url = "data:image/png;base64,QUJD".to_string();
-    let id = super::super::save_user_msg(sid, "inspect", Some(&[url.clone()])).unwrap();
+    let id = super::super::save_user_msg(sid, "inspect", Some(std::slice::from_ref(&url))).unwrap();
     bind(sid, &id, "image-intent");
     let stored = super::super::load_messages(sid).unwrap();
     let paths: Vec<String> = serde_json::from_str(stored[0].images.as_ref().unwrap()).unwrap();
@@ -60,7 +60,7 @@ async fn native_ipc_embeds_disk_images_without_cli_refs_and_preserves_display_ro
         assert_eq!(native[0]["turnIntentId"], "image-intent");
         assert_eq!(
             native[0]["images"],
-            serde_json::to_string(&[url.clone()]).unwrap()
+            serde_json::to_string(std::slice::from_ref(&url)).unwrap()
         );
     }
     let display = crate::state::commands::agent_load_messages(sid.into(), None)

@@ -11,11 +11,11 @@ const {
 
 test("dev identity cannot collide with primary or any numbered bundle", () => {
   const dev = createDevInstanceProfile();
-  assert.equal(dev.identifier, "org2ai.org2.dev");
-  assert.equal(dev.ideServerPort, 13946);
-  assert.equal(dev.cliProxyPort, 17987);
-  assert.equal(dev.authDeepLinkScheme, "orgii-dev");
-  assert.match(dev.dataHome, /\.orgii$/);
+  assert.equal(dev.identifier, "com.theerasakping.tpagentstudio.dev");
+  assert.equal(dev.ideServerPort, 23946);
+  assert.equal(dev.cliProxyPort, 27987);
+  assert.equal(dev.authDeepLinkScheme, "tpagentstudio-dev");
+  assert.match(dev.dataHome, /\.tp-agent-studio-dev$/);
   for (let id = 2; id <= 99; id++) {
     const bundle = createInstanceProfile(id);
     for (const key of [
@@ -38,9 +38,9 @@ test("dev frontend defaults agree with runtime ports and preserve explicit overr
   const env = { PATH: "/test/bin" };
   assert.deepEqual(applyDevInstanceEnv(env), {
     PATH: "/test/bin",
-    ORGII_IDE_SERVER_PORT: "13946",
-    ORGII_CLI_PROXY_PORT: "17987",
-    ORGII_DEEP_LINK_SCHEME: "orgii-dev",
+    ORGII_IDE_SERVER_PORT: "23946",
+    ORGII_CLI_PROXY_PORT: "27987",
+    ORGII_DEEP_LINK_SCHEME: "tpagentstudio-dev",
   });
   assert.deepEqual(env, { PATH: "/test/bin" });
   const overrides = {
@@ -55,11 +55,11 @@ test("dev frontend defaults agree with runtime ports and preserve explicit overr
 
 test("instance 2 receives isolated identity, schemes, and ports", () => {
   const profile = createInstanceProfile("2");
-  assert.equal(profile.identifier, "org2ai.org2.instance2");
-  assert.equal(profile.authDeepLinkScheme, "orgii-instance2");
-  assert.equal(profile.ideServerPort, 13848);
-  assert.equal(profile.cliProxyPort, 17889);
-  assert.match(profile.dataHome, /\.orgii-instance2$/);
+  assert.equal(profile.identifier, "com.theerasakping.tpagentstudio.instance2");
+  assert.equal(profile.authDeepLinkScheme, "tpagentstudio-instance2");
+  assert.equal(profile.ideServerPort, 23848);
+  assert.equal(profile.cliProxyPort, 27889);
+  assert.match(profile.dataHome, /\.tp-agent-studio-instance2$/);
 });
 
 test("primary and unbounded instance ids are rejected", () => {
@@ -69,12 +69,12 @@ test("primary and unbounded instance ids are rejected", () => {
 });
 
 test("IDE server ports resolve through the canonical instance profile", () => {
-  const profile = createInstanceProfileFromIdeServerPort("13848");
+  const profile = createInstanceProfileFromIdeServerPort("23848");
   assert.equal(profile.id, 2);
-  assert.equal(profile.productName, "ORG2 Instance 2");
-  assert.equal(profile.cliProxyPort, 17889);
+  assert.equal(profile.productName, "TP Agent Studio Instance 2");
+  assert.equal(profile.cliProxyPort, 27889);
 
-  for (const value of [undefined, "13847", "13946", "not-a-port"]) {
+  for (const value of [undefined, "23847", "23946", "not-a-port"]) {
     assert.throws(() => createInstanceProfileFromIdeServerPort(value));
   }
 });

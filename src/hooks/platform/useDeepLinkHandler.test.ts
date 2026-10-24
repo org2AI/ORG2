@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isUnclaimedCloudDeepLink,
+  parseDeepLink,
   reArmTrackedShareUrls,
   trackReArmableShareUrl,
 } from "./useDeepLinkHandler";
@@ -73,5 +74,43 @@ describe("malformed cloud deep-link containment", () => {
     expect(isUnclaimedCloudDeepLink("yorgai://cloud/join")).toBe(false);
     expect(isUnclaimedCloudDeepLink("https://cloud/join")).toBe(false);
     expect(isUnclaimedCloudDeepLink("not a url")).toBe(false);
+  });
+});
+
+describe("fork deep-link routing", () => {
+  it("normalizes the provisional fork schemes while keeping the in-app /orgii router base", () => {
+    expect(
+      parseDeepLink("tpagentstudio://marketplace/callback?code=abc")
+    ).toEqual({
+      path: "/orgii/marketplace/callback",
+      search: "?code=abc",
+    });
+    expect(parseDeepLink("tpagentstudio-dev://settings")).toEqual({
+      path: "/orgii/settings",
+      search: "",
+    });
+    expect(
+      parseDeepLink("tpagentstudio-instance2://project/open?id=3")
+    ).toEqual({
+      path: "/orgii/project/open",
+      search: "?id=3",
+    });
+    expect(parseDeepLink("orgii://marketplace/callback")).toEqual({
+      path: "/orgii/marketplace/callback",
+      search: "",
+    });
+    expect(parseDeepLink("unregistered://marketplace/callback")).toBeNull();
+  });
+
+  it("does not let unhandled fork cloud links fall through to generic routing", () => {
+    expect(isUnclaimedCloudDeepLink("tpagentstudio://cloud/join?invite=")).toBe(
+      true
+    );
+    expect(
+      isUnclaimedCloudDeepLink("tpagentstudio-dev://cloud/session?share=")
+    ).toBe(true);
+    expect(
+      isUnclaimedCloudDeepLink("tpagentstudio://marketplace/callback")
+    ).toBe(false);
   });
 });

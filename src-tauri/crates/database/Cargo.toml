@@ -24,3 +24,6 @@ dirs = "6.0"
 # lock so concurrent writers queue in Rust instead of racing for the
 # `SQLITE_BUSY` slot — see `db::writer` for the full rationale.
 parking_lot = "0.12"
+
+[dev-dependencies]
+tempfile = "3.13"

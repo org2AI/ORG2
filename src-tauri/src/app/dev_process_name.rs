@@ -6,8 +6,8 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-const DEV_IDENTIFIER: &str = "org2ai.org2.dev";
-const DEV_EXECUTABLE_NAME: &str = "ORG2 Dev";
+const DEV_IDENTIFIER: &str = "com.theerasakping.tpagentstudio.dev";
+const DEV_EXECUTABLE_NAME: &str = "TP Agent Studio Dev";
 
 fn needs_named_executable(identifier: &str, executable: &Path) -> bool {
     if identifier != DEV_IDENTIFIER
@@ -72,19 +72,25 @@ mod tests {
         let bare = Path::new("/build/debug/org2");
         assert!(needs_named_executable(DEV_IDENTIFIER, bare));
         for identifier in [
-            "org2ai.org2",
-            "org2ai.org2.instance2",
-            "org2ai.org2.e2e.instance2",
+            "com.theerasakping.tpagentstudio",
+            "com.theerasakping.tpagentstudio.instance2",
+            "com.theerasakping.tpagentstudio.e2e.instance2",
         ] {
             assert!(!needs_named_executable(identifier, bare));
         }
         assert!(!needs_named_executable(
             DEV_IDENTIFIER,
+            Path::new("/build/debug/TP Agent Studio Dev")
+        ));
+        // The upstream process name is NOT the fork's dev process name.
+        // Otherwise a renamed fork could keep showing an upstream Dock title.
+        assert!(needs_named_executable(
+            DEV_IDENTIFIER,
             Path::new("/build/debug/ORG2 Dev")
         ));
         assert!(!needs_named_executable(
             DEV_IDENTIFIER,
-            Path::new("/build/ORG2 Dev.app/Contents/MacOS/org2")
+            Path::new("/build/TP Agent Studio Dev.app/Contents/MacOS/org2")
         ));
     }
 

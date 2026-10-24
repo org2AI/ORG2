@@ -222,3 +222,6 @@ mod tests {
         assert_eq!(value, "nested");
     }
 }
+
+#[cfg(test)]
+mod fault_injection_tests;

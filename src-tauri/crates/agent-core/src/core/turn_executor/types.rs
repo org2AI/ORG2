@@ -31,6 +31,7 @@ pub enum PermissionVerdict {
 /// `execute_turn` calls this when a tool has an `Ask` verdict in the policy.
 /// Implementations handle the actual prompt UI (a frontend dialog driven by
 /// a `permission:request` event delivered over the Tauri IPC Channel).
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait PermissionProvider: Send + Sync {
     /// Check if a tool has been granted "always allow" for the current session.
@@ -53,6 +54,7 @@ pub trait PermissionProvider: Send + Sync {
 /// before `execute_turn`, then perform a zero-wait collect before each provider
 /// request. Implementations must return immediately when their work is not yet
 /// ready.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait TurnIterationHook: Send + Sync {
     async fn before_llm_iteration(
@@ -210,6 +212,8 @@ pub struct ToolHookIntervention {
 ///
 /// Implementors handle streaming deltas, tool call/result events,
 /// and persistence. Each agent type provides its own implementation.
+// async_trait yields a must_use boxed Future; guard only this callback trait.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 #[allow(unused_variables, clippy::too_many_arguments)]
 // Event implementations share this callback contract across providers; keep

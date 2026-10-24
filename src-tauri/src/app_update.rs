@@ -29,17 +29,29 @@ use uuid::Uuid;
 /// Stable channel: GitHub's `releases/latest` alias, which excludes
 /// prereleases. Must stay in sync with `plugins.updater.endpoints` in
 /// `tauri.conf.json`.
+/// The fork must not check or install org2AI's signed upstream binaries.
+/// Keep false until own manifest URLs, keys, IDs, app paths and migration are ready.
+const FORK_UPDATER_READY: bool = false;
+
+fn require_fork_updater_ready() -> Result<(), String> {
+    if FORK_UPDATER_READY {
+        Ok(())
+    } else {
+        Err("Updates are disabled in this independent fork until its own signed release channel is configured".to_string())
+    }
+}
+
 const STABLE_MANIFEST_URL: &str =
-    "https://github.com/org2AI/ORG2/releases/latest/download/latest.json";
+    "https://github.com/TheerasakPing/ORG2/releases/latest/download/latest.json";
 
 /// Beta channel: rolling `updater` release whose `beta.json` is overwritten
 /// by every release (stable and beta) in `.github/workflows/release.yaml`,
 /// so it always points at the newest build of either kind.
 const BETA_MANIFEST_URL: &str =
-    "https://github.com/org2AI/ORG2/releases/download/updater/beta.json";
+    "https://github.com/TheerasakPing/ORG2/releases/download/updater/beta.json";
 
-const PRODUCTION_MACOS_APP_PATH: &str = "/Applications/ORG2.app";
-const PRODUCTION_BUNDLE_IDENTIFIER: &str = "org2ai.org2";
+const PRODUCTION_MACOS_APP_PATH: &str = "/Applications/TP Agent Studio.app";
+const PRODUCTION_BUNDLE_IDENTIFIER: &str = "com.theerasakping.tpagentstudio";
 
 static SEPARATE_INSTALL_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
@@ -76,6 +88,9 @@ fn compiled_build_kind() -> AppBuildKind {
 }
 
 fn install_strategy(kind: AppBuildKind) -> AppUpdateInstallStrategy {
+    if !FORK_UPDATER_READY {
+        return AppUpdateInstallStrategy::Unavailable;
+    }
     match kind {
         AppBuildKind::Release => AppUpdateInstallStrategy::InPlace,
         AppBuildKind::Local if cfg!(target_os = "macos") => {
@@ -157,6 +172,7 @@ pub async fn check_app_update(
     channel: UpdateChannel,
     timeout_ms: Option<u64>,
 ) -> Result<Option<UpdateMetadata>, String> {
+    require_fork_updater_ready()?;
     let endpoint = Url::parse(channel.manifest_url()).map_err(|err| err.to_string())?;
 
     let mut builder = webview
@@ -394,17 +410,16 @@ mod tests {
     }
 
     #[test]
-    fn release_builds_update_in_place_and_local_builds_never_guess() {
+    fn independent_fork_disables_all_upstream_update_strategies() {
         assert_eq!(
             install_strategy(AppBuildKind::Release),
-            AppUpdateInstallStrategy::InPlace
-        );
-        let expected_local = if cfg!(target_os = "macos") {
-            AppUpdateInstallStrategy::SeparateMacosApplication
-        } else {
             AppUpdateInstallStrategy::Unavailable
-        };
-        assert_eq!(install_strategy(AppBuildKind::Local), expected_local);
+        );
+        assert_eq!(
+            install_strategy(AppBuildKind::Local),
+            AppUpdateInstallStrategy::Unavailable
+        );
+        assert!(require_fork_updater_ready().is_err());
     }
 
     #[test]

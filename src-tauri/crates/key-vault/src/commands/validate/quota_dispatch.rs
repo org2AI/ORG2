@@ -65,6 +65,7 @@ pub async fn fetch_key_quota(
         | "openai_api"
         | "anthropic_api"
         | "atlascloud_api"
+        | "cheaperinference_api"
         | "gemini_api"
         | "groq_api"
         | "xai_api"

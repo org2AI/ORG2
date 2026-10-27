@@ -210,6 +210,13 @@ const CHERRYIN_ENDPOINTS: &[ProviderEndpointSpec] = &[ProviderEndpointSpec {
     anthropic_base_url: Some("https://open.cherryin.net"),
 }];
 
+const CHEAPERINFERENCE_ENDPOINTS: &[ProviderEndpointSpec] = &[ProviderEndpointSpec {
+    id: "default",
+    label: "Cheaper Inference",
+    base_url: "https://api.cheaperinference.com/v1",
+    anthropic_base_url: Some("https://api.cheaperinference.com"),
+}];
+
 /// AWS Bedrock via the `bedrock-mantle` endpoint, which serves both an
 /// OpenAI-compatible (`/openai/v1`) and an Anthropic-compatible (`/anthropic`)
 /// surface authenticated with a Bedrock API key as a bearer / `x-api-key`
@@ -483,6 +490,15 @@ pub fn get_provider_config(model_type: &str) -> ProviderConfig {
             "openai",
         )
         .with_endpoints(CHERRYIN_ENDPOINTS),
+        "cheaperinference_api" => ProviderConfig::with_protocols(
+            "CHEAPERINFERENCE_API_KEY",
+            None,
+            true,
+            None,
+            &["openai", "anthropic"],
+            "openai",
+        )
+        .with_endpoints(CHEAPERINFERENCE_ENDPOINTS),
         "bedrock_api" => ProviderConfig::with_protocols(
             "AWS_BEARER_TOKEN_BEDROCK",
             None,
@@ -562,6 +578,7 @@ pub fn get_all_provider_configs() -> Vec<(String, ProviderConfig)> {
         "modelscope_api",
         "aihubmix_api",
         "cherryin_api",
+        "cheaperinference_api",
         "bedrock_api",
         "custom_api",
         "vllm_api",

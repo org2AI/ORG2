@@ -205,6 +205,17 @@ pub(crate) fn api_provider_registry() -> Vec<ApiProviderEntry> {
             supports_rust_agents: true,
         },
         ApiProviderEntry {
+            name: "cheaperinference_api",
+            display_name: "Cheaper Inference",
+            description: "OpenAI-compatible LLM gateway with models from several labs",
+            brand_color: "#64748B",
+            docs_url: "https://cheaperinference.com/docs",
+            icon_provider: "custom",
+            paired_cli_agent: None,
+            popular: false,
+            supports_rust_agents: true,
+        },
+        ApiProviderEntry {
             name: "bedrock_api",
             display_name: "AWS Bedrock",
             description: "AWS Bedrock via an API key — pick a region, or set a custom base URL",

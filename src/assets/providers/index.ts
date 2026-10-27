@@ -55,6 +55,7 @@ const API_KEY_PROVIDER_LIST: ApiProviderType[] = [
   "atlascloud_api", // Atlas Cloud
   "azure_anthropic_api", // Azure Anthropic
   "azure_openai_api", // Azure OpenAI
+  "cheaperinference_api", // Cheaper Inference
   "deepseek_api", // DeepSeek
   "gemini_api", // Google Gemini
   "groq_api", // Groq

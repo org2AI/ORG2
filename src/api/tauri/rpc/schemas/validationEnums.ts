@@ -102,6 +102,7 @@ export const ApiProviderTypeSchema = z.union([
   z.literal("modelscope_api"),
   z.literal("aihubmix_api"),
   z.literal("cherryin_api"),
+  z.literal("cheaperinference_api"),
   z.literal("bedrock_api"),
   z.literal("custom_api"),
   z.literal("vllm_api"),

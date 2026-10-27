@@ -169,6 +169,7 @@ const PRIMARY_PROVIDER_KEYS = new Set([
   "modelscope_api",
   "aihubmix_api",
   "cherryin_api",
+  "cheaperinference_api",
   "atlascloud_api",
   "bedrock_api",
   "custom_api",

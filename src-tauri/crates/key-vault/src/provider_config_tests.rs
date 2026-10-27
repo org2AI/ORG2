@@ -419,6 +419,7 @@ fn new_aggregators_are_openai_and_anthropic_capable() {
         "aihubmix_api",
         "modelscope_api",
         "cherryin_api",
+        "cheaperinference_api",
         "siliconflow_api",
     ] {
         let config = get_provider_config(model_type);

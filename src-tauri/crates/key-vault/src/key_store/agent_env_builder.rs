@@ -425,6 +425,7 @@ impl KeyService {
             | ModelType::ModelscopeApi
             | ModelType::AihubmixApi
             | ModelType::CherryinApi
+            | ModelType::CheaperinferenceApi
             | ModelType::BedrockApi
             | ModelType::CustomApi
             | ModelType::OpenrouterApi
@@ -458,6 +459,7 @@ impl KeyService {
                     ModelType::ModelscopeApi => "MODELSCOPE_API_KEY",
                     ModelType::AihubmixApi => "AIHUBMIX_API_KEY",
                     ModelType::CherryinApi => "CHERRYIN_API_KEY",
+                    ModelType::CheaperinferenceApi => "CHEAPERINFERENCE_API_KEY",
                     ModelType::BedrockApi => "AWS_BEARER_TOKEN_BEDROCK",
                     ModelType::CustomApi => "CUSTOM_API_KEY",
                     ModelType::OpenrouterApi => "OPENROUTER_API_KEY",
@@ -598,6 +600,7 @@ impl KeyService {
             | ModelType::ModelscopeApi
             | ModelType::AihubmixApi
             | ModelType::CherryinApi
+            | ModelType::CheaperinferenceApi
             | ModelType::BedrockApi
             | ModelType::CustomApi
             | ModelType::OpenrouterApi
@@ -630,6 +633,7 @@ impl KeyService {
                     ModelType::ModelscopeApi => "MODELSCOPE_API_KEY",
                     ModelType::AihubmixApi => "AIHUBMIX_API_KEY",
                     ModelType::CherryinApi => "CHERRYIN_API_KEY",
+                    ModelType::CheaperinferenceApi => "CHEAPERINFERENCE_API_KEY",
                     ModelType::BedrockApi => "AWS_BEARER_TOKEN_BEDROCK",
                     ModelType::CustomApi => "CUSTOM_API_KEY",
                     ModelType::OpenrouterApi => "OPENROUTER_API_KEY",

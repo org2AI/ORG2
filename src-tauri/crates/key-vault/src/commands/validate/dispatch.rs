@@ -144,7 +144,8 @@ pub async fn run_validate_key(
         "atlascloud_api" | "deepseek_api" | "groq_api" | "xai_api" | "zhipu_api" | "dashscope_api"
         | "moonshot_api" | "minimax_api" | "longcat_api" | "openrouter_api" | "zenmux_api"
         | "siliconflow_api" | "modelscope_api" | "aihubmix_api" | "cherryin_api"
-        | "bedrock_api" | "custom_api" | "vllm_api" | "orgii_orchestrator" | "orgii" => {
+        | "cheaperinference_api" | "bedrock_api" | "custom_api" | "vllm_api"
+        | "orgii_orchestrator" | "orgii" => {
             if protocol_lower.as_deref() == Some("anthropic") {
                 let effective_url = base_url
                     .clone()
@@ -169,7 +170,7 @@ pub async fn run_validate_key(
         }
 
         _ => Err(format!(
-            "Unknown agent type: {}. Supported: copilot, cursor_cli, openai, anthropic, google, codex, claude_code, kiro, opencode, openai_api, atlascloud_api, anthropic_api, gemini_api, deepseek_api, groq_api, xai_api, zhipu_api, dashscope_api, moonshot_api, minimax_api, longcat_api, openrouter_api, zenmux_api, siliconflow_api, modelscope_api, aihubmix_api, cherryin_api, bedrock_api, custom_api, vllm_api, azure_openai_api, azure_anthropic_api",
+            "Unknown agent type: {}. Supported: copilot, cursor_cli, openai, anthropic, google, codex, claude_code, kiro, opencode, openai_api, atlascloud_api, anthropic_api, gemini_api, deepseek_api, groq_api, xai_api, zhipu_api, dashscope_api, moonshot_api, minimax_api, longcat_api, openrouter_api, zenmux_api, siliconflow_api, modelscope_api, aihubmix_api, cherryin_api, cheaperinference_api, bedrock_api, custom_api, vllm_api, azure_openai_api, azure_anthropic_api",
             agent_type
         )),
     }

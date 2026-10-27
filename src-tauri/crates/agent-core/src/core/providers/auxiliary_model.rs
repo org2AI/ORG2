@@ -147,6 +147,7 @@ fn preferences(spec: &ProviderSpec, codex_oauth: bool) -> &'static [&'static str
         | provider_id::OPENCODE
         | provider_id::AIHUBMIX
         | provider_id::CHERRYIN
+        | provider_id::CHEAPERINFERENCE
         | provider_id::ATLASCLOUD
         | provider_id::SILICONFLOW
         | provider_id::MODELSCOPE

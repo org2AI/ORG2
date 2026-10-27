@@ -23,6 +23,7 @@ pub mod provider_id {
     pub const OPENCODE: &str = "opencode";
     pub const AIHUBMIX: &str = "aihubmix";
     pub const CHERRYIN: &str = "cherryin";
+    pub const CHEAPERINFERENCE: &str = "cheaperinference";
 
     // Standard providers
     pub const ANTHROPIC: &str = "anthropic";
@@ -127,6 +128,17 @@ pub static PROVIDERS: &[ProviderSpec] = &[
         default_anthropic_api_base: Some("https://open.cherryin.net"),
         is_local: false,
         env_key: Some("CHERRYIN_API_KEY"),
+    },
+    ProviderSpec {
+        name: provider_id::CHEAPERINFERENCE,
+        display_name: "Cheaper Inference",
+        keywords: &[],
+        litellm_prefix: None,
+        skip_prefixes: &["cheaperinference/"],
+        default_api_base: Some("https://api.cheaperinference.com/v1"),
+        default_anthropic_api_base: Some("https://api.cheaperinference.com"),
+        is_local: false,
+        env_key: Some("CHEAPERINFERENCE_API_KEY"),
     },
     // ===== Standard Providers =====
     ProviderSpec {

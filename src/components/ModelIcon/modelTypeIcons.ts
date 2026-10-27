@@ -61,6 +61,7 @@ export const MODEL_TYPE_TO_ICON: Record<ModelType, IconProvider> = {
   modelscope_api: "modelscope",
   aihubmix_api: "aihubmix",
   cherryin_api: "cherryin",
+  cheaperinference_api: "custom",
   bedrock_api: "aws",
   custom_api: "custom",
   moonshot_api: "kimi",

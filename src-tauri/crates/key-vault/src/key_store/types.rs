@@ -129,6 +129,7 @@ pub enum ModelType {
     ModelscopeApi,
     AihubmixApi,
     CherryinApi,
+    CheaperinferenceApi,
     /// AWS Bedrock via the `bedrock-mantle` OpenAI/Anthropic-compatible
     /// surface, authenticated with a Bedrock API key rather than SigV4.
     BedrockApi,
@@ -198,6 +199,7 @@ impl ModelType {
             ModelType::ModelscopeApi => "modelscope_api",
             ModelType::AihubmixApi => "aihubmix_api",
             ModelType::CherryinApi => "cherryin_api",
+            ModelType::CheaperinferenceApi => "cheaperinference_api",
             ModelType::BedrockApi => "bedrock_api",
             ModelType::CustomApi => "custom_api",
             ModelType::AzureOpenaiApi => "azure_openai_api",
@@ -261,6 +263,7 @@ impl ModelType {
             "modelscope_api" | "modelscope" => Some(ModelType::ModelscopeApi),
             "aihubmix_api" | "aihubmix" => Some(ModelType::AihubmixApi),
             "cherryin_api" | "cherryin" => Some(ModelType::CherryinApi),
+            "cheaperinference_api" | "cheaperinference" => Some(ModelType::CheaperinferenceApi),
             "bedrock_api" | "bedrock" => Some(ModelType::BedrockApi),
             "custom_api" | "custom" => Some(ModelType::CustomApi),
             "azure_openai_api" | "azure_openai" | "azure" => Some(ModelType::AzureOpenaiApi),
